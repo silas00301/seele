@@ -30,6 +30,7 @@
     ./programs/fzf.nix
     ./programs/git.nix
     ./programs/github-cli.nix
+    ./programs/hunk.nix
     ./programs/jq.nix
     ./programs/jujutsu.nix
     ./programs/nh.nix
