@@ -1,4 +1,4 @@
-{pkgs, lib, ...}: 
+{ pkgs, lib, ... }:
 let
   tomlFormat = pkgs.formats.toml { };
 in
@@ -14,7 +14,10 @@ in
 
   programs.jujutsu.settings = {
     ui = {
-      pager = lib.mkForce ["hunk" "pager"];
+      pager = lib.mkForce [
+        "hunk"
+        "pager"
+      ];
       diff-formatter = lib.mkForce ":git";
     };
   };
