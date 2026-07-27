@@ -8,7 +8,7 @@
     escapeTime = 0;
     baseIndex = 1;
     mouse = true;
-    terminal = "xterm-ghostty";
+    terminal = "tmux-256color";
     plugins = with pkgs; [
       tmuxPlugins.vim-tmux-navigator
     ];
@@ -18,6 +18,8 @@
       set-option -g renumber-windows on
       set-option -g status-right-length 80
       set-option -g focus-events on
+      set -g extended-keys on
+      set -g extended-keys-format csi-u
 
       bind-key r source-file ~/.config/tmux/tmux.conf \; display-message "~/.config/tmux/tmux.conf reloaded"
       bind-key < split-window -h
