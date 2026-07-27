@@ -91,42 +91,101 @@ in
         },
       })
 
+      hl.curve("macosSpring", {
+        type = "spring",
+        mass = 1,
+        stiffness = 180,
+        dampening = 22,
+      })
+
+      hl.curve("macosFade", {
+        type = "bezier",
+        points = {
+          { 0.22, 1 },
+          { 0.36, 1 },
+        },
+      })
+
+      hl.curve("macosMove", {
+        type = "spring",
+        mass = 1,
+        stiffness = 300,
+        dampening = 32,
+      })
+
       hl.animation({
-        leaf = "windows",
+        leaf = "windowsIn",
         enabled = true,
-        speed = 5,
-        bezier = "overshot",
-        style = "slide",
+        speed = 3.5,
+        spring = "macosSpring",
+        style = "popin 94%",
       })
 
       hl.animation({
         leaf = "windowsOut",
         enabled = true,
-        speed = 4,
-        bezier = "smoothOut",
-        style = "slide",
+        speed = 3,
+        bezier = "macosFade",
+        style = "popin 94%",
       })
 
       hl.animation({
         leaf = "windowsMove",
         enabled = true,
-        speed = 4,
-        bezier = "default",
+        speed = 2.5,
+        spring = "macosMove",
       })
 
       hl.animation({
-        leaf = "border",
+        leaf = "fadeIn",
         enabled = true,
-        speed = 10,
-        bezier = "default",
+        speed = 2.5,
+        bezier = "macosFade",
       })
 
       hl.animation({
-        leaf = "fade",
+        leaf = "fadeOut",
         enabled = true,
-        speed = 10,
-        bezier = "smoothIn",
+        speed = 2,
+        bezier = "macosFade",
       })
+
+      -- hl.animation({
+      --   leaf = "windows",
+      --   enabled = true,
+      --   speed = 5,
+      --   bezier = "overshot",
+      --   style = "slide",
+      -- })
+
+      -- hl.animation({
+      --   leaf = "windowsOut",
+      --   enabled = true,
+      --   speed = 4,
+      --   bezier = "smoothOut",
+      --   style = "slide",
+      -- })
+
+      -- hl.animation({
+      --   leaf = "windowsMove",
+      --   enabled = true,
+      --   speed = 4,
+      --   bezier = "default",
+      -- })
+
+      -- hl.animation({
+      --   leaf = "border",
+      --   enabled = true,
+      --   speed = 10,
+      --   bezier = "default",
+      -- })
+
+      -- hl.animation({
+      --   leaf = "fade",
+      --   enabled = true,
+      --   speed = 10,
+      --   bezier = "smoothIn",
+      -- })
 
       hl.animation({
         leaf = "fadeDim",
@@ -151,7 +210,6 @@ in
       hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
       hl.bind(mod .. " + B", hl.dsp.exec_cmd("zen"))
       hl.bind(mod .. " + L", hl.dsp.exec_cmd("${pkgs.noctalia}/bin/noctalia msg session lock"))
-      hl.bind("ALT + SPACE", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae open"))
       hl.bind(mod .. " + SPACE", hl.dsp.window.float({ action = "toggle" }))
 
       hl.bind(mod .. " + F", hl.dsp.window.fullscreen({
@@ -327,7 +385,7 @@ in
 
       hl.window_rule({
         match = {
-          title = "^Rofi$",
+          title = "^Vicinae",
         },
         no_anim = true,
       })
