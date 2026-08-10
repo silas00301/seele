@@ -17,6 +17,7 @@
       set-option -g status-position top
       set-option -g renumber-windows on
       set-option -g status-right-length 80
+      set-option -g focus-events on
 
       bind-key r source-file ~/.config/tmux/tmux.conf \; display-message "~/.config/tmux/tmux.conf reloaded"
       bind-key < split-window -h
