@@ -38,10 +38,10 @@ It then imports Home Manager modules from Catppuccin, Noctalia, Spicetify, Vicin
 
 Notable OS-specific composition:
 
-- NixOS Home Manager adds 1Password, comma, fastfetch, Ghostty, Hyprland, Pi, Spicetify, Vicinae, and spotifyd, plus desktop applications including Codex.
+- Shared NixOS Home Manager adds 1Password, comma, fastfetch, Ghostty, Hyprland, Pi, Spicetify, Vicinae, and spotifyd, plus desktop applications including Codex.
 - Darwin Home Manager sets `/Users/<username>` as the home, imports Bitwarden, Aerospace, and JankyBorders, and adds macOS applications.
 - Host `wm` adds Aerospace window rules and a small application set.
-- Host `pm` currently has no extra Home Manager module content beyond the shared NixOS layer.
+- Host `pm` adds OpenCode.
 
 ## Arguments and package sets
 
