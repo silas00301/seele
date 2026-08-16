@@ -7,7 +7,7 @@ This is a personal, multi-platform dendritic Nix flake for one user (`silash`). 
 - NixOS host `pm` (`x86_64-linux`)
 - nix-darwin host `wm` (`aarch64-darwin`)
 - Home Manager profiles shared by both hosts and specialized by platform/host
-- local packages (`nixvim`, `spt-st`) and overlays
+- local packages (`codexbar`, `nixvim`, `spt-st`) and overlays
 
 Use the `nix-dotfiles` skill in `.agents/skills/` for the workflow and architecture map.
 

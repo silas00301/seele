@@ -9,6 +9,7 @@ The flake exposes:
 - `nixosConfigurations.pm` for `x86_64-linux`
 - `darwinConfigurations.wm` for `aarch64-darwin`
 - `packages.<system>.{nixvim,spt-st}` for all four declared Linux/Darwin systems
+- `packages.x86_64-linux.codexbar`, the packaged Linux CodexBar CLI release
 - `formatter.<system>` backed by `nixfmt-tree`
 - `overlays.{noctalia,zjstatus}`
 - `modules.<class>.<name>` deferred modules from `flake.modules`
@@ -66,7 +67,7 @@ The per-system `pkgs` set uses unstable nixpkgs, both repository overlays, unfre
 
 ## Packages and assets
 
-`modules/packages/nixvim.nix` and `spt-st.nix` contribute `perSystem.packages`. Their raw configuration/script assets live in `modules/packages/_nixvim/` and `_spt-st/`; underscore paths are intentionally excluded from import-tree.
+`modules/packages/codexbar.nix`, `nixvim.nix`, and `spt-st.nix` contribute `perSystem.packages`. CodexBar is available only on `x86_64-linux`; its host profile consumes it through `selfPackages`. Raw configuration/script assets for the other packages live in `modules/packages/_nixvim/` and `_spt-st/`; underscore paths are intentionally excluded from import-tree.
 
 Package directories are no longer discovered by custom `readDir` logic. A package exists because a dendritic leaf contributes it to `perSystem.packages`.
 
