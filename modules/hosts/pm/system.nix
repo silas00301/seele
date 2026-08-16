@@ -91,6 +91,8 @@ let
         sudo.u2fAuth = true;
       };
 
+      programs.kdeconnect.enable = true;
+
       programs.noctalia = {
         enable = true;
         recommendedServices.enable = true;
