@@ -6,6 +6,9 @@
     nixpkgs-stable-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixpkgs-stable-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
 
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    import-tree.url = "github:denful/import-tree";
+
     catppuccin.url = "github:catppuccin/nix";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -39,36 +42,5 @@
     spicetify-nix.url = "github:Gerg-L/spicetify-nix";
   };
 
-  outputs =
-    { self, ... }@inputs:
-    let
-      username = "silash";
-
-      catppuccinConfig = {
-        enable = true;
-        flavor = "mocha";
-        accent = "lavender";
-        autoEnable = true;
-      };
-
-      lib = import ./lib (
-        inputs
-        // {
-          inherit username;
-          inherit catppuccinConfig;
-        }
-      );
-    in
-    with lib;
-    {
-      darwinConfigurations = darwinConfigurations darwinSystems.aarch64-darwin;
-
-      nixosConfigurations = nixosConfigurations linuxSystems.x86_64-linux;
-
-      darwinPackages = self.darwinConfigurations."wm".pkgs;
-
-      packages = packages;
-
-      formatter = formatters;
-    };
+  outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules);
 }

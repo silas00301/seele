@@ -1,1 +1,0 @@
-{ programs.opencode.enable = true; }

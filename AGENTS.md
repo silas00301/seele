@@ -2,62 +2,63 @@
 
 ## Purpose
 
-This is a personal, multi-platform Nix flake for one user (`silash`). It defines:
+This is a personal, multi-platform dendritic Nix flake for one user (`silash`). It defines:
 
 - NixOS host `pm` (`x86_64-linux`)
 - nix-darwin host `wm` (`aarch64-darwin`)
-- shared and platform-specific Home Manager configuration
+- Home Manager profiles shared by both hosts and specialized by platform/host
 - local packages (`nixvim`, `spt-st`) and overlays
 
-Use the `nix-dotfiles` skill in `.agents/skills/` for the detailed workflow and architecture map. The shared `.agents/skills` location is understood by Pi, OpenCode, and Codex CLI.
+Use the `nix-dotfiles` skill in `.agents/skills/` for the workflow and architecture map.
 
 ## Before editing
 
-- Run `jj status` and preserve all pre-existing changes. This repository is colocated Jujutsu/Git, but all change tracking and history operations must go through Jujutsu. Do not use Git's staging area.
-- Trace imports before changing a module. A `.nix` file under `home/shared/programs/` has no effect unless an active `default.nix` imports it.
-- Determine whether the change belongs to shared Home Manager, one OS, or one host. Keep the narrowest correct scope.
-- Do not expose credentials, SSH material, machine identifiers, or values from local agent/auth configuration.
+- Run `jj status` and preserve all pre-existing changes. Use Jujutsu for all change tracking and history operations; do not use Git's staging area.
+- Every `.nix` file under `modules/` is recursively imported by `import-tree`, except paths containing `/_`. A leaf must be a flake-parts module, not a bare NixOS, nix-darwin, or Home Manager module.
+- Determine whether a change contributes to a named module, an active `common`/platform/host profile, or only a package/flake output. Keep the narrowest correct scope.
+- Do not expose credentials, SSH material, machine identifiers, or local agent/auth configuration.
 
 ## Architecture
 
-- `flake.nix`: inputs, username/theme constants, and public outputs.
-- `lib/default.nix`: central constructor. It discovers package, overlay, and host directories and assembles NixOS, nix-darwin, and Home Manager modules.
-- `hosts/shared/`: system configuration shared by both OS families.
-- `hosts/systems/{nixos,darwin}/shared/`: OS-level system modules.
-- `hosts/systems/{nixos,darwin}/hosts/{pm,wm}/`: machine-specific system modules.
-- `home/shared/`: cross-platform Home Manager modules.
-- `home/systems/{nixos,darwin}/shared/`: OS-specific Home Manager modules.
-- `home/systems/{nixos,darwin}/hosts/{pm,wm}/`: host-specific Home Manager modules.
-- `packages/<name>/default.nix`: automatically exported as `packages.<system>.<name>`.
-- `overlays/<name>/default.nix`: automatically loaded for every configured package set.
+- `flake.nix`: inputs and the `flake-parts`/`import-tree` bootstrap.
+- `modules/flake/`: repository options, systems, package-set policy, overlays, and formatter.
+- `modules/features/`: program, service, theme, and system leaves. Each leaf publishes deferred modules through `flake.modules.<class>.<name>`.
+- `modules/profiles/home/`: shared, OS-specific, and host-specific Home Manager profiles. These import named feature modules in activation order.
+- `modules/hosts/{pm,wm}.nix`: host output constructors and Home Manager integration.
+- `modules/hosts/{pm,wm}/`: machine-specific deferred modules, including hardware configuration.
+- `modules/packages/`: `perSystem` package outputs. Underscore-prefixed directories contain raw package assets/configuration and are excluded from recursive module imports.
 
-`lib/default.nix` supplies flake-derived module arguments. Home Manager receives values including `username`, `currentSystem`, `selfPackages`, `pkgs-stable`, `catppuccin`, and `configName`; system modules receive the base input set. Check the constructor for the exact scope, and reuse its arguments instead of re-importing nixpkgs or hard-coding store paths.
+Active profiles are `common`, `linux`/`darwin`, and `pm`/`wm`. Host constructors compose the matching profiles. Named feature modules remain dormant until a profile imports them.
+
+`modules/flake/core.nix` owns `dotfiles.username`, `dotfiles.catppuccin`, supported systems, unstable `pkgs`, and OS-matched `pkgs-stable`. Host constructors pass `username`, `currentSystem`, `selfPackages`, `pkgs-stable`, `catppuccin`, and `configName` to Home Manager. Reuse these arguments instead of re-importing nixpkgs or hard-coding store paths.
 
 ## Editing conventions
 
-- Follow nearby Nix module style and let the flake formatter decide layout.
-- Add a new module to the appropriate `imports` list. Merely creating the file does not enable it.
-- Put cross-platform program configuration in `home/shared/programs/`; put OS-only packages/options under `home/systems/<os>/`; put hardware and machine services under `hosts/systems/<os>/hosts/<host>/`.
-- Add reusable derivations under `packages/` and package-set overrides under `overlays/`.
-- Prefer explicit package references in generated shell snippets (for example `${pkgs.foo}/bin/foo`) when execution must not depend on the user's `PATH`.
-- Do not change `system.stateVersion`, `home.stateVersion`, hardware UUIDs, usernames, or signing keys unless explicitly requested.
-- Do not update `flake.lock` as a side effect of formatting or validation. Update inputs only when the task asks for it.
-- Avoid broad cleanup unrelated to the task. The repository-wide formatter is the exception: always run it so every Nix file remains consistent.
-- Use `jj file track <path>` if a new file is not tracked automatically. Never use `git add`, `git restore`, `git reset`, or `git commit`; use the corresponding Jujutsu workflow.
+- Follow nearby leaf style and let the flake formatter decide layout.
+- Put reusable feature behavior in a descriptive named module under `modules/features/`.
+- Enable user features by importing their named modules from the matching `modules/profiles/home/` profile; preserve import order.
+- Keep dormant feature modules out of active profile imports.
+- Contribute system-only behavior to the matching NixOS or Darwin `common`, OS, or host profile.
+- Put reusable derivations under `modules/packages/` and package-set overrides in `modules/flake/overlays.nix`.
+- Keep raw Nix expressions that are not flake-parts modules below a path containing `/_` so `import-tree` ignores them.
+- Prefer explicit package references in generated shell snippets when execution must not depend on `PATH`.
+- Preserve state versions, hardware UUIDs, usernames, and signing keys unless explicitly requested.
+- Update `flake.lock` only when the task changes inputs.
+- Use `jj file track <path>` if a new file is not tracked automatically. Use Jujutsu equivalents for restore/history operations.
 
 ## Keep agent guidance current
 
-After every repository change, review `AGENTS.md` and `.agents/skills/nix-dotfiles/` against the resulting codebase. Update them in the same change whenever architecture, imports, hosts, outputs, commands, validation, conventions, or workflows have changed. Do not make cosmetic documentation edits when the guidance remains accurate.
+After every repository change, review `AGENTS.md` and `.agents/skills/nix-dotfiles/` against the resulting codebase. Update them when architecture, profiles, outputs, commands, validation, conventions, or workflows changed.
 
 ## Validation
 
-Always format the entire repository, not selected files:
+Always format the entire repository:
 
 ```sh
 nix fmt
 ```
 
-Then inspect `jj diff` to ensure formatter changes are expected. Run current-platform evaluation directly:
+Then inspect `jj diff` and run:
 
 ```sh
 nix flake show --no-write-lock-file
@@ -66,7 +67,7 @@ nix eval --raw .#nixosConfigurations.pm.config.system.build.toplevel.drvPath --n
 nix eval --raw .#darwinConfigurations.wm.system.drvPath --no-write-lock-file                  # Darwin
 ```
 
-For relevant build validation, use the direct flake target:
+For relevant build validation:
 
 ```sh
 system="$(nix eval --impure --raw --expr builtins.currentSystem)"
@@ -75,8 +76,8 @@ nix build .#nixosConfigurations.pm.config.system.build.toplevel --no-link --no-w
 nix build .#darwinConfigurations.wm.system --no-link --no-write-lock-file                      # Darwin
 ```
 
-Validation is platform-sensitive. In particular, evaluating the complete Darwin Home Manager closure on Linux can try to realize Darwin-only generated Catppuccin assets and fail with a platform mismatch. Validate `wm` on Darwin and `pm` on Linux; report any platform checks that were not run.
+Validate `wm` on Darwin and `pm` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary.
 
-Never run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` unless the user explicitly asks to activate the configuration. Activation changes the live machine and may require privileges.
+Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
 
-Known baseline warnings include the nixvim/nixpkgs `follows` warning and some upstream option/deprecation warnings. Do not claim they were introduced by a change without comparing against the baseline.
+Known baseline warnings include the nixvim/nixpkgs `follows` warning and upstream option/deprecation warnings. Compare with the baseline before attributing warnings to a change.

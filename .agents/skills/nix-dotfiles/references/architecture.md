@@ -1,80 +1,80 @@
-# Architecture map
+# Dendritic architecture map
 
-## Public flake outputs
+## Bootstrap and public outputs
 
-`flake.nix` imports `lib/default.nix` with all flake inputs plus the fixed `username` and Catppuccin settings. The library exposes:
+`flake.nix` declares inputs and calls `flake-parts.lib.mkFlake` with the recursive module returned by `import-tree ./modules`. Import-tree loads every `.nix` file below `modules/` except paths containing `/_`.
+
+The flake exposes:
 
 - `nixosConfigurations.pm` for `x86_64-linux`
 - `darwinConfigurations.wm` for `aarch64-darwin`
-- `packages.<system>.{nixvim,spt-st}` for all four declared Linux/Darwin architectures
+- `packages.<system>.{nixvim,spt-st}` for all four declared Linux/Darwin systems
 - `formatter.<system>` backed by `nixfmt-tree`
-- `darwinPackages`, a convenience output that is not a standard flake schema output
+- `overlays.{noctalia,zjstatus}`
+- `modules.<class>.<name>` deferred modules from `flake.modules`
+- `darwinPackages`, the `wm` package set convenience output
 
-Host and package outputs are directory-driven. A direct child under the corresponding `hosts/.../hosts/` or `packages/` directory becomes an output attribute.
+`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns the shared username/Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently.
 
-## System module assembly
+## Deferred modules and active profiles
 
-For each host, `getConfigurationModuleForSystemAndHost` imports modules in this order:
+Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:
 
-1. `hosts/systems/<os>/shared`
-2. `hosts/shared`
-3. `hosts/systems/<os>/hosts/<host>`
+| Profile | Meaning |
+| --- | --- |
+| `common` | shared by both hosts |
+| `linux` | NixOS-specific |
+| `darwin` | macOS-specific |
+| `pm` | host `pm` only |
+| `wm` | host `wm` only |
 
-NixOS additionally receives Lanzaboote, Noctalia, and Catppuccin NixOS modules. nix-darwin sets its state/revision metadata in the constructor.
+Named modules are available through the flake's `modules` output but remain dormant until a profile or host imports them. This replaces the old behavior where an unlisted file under `home/shared/programs/` was dormant.
 
-`hosts/shared/default.nix` defines the shared `username` option, Nix flake settings, basic packages, Fish support, and the user's shell. Machine-specific boot, hardware, networking, desktop, locale, and security settings for `pm` live in `hosts/systems/nixos/hosts/pm/config.nix`; do not move those into Home Manager.
+`modules/features/` contains program, service, theme, and shared system concerns. `modules/profiles/home/` contains profile-wide Home Manager settings that do not belong to one feature. Raw Nix expressions cannot live directly in the recursive tree; place them below a path containing `/_`.
 
-## Home Manager assembly
+## Host assembly
 
-Every host imports these project layers:
+`modules/hosts/pm.nix` constructs `nixosConfigurations.pm` from:
 
-1. `home/shared`
-2. `home/systems/<os>/shared`
-3. `home/systems/<os>/hosts/<host>`
+1. NixOS `common`, `linux`, and `pm` deferred modules
+2. Lanzaboote, Noctalia, and Catppuccin NixOS modules
+3. Home Manager's NixOS integration
+4. Home Manager `common`, `linux`, and `pm` profiles plus external input modules
 
-It then imports Home Manager modules from Catppuccin, Noctalia, Spicetify, Vicinae, Zen Browser, nix-index-database, and 1Password shell plugins.
+Machine configuration and generated hardware settings contribute independently to the NixOS `pm` profile from `modules/hosts/pm/`.
 
-`home/shared/default.nix` is the activation list for cross-platform program modules. Several files under `home/shared/programs/` are currently not imported; treat them as dormant configuration rather than active state.
+`modules/hosts/wm.nix` constructs `darwinConfigurations.wm` from:
 
-Notable OS-specific composition:
+1. Darwin `common`, `darwin`, and `wm` deferred modules
+2. Home Manager's nix-darwin integration
+3. Home Manager `common`, `darwin`, and `wm` profiles plus external input modules
 
-- Shared NixOS Home Manager adds 1Password, comma, fastfetch, Ghostty, Hyprland, Pi, Spicetify, Vicinae, and spotifyd, plus desktop applications including Codex.
-- Darwin Home Manager sets `/Users/<username>` as the home, imports Bitwarden, Aerospace, and JankyBorders, and adds macOS applications.
-- Host `wm` adds Aerospace window rules and a small application set.
-- Host `pm` adds OpenCode.
+Machine system settings live in `modules/hosts/wm/system.nix`. The same constructor exports `darwinPackages`.
 
 ## Arguments and package sets
 
-`getInputsForSystem` creates:
+Host constructors pass all flake inputs plus:
 
-- `pkgs`: unstable nixpkgs with all repository overlays, unfree packages allowed, and the repository's insecure-package exception
-- `pkgs-stable`: the matching stable Linux or Darwin package set
-- all original flake inputs
-- `username`, `currentSystem`, `selfPackages`, `catppuccin`, and `self-path`
+- `username`
+- `currentSystem`
+- `selfPackages`
+- `catppuccin`
+- `self-path`
+- Home Manager-only `pkgs-stable` and `configName`
 
-Home Manager also receives `configName`. System modules receive the base inputs through `_module.args` but not the constructed `pkgs-stable` field unless explicitly passed elsewhere. Check the constructor before assuming an argument is available in every module type.
+The per-system `pkgs` set uses unstable nixpkgs, both repository overlays, unfree packages, and the repository's insecure-package exception. `pkgs-stable` selects the stable Linux or Darwin input according to the target system. Reuse these arguments rather than importing nixpkgs inside feature modules.
 
-## Packages and overlays
+## Packages and assets
 
-Each direct package directory is imported with the complete system input set:
+`modules/packages/nixvim.nix` and `spt-st.nix` contribute `perSystem.packages`. Their raw configuration/script assets live in `modules/packages/_nixvim/` and `_spt-st/`; underscore paths are intentionally excluded from import-tree.
 
-- `packages/nixvim`: builds a standalone Nixvim configuration from `nixvim.nix`.
-- `packages/spt-st`: wraps `spotify-status.sh` as a binary.
+Package directories are no longer discovered by custom `readDir` logic. A package exists because a dendritic leaf contributes it to `perSystem.packages`.
 
-Each direct overlay directory is imported for every `pkgs` instance:
+## Validation boundaries
 
-- `overlays/noctalia`: exposes the matching Noctalia package as `pkgs.noctalia`.
-- `overlays/zjstatus`: exposes the matching zjstatus package as `pkgs.zjstatus`.
-
-Because discovery assumes every direct child is importable, do not add documentation or scratch directories directly under `packages/` or `overlays/`.
-
-## Rebuild and validation boundaries
-
-The configured interactive rebuild abbreviations are:
+The interactive rebuild abbreviations remain:
 
 - NixOS: `nh os switch`
 - Darwin: `nh darwin switch -H wm`
 
-These activate live state and are not validation commands. Use the direct `nix flake`, `nix eval`, and `nix build` commands documented in the skill. Darwin Home Manager theme modules can use import-from-derivation-like generated assets, so a Linux machine may hit Darwin platform mismatches while forcing the Darwin closure even during what appears to be evaluation.
-
-This map is maintained alongside the code. Any change to flake outputs, directory-driven discovery, module composition, hosts, package sets, or rebuild/validation boundaries must update this reference in the same change.
+They activate live state and are not validation commands. Use direct `nix flake`, `nix eval`, and `nix build` commands from the skill. Darwin Home Manager theme modules can force generated Darwin assets, so Linux evaluation may fail with a platform mismatch; validate the complete `wm` closure on Darwin.
