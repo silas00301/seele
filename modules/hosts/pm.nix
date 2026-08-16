@@ -37,7 +37,9 @@ in
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
-            backupFileExtension = "bak";
+            backupCommand = perSystemArgs.pkgs.writeShellScript "home-manager-backup" ''
+              exec ${perSystemArgs.pkgs.coreutils}/bin/mv --backup=numbered -- "$1" "$1.bak"
+            '';
             users.${username}.imports = [
               modules.homeManager.common
               modules.homeManager.linux
