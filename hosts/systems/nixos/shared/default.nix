@@ -1,6 +1,14 @@
+{ catppuccin, ... }:
 {
-  catppuccin.grub.enable = true;
-  catppuccin.sddm.enable = true;
-  catppuccin.tty.enable = true;
-  catppuccin.plymouth.enable = true;
+  catppuccin = {
+    enable = catppuccin.enable;
+    flavor = catppuccin.flavor;
+    accent = catppuccin.accent;
+    autoEnable = catppuccin.autoEnable;
+
+    grub.enable = true;
+    sddm.enable = true;
+    tty.enable = true;
+    plymouth.enable = true;
+  };
 }
