@@ -1,7 +1,12 @@
 { ... }:
 let
   module = (
-    { pkgs, noctalia, ... }:
+    {
+      config,
+      pkgs,
+      noctalia,
+      ...
+    }:
     let
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
@@ -32,6 +37,7 @@ let
 
           hl.on("hyprland.start", function()
             hl.exec_cmd("${pkgs._1password-gui}/bin/1password --silent")
+            hl.exec_cmd("${config.programs.spicetify.spicedSpotify}/bin/spotify")
           end)
 
           hl.workspace_rule({ workspace = "3", monitor = "DP-1" })
@@ -395,9 +401,9 @@ let
             })
           end
 
-          hl.window_rule({
+          hl.layer_rule({
             match = {
-              title = "^Vicinae",
+              namespace = "vicinae",
             },
             no_anim = true,
           })
