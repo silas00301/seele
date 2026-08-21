@@ -23,6 +23,7 @@ let
       modules.fish-linux
       modules.ghostty
       modules.hypr
+      modules.voxtype
       modules.pi
       modules.spicetify
       modules.vicinae
