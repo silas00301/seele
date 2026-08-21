@@ -6,6 +6,7 @@ let
       pkgs.awscli2
       pkgs.spotify
       pkgs.drawio
+      pkgs.insomnia
     ];
   };
   profile.imports = [

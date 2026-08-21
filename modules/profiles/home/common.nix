@@ -11,7 +11,6 @@ let
       pkgs.vue-language-server
       pkgs.glow
       pkgs.obsidian
-      pkgs.insomnia
       pkgs.nixd
       pkgs.nil
     ];
