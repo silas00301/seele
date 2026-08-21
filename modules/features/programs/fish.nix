@@ -1,6 +1,6 @@
 { ... }:
 let
-  module = ({
+  homeModule = {
     programs.fish = {
       enable = true;
       functions = {
@@ -36,8 +36,50 @@ let
         end
       '';
     };
-  });
+  };
+  homeDarwinModule =
+    { lib, ... }:
+    {
+      programs.fish = {
+        shellInit = lib.mkAfter ''
+          eval "$(/opt/homebrew/bin/brew shellenv)" 
+        '';
+        shellAbbrs.rebuild = {
+          position = "command";
+          expansion = "nh darwin switch -H wm";
+        };
+      };
+    };
+  homeLinuxModule = {
+    programs.fish.shellAbbrs.rebuild = {
+      position = "command";
+      expansion = "nh os switch";
+    };
+  };
+  systemModule = {
+    programs.fish = {
+      enable = true;
+      useBabelfish = true;
+    };
+  };
+  darwinSystemModule =
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
+    {
+      imports = [ systemModule ];
+      users.users.${config.username}.shell = lib.mkForce pkgs.fish;
+    };
 in
 {
-  flake.modules.homeManager."fish" = module;
+  flake.modules.homeManager = {
+    fish = homeModule;
+    fish-darwin = homeDarwinModule;
+    fish-linux = homeLinuxModule;
+  };
+  flake.modules.nixos.fish = systemModule;
+  flake.modules.darwin.fish = darwinSystemModule;
 }

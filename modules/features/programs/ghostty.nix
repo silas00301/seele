@@ -1,6 +1,6 @@
 { ... }:
 let
-  module = ({
+  homeModule = ({
     programs.ghostty = {
       enable = true;
       enableBashIntegration = true;
@@ -17,7 +17,11 @@ let
       };
     };
   });
+  darwinModule = {
+    homebrew.casks = [ "ghostty" ];
+  };
 in
 {
-  flake.modules.homeManager."ghostty" = module;
+  flake.modules.homeManager.ghostty = homeModule;
+  flake.modules.darwin.ghostty = darwinModule;
 }

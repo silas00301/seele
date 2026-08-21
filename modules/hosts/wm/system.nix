@@ -1,16 +1,14 @@
-{ ... }:
+{ config, ... }:
 let
-  module = ({
-    homebrew.casks = [
-      "bitwarden"
+  modules = config.flake.modules.darwin;
+  module = {
+    imports = [
+      modules.bitwarden
+      modules.jetbrains-toolbox
     ];
-
-    environment.systemPath = [
-      "$HOME/Library/Application\\ Support/JetBrains/Toolbox/scripts"
-    ];
-  });
+  };
 in
 {
-  flake.modules.darwin."wm-system" = module;
-  flake.modules.darwin."wm" = module;
+  flake.modules.darwin.wm-system = module;
+  flake.modules.darwin.wm = module;
 }

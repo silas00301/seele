@@ -19,8 +19,6 @@ let
     home.sessionVariables = { };
 
     nixpkgs.config.permittedInsecurePackages = [ "electron-39.8.10" ];
-
-    programs.home-manager.enable = true;
   };
   profile = {
     imports = [
@@ -37,6 +35,7 @@ let
       modules.fzf
       modules.git
       modules.github-cli
+      modules.home-manager
       modules.hunk
       modules.jq
       modules.jujutsu

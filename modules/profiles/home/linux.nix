@@ -13,15 +13,6 @@ let
     ];
 
     gtk.enable = true;
-
-    # programs.hyprlock = {
-    #   enable = true;
-    # };
-
-    programs.fish.shellAbbrs.rebuild = {
-      position = "command";
-      expansion = "nh os switch";
-    };
   };
   profile = {
     imports = [
@@ -29,6 +20,7 @@ let
       modules."1password-linux"
       modules.comma
       modules.fastfetch
+      modules.fish-linux
       modules.ghostty
       modules.hypr
       modules.pi

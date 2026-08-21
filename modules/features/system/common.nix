@@ -1,13 +1,16 @@
-{ ... }:
+{ config, ... }:
 let
-  module =
+  modules = config.flake.modules;
+  moduleFor =
+    programModules:
     {
       pkgs,
-      config,
       lib,
       ...
     }:
     {
+      imports = programModules;
+
       options.username = lib.mkOption { type = lib.types.str; };
 
       config = {
@@ -17,29 +20,27 @@ let
           coreutils
         ];
 
-        nix.settings = {
-          experimental-features = "nix-command flakes";
-          extra-substituters = [ "https://vicinae.cachix.org" ];
-          extra-trusted-public-keys = [
-            "vicinae.cachix.org-1:1kDrfienkGHPYbkpNj1mWTr7Fm1+zcenzgTizIcI3oc="
-          ];
-        };
-
-        programs.fish = {
-          enable = true;
-          useBabelfish = true;
-        };
-        users.users.${config.username}.shell = pkgs.zsh;
+        nix.settings.experimental-features = "nix-command flakes";
       };
     };
+  nixosModule = moduleFor [
+    modules.nixos.fish
+    modules.nixos.vicinae
+    modules.nixos.zsh
+  ];
+  darwinModule = moduleFor [
+    modules.darwin.fish
+    modules.darwin.vicinae
+    modules.darwin.zsh
+  ];
 in
 {
   flake.modules.nixos = {
-    system-common = module;
-    common = module;
+    system-common = nixosModule;
+    common = nixosModule;
   };
   flake.modules.darwin = {
-    system-common = module;
-    common = module;
+    system-common = darwinModule;
+    common = darwinModule;
   };
 }

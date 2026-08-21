@@ -36,7 +36,7 @@ Active profiles are `common`, `linux`/`darwin`, and `pm`/`wm`. Host constructors
 
 - Follow nearby leaf style and let the flake formatter decide layout.
 - Put reusable feature behavior in a descriptive named module under `modules/features/`.
-- Enable user features by importing their named modules from the matching `modules/profiles/home/` profile; preserve import order.
+- Import named user features from the matching `modules/profiles/home/` profile and named system features from the matching system or host aggregate; preserve import order.
 - Keep dormant feature modules out of active profile imports.
 - Contribute system-only behavior to the matching NixOS or Darwin `common`, OS, or host profile.
 - Put reusable derivations under `modules/packages/` and package-set overrides in `modules/flake/overlays.nix`.

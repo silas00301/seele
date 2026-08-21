@@ -1,6 +1,6 @@
 { ... }:
 let
-  module = (
+  homeModule = (
     { username, ... }:
     {
       home.sessionVariables = {
@@ -8,7 +8,11 @@ let
       };
     }
   );
+  darwinModule = {
+    homebrew.casks = [ "bitwarden" ];
+  };
 in
 {
-  flake.modules.homeManager."bitwarden-darwin" = module;
+  flake.modules.homeManager.bitwarden-darwin = homeModule;
+  flake.modules.darwin.bitwarden = darwinModule;
 }

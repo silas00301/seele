@@ -29,7 +29,7 @@ Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, 
 | `pm` | host `pm` only |
 | `wm` | host `wm` only |
 
-Named modules are available through the flake's `modules` output but remain dormant until a profile or host imports them. This replaces the old behavior where an unlisted file under `home/shared/programs/` was dormant.
+Named modules are available through the flake's `modules` output but remain dormant until a profile or host imports them. Home Manager profiles import user features; system and host aggregates import NixOS and Darwin features such as shells, themes, Homebrew applications, and host-only integrations. This replaces the old behavior where an unlisted file under `home/shared/programs/` was dormant.
 
 `modules/features/` contains program, service, theme, and shared system concerns. `modules/profiles/home/` contains profile-wide Home Manager settings that do not belong to one feature. Raw Nix expressions cannot live directly in the recursive tree; place them below a path containing `/_`.
 
