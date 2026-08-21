@@ -38,11 +38,11 @@ Named modules are available through the flake's `modules` output but remain dorm
 `modules/hosts/pm.nix` constructs `nixosConfigurations.pm` from:
 
 1. NixOS `common`, `linux`, and `pm` deferred modules
-2. Lanzaboote, Noctalia, and Catppuccin NixOS modules
+2. Noctalia and Catppuccin NixOS modules
 3. Home Manager's NixOS integration
 4. Home Manager `common`, `linux`, and `pm` profiles plus external input modules
 
-Machine configuration and generated hardware settings contribute independently to the NixOS `pm` profile from `modules/hosts/pm/`.
+Machine configuration and generated hardware settings contribute independently to the NixOS `pm` profile from `modules/hosts/pm/`. The host uses NixOS' native Limine module with Secure Boot and the shared Catppuccin theme.
 
 `modules/hosts/wm.nix` constructs `darwinConfigurations.wm` from:
 

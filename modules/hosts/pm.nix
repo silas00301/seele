@@ -29,7 +29,6 @@ in
         modules.nixos.linux
         modules.nixos.common
         modules.nixos.pm
-        inputs.lanzaboote.nixosModules.lanzaboote
         inputs.noctalia.nixosModules.default
         inputs.catppuccin.nixosModules.catppuccin
         inputs.home-manager.nixosModules.home-manager

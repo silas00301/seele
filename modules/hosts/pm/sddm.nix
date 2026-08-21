@@ -1,9 +1,13 @@
 { ... }:
 let
   module = {
-    services.displayManager.sddm = {
-      enable = true;
-      wayland.enable = true;
+    services.displayManager = {
+      defaultSession = "hyprland";
+      sddm = {
+        enable = true;
+        settings.Users.RememberLastSession = false;
+        wayland.enable = true;
+      };
     };
   };
 in

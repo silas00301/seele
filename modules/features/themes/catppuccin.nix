@@ -20,7 +20,7 @@ let
         accent = catppuccin.accent;
         autoEnable = catppuccin.autoEnable;
 
-        grub.enable = true;
+        limine.enable = true;
         sddm.enable = true;
         tty.enable = true;
         plymouth.enable = true;
