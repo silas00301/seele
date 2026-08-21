@@ -17,7 +17,7 @@ let
           local mod = "SUPER"
 
           hl.monitor({
-            output = "HDMI-1",
+            output = "HDMI-A-1",
             mode = "1920x1080@60",
             position = "0x0",
             scale = 1,
@@ -29,6 +29,15 @@ let
             position = "auto-right",
             scale = 1,
           })
+
+          hl.on("hyprland.start", function()
+            hl.exec_cmd("${pkgs._1password-gui}/bin/1password --silent")
+          end)
+
+          hl.workspace_rule({ workspace = "3", monitor = "DP-1" })
+          hl.workspace_rule({ workspace = "5", monitor = "HDMI-A-1" })
+          hl.workspace_rule({ workspace = "7", monitor = "HDMI-A-1" })
+          hl.workspace_rule({ workspace = "10", monitor = "HDMI-A-1" })
 
           hl.config({
             xwayland = {
@@ -395,6 +404,27 @@ let
 
           hl.window_rule({
             match = {
+              class = "^(com.mitchellh.ghostty)$",
+            },
+            workspace = "3 silent",
+          })
+
+          hl.window_rule({
+            match = {
+              class = "^(zen-beta|zen)$",
+            },
+            workspace = "10 silent",
+          })
+
+          hl.window_rule({
+            match = {
+              class = "^(Vesktop|vesktop|Discord|discord)$",
+            },
+            workspace = "5 silent",
+          })
+
+          hl.window_rule({
+            match = {
               class = "^(mpv)$",
             },
             idle_inhibit = "focus",
@@ -411,6 +441,7 @@ let
             match = {
               class = "^(Spotify|spotify)$",
             },
+            workspace = "7 silent",
             fullscreen = true,
           })
 
