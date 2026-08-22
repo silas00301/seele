@@ -1,6 +1,7 @@
 { ... }:
 let
-  module = {
+  module = { pkgs, ... }: {
+    environment.systemPackages = [ pkgs.glib ];
     programs.kdeconnect.enable = true;
   };
 in
