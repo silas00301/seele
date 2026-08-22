@@ -7,12 +7,10 @@ let
     home.packages = [
       pkgs.nerd-fonts.geist-mono
       pkgs.maple-mono.NF-CN
-      pkgs.bat
       pkgs.vue-language-server
       pkgs.glow
       pkgs.obsidian
       pkgs.nixd
-      pkgs.nil
     ];
 
     home.sessionVariables = { };

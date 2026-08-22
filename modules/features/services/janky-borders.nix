@@ -7,7 +7,7 @@ let
         style = "round";
         active_color = "0xffb4befe";
         inactive_color = "0xff6c7086";
-        width = 8.0;
+        width = 2.0;
       };
     };
   });

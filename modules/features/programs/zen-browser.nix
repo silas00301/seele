@@ -62,10 +62,6 @@ let
                 installation_mode = "force_installed";
                 install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
               };
-              "{d634138d-c276-4fc8-924b-40a0ea21d284}" = {
-                installation_mode = "force_installed";
-                install_url = "https://addons.mozilla.org/firefox/downloads/latest/1password-x-password-manager/latest.xpi";
-              };
               "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}" = {
                 installation_mode = "force_installed";
                 install_url = "https://addons.mozilla.org/firefox/downloads/latest/styl-us/latest.xpi/";

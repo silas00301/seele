@@ -6,12 +6,12 @@ let
       launchd.enable = true;
       settings = {
         gaps = {
-          outer.left = 7;
-          outer.bottom = 7;
-          outer.top = 7;
-          outer.right = 7;
-          inner.horizontal = 7;
-          inner.vertical = 7;
+          outer.left = 5;
+          outer.bottom = 5;
+          outer.top = 5;
+          outer.right = 5;
+          inner.horizontal = 5;
+          inner.vertical = 5;
         };
         mode.main.binding = {
           # Window Navigation
@@ -27,8 +27,10 @@ let
           ctrl-alt-shift-l = "move right";
 
           # Window Resizing
-          cmd-shift-s = "resize width -50";
-          cmd-shift-l = "resize smart +50";
+          cmd-shift-h = "resize width -50";
+          cmd-shift-j = "resize height +50";
+          cmd-shift-k = "resize height -50";
+          cmd-shift-l = "resize width +50";
 
           # Workspace Switching
           alt-1 = "workspace 1";

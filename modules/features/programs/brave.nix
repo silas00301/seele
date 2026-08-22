@@ -26,9 +26,6 @@ let
           {
             id = "clngdbkpkpeebahjckkjfobafhncgmne"; # Stylus
           }
-          {
-            id = "nngceckbapebfimnlniiiahkandclblb"; # Bitwarden
-          }
           { id = lib.mkIf config.catppuccin.enable catppuccin_themes.${config.catppuccin.flavor}; }
         ];
         dictionaries = [

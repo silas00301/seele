@@ -3,6 +3,7 @@ let
   module = (
     {
       config,
+      lib,
       pkgs,
       noctalia,
       ...
@@ -226,7 +227,7 @@ let
           hl.bind(mod .. " + Q", hl.dsp.window.close())
           hl.bind(mod .. " + W", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
           hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
-          hl.bind(mod .. " + B", hl.dsp.exec_cmd("zen"))
+          hl.bind(mod .. " + B", hl.dsp.exec_cmd("${lib.getExe config.programs.zen-browser.package}"))
           hl.bind(mod .. " + L", hl.dsp.exec_cmd("${pkgs.noctalia}/bin/noctalia msg session lock"))
           hl.bind(mod .. " + SPACE", hl.dsp.window.float({ action = "toggle" }))
 
@@ -317,7 +318,7 @@ let
 
           hl.bind(
             "XF86AudioRaiseVolume",
-            hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"),
+            hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"),
             {
               locked = true,
               repeating = true,
@@ -326,7 +327,7 @@ let
 
           hl.bind(
             "XF86AudioLowerVolume",
-            hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),
+            hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),
             {
               locked = true,
               repeating = true,
@@ -335,31 +336,31 @@ let
 
           hl.bind(
             "XF86AudioMute",
-            hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),
+            hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),
             { locked = true }
           )
 
           hl.bind(
             "XF86AudioPlay",
-            hl.dsp.exec_cmd("playerctl play-pause"),
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"),
             { locked = true }
           )
 
           hl.bind(
             "XF86AudioPause",
-            hl.dsp.exec_cmd("playerctl play-pause"),
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"),
             { locked = true }
           )
 
           hl.bind(
             "XF86AudioNext",
-            hl.dsp.exec_cmd("playerctl next"),
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl next"),
             { locked = true }
           )
 
           hl.bind(
             "XF86AudioPrev",
-            hl.dsp.exec_cmd("playerctl previous"),
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl previous"),
             { locked = true }
           )
 

@@ -89,19 +89,19 @@ let
             else
               rev="$2"
             fi
-            gh pr create --head $(jj log --revisions "$rev" --no-graph --no-pager --template 'self.local_bookmarks()')
+            ${pkgs.gh}/bin/gh pr create --head $(${pkgs.jujutsu}/bin/jj log --revisions "$rev" --no-graph --no-pager --template 'self.local_bookmarks()')
           elif [ "$1" = "checkout" ] || [ "$1" = "co" ]; then
             if [ "$#" -eq 1 ]; then
-              prs=$(gh pr list --json number,title)
+              prs=$(${pkgs.gh}/bin/gh pr list --json number,title)
               if [ "$prs" = "[]" ]; then
                 echo "No PRs found"
               else
-                prId=$(echo "$prs" | jq -r '"#\(.[].number) | \(.[].title)"' | ${pkgs.gum}/bin/gum choose --header "Pick a PR:" | tr -d "\#" | sed "s/ |.*//g")
+                prId=$(echo "$prs" | ${pkgs.jq}/bin/jq -r '"#\(.[].number) | \(.[].title)"' | ${pkgs.gum}/bin/gum choose --header "Pick a PR:" | ${pkgs.coreutils}/bin/tr -d "\#" | ${pkgs.gnused}/bin/sed "s/ |.*//g")
               fi
             else
               prId="$2"
             fi
-              branchName=$(gh pr view $prId --json headRefName --jq .headRefName)
+              branchName=$(${pkgs.gh}/bin/gh pr view "$prId" --json headRefName --jq .headRefName)
               ${pkgs.jujutsu}/bin/jj new "$branchName"
           fi
         '')

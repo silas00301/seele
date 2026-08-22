@@ -73,11 +73,6 @@
     }
     {
       mode = "n";
-      key = "<leader>d";
-      action = "<cmd>silent exec '!zellij run -i -c -n GitHub -- gh dash'<CR>";
-    }
-    {
-      mode = "n";
       key = "<leader>ha";
       action.__raw = "function() require'harpoon':list():add() end";
     }
@@ -142,6 +137,35 @@
       action.__raw = "cmp.mapping.complete()";
     }
   ];
+
+  extraConfigLua = ''
+    local gh_dash = vim.fn.exepath("gh-dash")
+    if gh_dash ~= "" then
+      vim.keymap.set("n", "<leader>d", function()
+        local tmux = vim.fn.exepath("tmux")
+        local zellij = vim.fn.exepath("zellij")
+
+        if vim.env.TMUX and tmux ~= "" then
+          vim.system({
+            tmux,
+            "display-popup",
+            "-E",
+            "-w",
+            "80%",
+            "-h",
+            "70%",
+            "-d",
+            vim.fn.getcwd(),
+            gh_dash,
+          })
+        elseif vim.env.ZELLIJ and zellij ~= "" then
+          vim.system({ zellij, "run", "-i", "-c", "-n", "GitHub", "--", gh_dash })
+        else
+          vim.cmd("terminal " .. vim.fn.fnameescape(gh_dash))
+        end
+      end, { desc = "Open GitHub dashboard" })
+    end
+  '';
 
   plugins = {
     lualine = {

@@ -27,7 +27,6 @@ let
       modules.pi
       modules.spicetify
       modules.vicinae
-      modules.spotifyd
       base
     ];
   };

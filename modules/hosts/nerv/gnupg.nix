@@ -3,7 +3,7 @@ let
   module = {
     programs.gnupg.agent = {
       enable = true;
-      enableSSHSupport = true;
+      enableSSHSupport = false;
     };
   };
 in
