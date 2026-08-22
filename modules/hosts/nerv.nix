@@ -5,7 +5,8 @@
   ...
 }:
 let
-  inherit (config.seele) catppuccin username;
+  inherit (config.seele) catppuccin;
+  username = config.seele.hosts.nerv.username;
   modules = config.flake.modules;
 in
 {

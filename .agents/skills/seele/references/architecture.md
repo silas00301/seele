@@ -15,7 +15,7 @@ The flake exposes:
 - `modules.<class>.<name>` deferred modules from `flake.modules`
 - `darwinPackages`, the `asuka` package set convenience output
 
-`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns the shared username/Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently.
+`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently.
 
 ## Deferred modules and active profiles
 
@@ -54,9 +54,9 @@ Machine system settings live in `modules/hosts/asuka/system.nix`. The same const
 
 ## Arguments and package sets
 
-Host constructors pass all flake inputs plus:
+Host constructors select `seele.hosts.<name>.username` and pass all flake inputs plus:
 
-- `username`
+- the selected `username`
 - `currentSystem`
 - `selfPackages`
 - `catppuccin`

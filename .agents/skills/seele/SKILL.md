@@ -45,7 +45,7 @@ rg -n 'option-or-package-name' --glob '*.nix' modules
 - Keep a feature's Home Manager, system, and flake contributions together when they express one concern.
 - Publish reusable modules as `flake.modules.<class>.<name>`.
 - Enable named features from the narrowest matching Home Manager, system, or host aggregate, preserving import order.
-- Consume `seele.username`, `seele.catppuccin`, and host-provided arguments instead of duplicating constants or importing nixpkgs.
+- Consume `seele.hosts.<name>.username`, `seele.catppuccin`, and host-provided arguments instead of duplicating constants or importing nixpkgs.
 - Keep non-flake-parts Nix package/config assets in an underscore-prefixed path.
 - Use `lib.mkForce`, `lib.mkDefault`, and conditionals only when merge semantics require them.
 - Preserve state versions, hardware data, lock data, identity/signing values, and live-machine state unless the request requires a change.

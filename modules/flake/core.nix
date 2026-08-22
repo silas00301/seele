@@ -8,11 +8,19 @@
   imports = [ inputs.flake-parts.flakeModules.modules ];
 
   options.seele = {
-    username = lib.mkOption {
-      type = lib.types.str;
-      default = "silash";
-      description = "The user managed by every host.";
-    };
+    hosts =
+      lib.genAttrs
+        [
+          "nerv"
+          "asuka"
+        ]
+        (host: {
+          username = lib.mkOption {
+            type = lib.types.str;
+            default = "silash";
+            description = "The user managed on ${host}.";
+          };
+        });
 
     catppuccin = lib.mkOption {
       type = lib.types.attrs;
