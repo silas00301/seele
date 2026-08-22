@@ -94,7 +94,7 @@ Platform boundaries:
 
 ## 6. Synchronize agent guidance
 
-After code/configuration changes, compare the repository with `AGENTS.md`, this skill, and [the architecture map](references/architecture.md). Update guidance when architecture, profiles, outputs, commands, validation, conventions, or workflows changed.
+After code/configuration changes, compare the repository with `AGENTS.md`, this skill, and [the architecture map](references/architecture.md). If the change establishes or reverses a tool, interaction, visual, workflow, or privacy preference, also compare the [`seele-taste` skill](../seele-taste/SKILL.md). Update guidance when architecture, profiles, outputs, commands, validation, conventions, workflows, or preferences changed.
 
 ## 7. Report precisely
 

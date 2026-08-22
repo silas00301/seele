@@ -9,7 +9,7 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - Home Manager profiles shared by both hosts and specialized by platform/host
 - local packages (`codexbar`, `nixvim`, `spt-st`) and overlays
 
-Use the `seele` skill in `.agents/skills/` for the workflow and architecture map.
+Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
 
 ## Before editing
 
@@ -48,7 +48,7 @@ Active profiles are `common`, `linux`/`darwin`, and `nerv`/`asuka`. Host constru
 
 ## Keep agent guidance current
 
-After every repository change, review `AGENTS.md` and `.agents/skills/seele/` against the resulting codebase. Update them when architecture, profiles, outputs, commands, validation, conventions, or workflows changed.
+After every repository change, review `AGENTS.md` and `.agents/skills/seele/` against the resulting codebase. When a change establishes or reverses a configuration preference, also review `.agents/skills/seele-taste/`. Update guidance when architecture, profiles, outputs, commands, validation, conventions, workflows, or preferences changed.
 
 ## Validation
 
