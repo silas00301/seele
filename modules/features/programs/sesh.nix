@@ -6,8 +6,8 @@ let
       settings = {
         session = [
           {
-            name = "dotfiles";
-            path = "~/dotfiles";
+            name = "seele";
+            path = "~/seele";
             startup_script = "nvim";
             preview_command = "jj log -r 'all()' --no-pager";
             windows = [ "jj" ];

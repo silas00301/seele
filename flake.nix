@@ -1,5 +1,5 @@
 {
-  description = "My nix + home-manager flake";
+  description = "Seele: my Nix and Home Manager configuration";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";

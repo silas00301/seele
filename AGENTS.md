@@ -2,14 +2,14 @@
 
 ## Purpose
 
-This is a personal, multi-platform dendritic Nix flake for one user (`silash`). It defines:
+Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`). It defines:
 
-- NixOS host `pm` (`x86_64-linux`)
-- nix-darwin host `wm` (`aarch64-darwin`)
+- NixOS host `nerv` (`x86_64-linux`)
+- nix-darwin host `asuka` (`aarch64-darwin`)
 - Home Manager profiles shared by both hosts and specialized by platform/host
 - local packages (`codexbar`, `nixvim`, `spt-st`) and overlays
 
-Use the `nix-dotfiles` skill in `.agents/skills/` for the workflow and architecture map.
+Use the `seele` skill in `.agents/skills/` for the workflow and architecture map.
 
 ## Before editing
 
@@ -24,13 +24,13 @@ Use the `nix-dotfiles` skill in `.agents/skills/` for the workflow and architect
 - `modules/flake/`: repository options, systems, package-set policy, overlays, and formatter.
 - `modules/features/`: program, service, theme, and system leaves. Each leaf publishes deferred modules through `flake.modules.<class>.<name>`.
 - `modules/profiles/home/`: shared, OS-specific, and host-specific Home Manager profiles. These import named feature modules in activation order.
-- `modules/hosts/{pm,wm}.nix`: host output constructors and Home Manager integration.
-- `modules/hosts/{pm,wm}/`: machine-specific deferred modules, including hardware configuration.
+- `modules/hosts/{nerv,asuka}.nix`: host output constructors and Home Manager integration.
+- `modules/hosts/{nerv,asuka}/`: machine-specific deferred modules, including hardware configuration.
 - `modules/packages/`: `perSystem` package outputs. Underscore-prefixed directories contain raw package assets/configuration and are excluded from recursive module imports.
 
-Active profiles are `common`, `linux`/`darwin`, and `pm`/`wm`. Host constructors compose the matching profiles. Named feature modules remain dormant until a profile imports them.
+Active profiles are `common`, `linux`/`darwin`, and `nerv`/`asuka`. Host constructors compose the matching profiles. Named feature modules remain dormant until a profile imports them.
 
-`modules/flake/core.nix` owns `dotfiles.username`, `dotfiles.catppuccin`, supported systems, unstable `pkgs`, and OS-matched `pkgs-stable`. Host constructors pass `username`, `currentSystem`, `selfPackages`, `pkgs-stable`, `catppuccin`, and `configName` to Home Manager. Reuse these arguments instead of re-importing nixpkgs or hard-coding store paths.
+`modules/flake/core.nix` owns `seele.username`, `seele.catppuccin`, supported systems, unstable `pkgs`, and OS-matched `pkgs-stable`. Host constructors pass `username`, `currentSystem`, `selfPackages`, `pkgs-stable`, `catppuccin`, and `configName` to Home Manager. Reuse these arguments instead of re-importing nixpkgs or hard-coding store paths.
 
 ## Editing conventions
 
@@ -48,7 +48,7 @@ Active profiles are `common`, `linux`/`darwin`, and `pm`/`wm`. Host constructors
 
 ## Keep agent guidance current
 
-After every repository change, review `AGENTS.md` and `.agents/skills/nix-dotfiles/` against the resulting codebase. Update them when architecture, profiles, outputs, commands, validation, conventions, or workflows changed.
+After every repository change, review `AGENTS.md` and `.agents/skills/seele/` against the resulting codebase. Update them when architecture, profiles, outputs, commands, validation, conventions, or workflows changed.
 
 ## Validation
 
@@ -63,8 +63,8 @@ Then inspect `jj diff` and run:
 ```sh
 nix flake show --no-write-lock-file
 nix flake check --no-build --no-write-lock-file
-nix eval --raw .#nixosConfigurations.pm.config.system.build.toplevel.drvPath --no-write-lock-file # Linux
-nix eval --raw .#darwinConfigurations.wm.system.drvPath --no-write-lock-file                  # Darwin
+nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath --no-write-lock-file # Linux
+nix eval --raw .#darwinConfigurations.asuka.system.drvPath --no-write-lock-file                   # Darwin
 ```
 
 For relevant build validation:
@@ -72,11 +72,11 @@ For relevant build validation:
 ```sh
 system="$(nix eval --impure --raw --expr builtins.currentSystem)"
 nix build ".#packages.${system}.nixvim" --no-link --no-write-lock-file
-nix build .#nixosConfigurations.pm.config.system.build.toplevel --no-link --no-write-lock-file # Linux
-nix build .#darwinConfigurations.wm.system --no-link --no-write-lock-file                      # Darwin
+nix build .#nixosConfigurations.nerv.config.system.build.toplevel --no-link --no-write-lock-file # Linux
+nix build .#darwinConfigurations.asuka.system --no-link --no-write-lock-file                     # Darwin
 ```
 
-Validate `wm` on Darwin and `pm` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary.
+Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary.
 
 Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
 

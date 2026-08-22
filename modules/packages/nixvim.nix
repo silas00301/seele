@@ -11,7 +11,7 @@
         module = import ./_nixvim/config.nix;
         extraSpecialArgs = {
           inherit pkgs-stable;
-          catppuccin = config.dotfiles.catppuccin;
+          catppuccin = config.seele.catppuccin;
         };
       };
     };

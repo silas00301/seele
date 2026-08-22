@@ -46,7 +46,7 @@ let
         '';
         shellAbbrs.rebuild = {
           position = "command";
-          expansion = "nh darwin switch -H wm";
+          expansion = "nh darwin switch -H asuka";
         };
       };
     };

@@ -7,7 +7,7 @@
 {
   imports = [ inputs.flake-parts.flakeModules.modules ];
 
-  options.dotfiles = {
+  options.seele = {
     username = lib.mkOption {
       type = lib.types.str;
       default = "silash";
