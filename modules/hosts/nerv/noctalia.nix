@@ -20,8 +20,8 @@ let
     };
 in
 {
+  # Kept as an alternate shell profile. Seele Shell is active; importing these
+  # named modules explicitly switches the relevant layer back to Noctalia.
   flake.modules.homeManager.nerv-noctalia = homeModule;
   flake.modules.nixos.nerv-noctalia = systemModule;
-  flake.modules.nixos.nerv-system = systemModule;
-  flake.modules.nixos.nerv = systemModule;
 }

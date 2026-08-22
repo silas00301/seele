@@ -27,6 +27,9 @@
     noctalia.url = "github:noctalia-dev/noctalia";
     noctalia.inputs.nixpkgs.follows = "nixpkgs";
 
+    quickshell.url = "github:outfoxxed/quickshell";
+    quickshell.inputs.nixpkgs.follows = "nixpkgs";
+
     vicinae.url = "github:vicinaehq/vicinae";
 
     nixvim.url = "github:nix-community/nixvim";

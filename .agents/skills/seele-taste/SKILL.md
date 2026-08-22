@@ -36,13 +36,17 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Retain explicit gates for trust decisions, destructive operations, credentials, and live-machine activation.
 - Support the mouse where it is convenient, but make the complete primary workflow keyboard-accessible.
 - Hide passive chrome intelligently: auto-hide docks, compact launchers, suppress empty media/privacy indicators, and expose rich previews or status only when relevant.
+- Model a persistent on/off state as a switch beside the panel title, and keep buttons for one-shot actions.
+- Manage the devices or connections a panel owns inside that panel rather than deferring to an external settings application. Confirm a destructive row action in place, and escalate a step that needs a human answer, such as a pairing passkey, to an interactive terminal instead of attempting it silently.
+- Let the user hide chrome they did not ask for, such as individual tray icons, and keep the hidden set reachable behind one affordance rather than dropping it.
+- Reuse a running helper application instead of spawning another instance, and keep a companion app's own autostart entry disabled when a managed service already runs it.
 
 ## Visual defaults
 
 - Default to dark **Catppuccin Mocha** with **Lavender** as the accent. Consume the repository's shared Catppuccin values instead of copying palette literals.
 - Prefer **Maple Mono NF CN** for terminal and monospace UI; Geist Mono is an available secondary font.
-- Favor rounded borders and popups, small gaps, capsule or powerline-shaped status elements, restrained transparency, and background blur.
-- Use smooth, quick animation with a macOS-like spring/fade feel. Avoid startup noise, tips, changelog clutter, and ornamental motion that slows interaction.
+- Favor rounded borders, small gaps, capsule or powerline-shaped status elements, restrained transparency, and background blur. Match shell popup radii to the compositor's normal window radius, and align screen-edge flyout offsets with its outer window gap.
+- Keep shell popouts and application launchers immediate. Reserve animation for small in-surface state changes rather than moving whole windows or layer surfaces. Avoid startup noise, tips, changelog clutter, and ornamental motion that slows interaction.
 - Balance compactness with legibility: show useful state, icons, previews, and status, but remove redundant labels and inactive widgets.
 - Use 24-hour time, ISO-style dates, and Europe/Berlin when a timezone must be chosen. The desktop language is primarily English; preserve the German keyboard layout where host input is concerned.
 
@@ -61,9 +65,9 @@ When the request does not select a tool, preserve these active defaults:
 | Files and inspection | yazi, eza, bat, bottom, jq |
 | Nix operations | `nh` for intended user rebuild workflows; direct `nix` commands for agent validation |
 | Browser | Zen as the primary experience; Brave as a compatible secondary browser |
-| App launchers | Vicinae/Noctalia on Linux and Raycast on macOS |
+| App launchers | Seele's native unified menu with Vicinae on Linux and Raycast on macOS |
 
-Prefer explicit package paths in generated services and bindings when execution must be independent of `PATH`. Preserve interoperability rather than forcing every tool into one implementation.
+Use Vicinae's standard launcher layout; Seele Shell carries the compact native desktop UI. Prefer explicit package paths in generated services and bindings when execution must be independent of `PATH`. Preserve interoperability rather than forcing every tool into one implementation.
 
 ## Development experience
 

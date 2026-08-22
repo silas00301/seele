@@ -44,7 +44,6 @@ in
               modules.homeManager.darwin
               modules.homeManager.asuka
               inputs.catppuccin.homeModules.catppuccin
-              inputs.noctalia.homeModules.default
               inputs.spicetify-nix.homeManagerModules.default
               inputs.vicinae.homeManagerModules.default
               inputs.zen-browser.homeModules.beta

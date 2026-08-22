@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+quiet=false
+if [[ ${1:-} == -q ]]; then quiet=true; shift; fi
+
+usage() {
+  cat <<'EOF'
+Usage: seele-shellctl [-q] <command> [arguments]
+
+Commands:
+  menu [apps|commands]      Toggle the launcher
+  agents                    Toggle the AI dashboard
+  controls                  Toggle session controls
+  control <panel>           Toggle audio, network, Bluetooth, AirPods, battery, notifications, camera, or session
+  agent <name> [prompt...]  Launch pi, opencode, codex, or claude
+  refresh-agents            Refresh AI usage data
+  volume <up|down|mute>     Change volume and show its OSD
+  voxtype                   Toggle voice dictation
+  lock                      Lock the session
+  ping                      Check shell IPC
+EOF
+}
+
+ipc() {
+  local output status
+  set +e
+  output=$(timeout 3s quickshell ipc -n -p "$SEELE_SHELL_PATH" call -- seele-shell "$@" 2>/dev/null)
+  status=$?
+  set -e
+  if ((status != 0)); then
+    $quiet && return 0
+    echo "Seele Shell is not responding" >&2
+    return "$status"
+  fi
+  $quiet || [[ -z $output ]] || printf '%s\n' "$output"
+}
+
+command=${1:---help}
+shift || true
+case "$command" in
+  menu) ipc toggleLauncher "${1:-apps}" ;;
+  agents) ipc toggleAgents ;;
+  controls) ipc toggleControls ;;
+  control) ipc toggleControl "${1:-system}" ;;
+  agent)
+    agent=${1:-pi}
+    shift || true
+    ipc launchAgent "$agent" "$*"
+    ;;
+  refresh-agents) ipc refreshAgents ;;
+  volume)
+    output=$(seele-control volume "${1:?up, down, or mute required}")
+    ipc updateStatus "$output"
+    ipc showVolume
+    ;;
+  voxtype)
+    output=$(seele-control voxtype)
+    ipc updateStatus "$output"
+    ;;
+  lock) exec seele-control lock ;;
+  ping) ipc ping ;;
+  -h|--help|help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

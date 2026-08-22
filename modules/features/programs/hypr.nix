@@ -5,10 +5,11 @@ let
       config,
       lib,
       pkgs,
-      noctalia,
+      selfPackages,
       ...
     }:
     let
+      seeleShell = selfPackages.seele-shell;
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
@@ -110,65 +111,6 @@ let
             },
           })
 
-          hl.curve("macosSpring", {
-            type = "spring",
-            mass = 1,
-            stiffness = 180,
-            dampening = 22,
-          })
-
-          hl.curve("macosFade", {
-            type = "bezier",
-            points = {
-              { 0.22, 1 },
-              { 0.36, 1 },
-            },
-          })
-
-          hl.curve("macosMove", {
-            type = "spring",
-            mass = 1,
-            stiffness = 300,
-            dampening = 32,
-          })
-
-          hl.animation({
-            leaf = "windowsIn",
-            enabled = true,
-            speed = 3.5,
-            spring = "macosSpring",
-            style = "popin 94%",
-          })
-
-          hl.animation({
-            leaf = "windowsOut",
-            enabled = true,
-            speed = 3,
-            bezier = "macosFade",
-            style = "popin 94%",
-          })
-
-          hl.animation({
-            leaf = "windowsMove",
-            enabled = true,
-            speed = 2.5,
-            spring = "macosMove",
-          })
-
-          hl.animation({
-            leaf = "fadeIn",
-            enabled = true,
-            speed = 2.5,
-            bezier = "macosFade",
-          })
-
-          hl.animation({
-            leaf = "fadeOut",
-            enabled = true,
-            speed = 2,
-            bezier = "macosFade",
-          })
-
           -- hl.animation({
           --   leaf = "windows",
           --   enabled = true,
@@ -228,8 +170,8 @@ let
           hl.bind(mod .. " + W", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
           hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
           hl.bind(mod .. " + B", hl.dsp.exec_cmd("${lib.getExe config.programs.zen-browser.package}"))
-          hl.bind(mod .. " + L", hl.dsp.exec_cmd("${pkgs.noctalia}/bin/noctalia msg session lock"))
-          hl.bind(mod .. " + SPACE", hl.dsp.window.float({ action = "toggle" }))
+          hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl lock"))
+          hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }))
 
           hl.bind(mod .. " + F", hl.dsp.window.fullscreen({
             mode = "maximized",
@@ -246,7 +188,7 @@ let
             hl.dsp.exec_cmd("${pkgs.hyprshutdown}/bin/hyprshutdown")
           )
 
-          hl.bind("SUPER + CTRL + F12", hl.dsp.exec_cmd("${noctalia}/bin/noctalia msg session lock"))
+          hl.bind("SUPER + CTRL + F12", hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl lock"))
 
           local workspace_keys = {
             { keys = "1", workspace = 1 },
@@ -318,7 +260,7 @@ let
 
           hl.bind(
             "XF86AudioRaiseVolume",
-            hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"),
+            hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl volume up"),
             {
               locked = true,
               repeating = true,
@@ -327,7 +269,7 @@ let
 
           hl.bind(
             "XF86AudioLowerVolume",
-            hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),
+            hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl volume down"),
             {
               locked = true,
               repeating = true,
@@ -336,7 +278,7 @@ let
 
           hl.bind(
             "XF86AudioMute",
-            hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),
+            hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl volume mute"),
             { locked = true }
           )
 
@@ -405,6 +347,15 @@ let
           hl.layer_rule({
             match = {
               namespace = "vicinae",
+            },
+            no_anim = true,
+          })
+
+          -- Shell surfaces update their own state directly. Compositor motion
+          -- makes popouts feel detached and can bounce dynamic content.
+          hl.layer_rule({
+            match = {
+              namespace = "^seele-shell-.*$",
             },
             no_anim = true,
           })
@@ -533,11 +484,11 @@ let
 
           listener = [
             {
-              timeout = 300;
+              timeout = 1800;
               on-timeout = "loginctl lock-session";
             }
             {
-              timeout = 360;
+              timeout = 1860;
               on-timeout = "hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'";
               on-resume = "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'";
             }

@@ -11,6 +11,9 @@ let
           autoStart = true;
           environment.USE_LAYER_SHELL = 1;
         };
+        settings.launcher_window = {
+          rounding = 8;
+        };
       };
     };
   systemModule = {
