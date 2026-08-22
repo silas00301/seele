@@ -176,6 +176,10 @@ let
           '';
         };
       };
+
+      home.file."${config.programs.pi-coding-agent.configDir}/extensions/status-bar.ts".text =
+        builtins.replaceStrings [ "@JJ@" ] [ "${pkgs.jujutsu}/bin/jj" ]
+          (builtins.readFile ./_pi/status-bar.ts);
     }
   );
 in
