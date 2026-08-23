@@ -59,13 +59,13 @@ let
 
       wayland.windowManager.hyprland.extraConfig = lib.mkAfter ''
         hl.bind(
-          "SUPER + V",
+          "SUPER + D",
           hl.dsp.exec_cmd("${package}/bin/voxtype record start"),
           { description = "Start Voxtype dictation" }
         )
 
         hl.bind(
-          "SUPER + V",
+          "SUPER + D",
           hl.dsp.exec_cmd("${package}/bin/voxtype record stop"),
           {
             release = true,
