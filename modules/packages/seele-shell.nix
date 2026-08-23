@@ -25,8 +25,11 @@
               pkgs.networkmanagerapplet
               pkgs.pipewire
               pkgs.playerctl
+              pkgs.proton-vpn
+              pkgs.proton-vpn-cli
               pkgs.socat
               pkgs.systemd
+              pkgs.tailscale
               pkgs.util-linux
               pkgs.uwsm
               pkgs.v4l-utils
@@ -54,6 +57,11 @@
 
               mkdir -p "$out/share/seele-shell" "$out/share/vicinae/extensions/seele-shell/assets" "$out/libexec/seele-shell" "$out/bin"
               install -m644 ${./_seele-shell/shell.qml} "$out/share/seele-shell/shell.qml"
+              install -m644 ${./_seele-shell/vicinae/seele.svg} "$out/share/seele-shell/seele.svg"
+              install -m644 ${./_seele-shell/claude-code.svg} "$out/share/seele-shell/claude-code.svg"
+              node ${./_seele-shell/grain.js} "$out/share/seele-shell/grain.png"
+              install -m644 ${./_seele-shell/media.js} "$out/share/seele-shell/media.js"
+              install -m644 ${./_seele-shell/time.js} "$out/share/seele-shell/time.js"
               install -m644 ${./_seele-shell/CameraPreview.qml} "$out/share/seele-shell/CameraPreview.qml"
               install -m644 ${./_seele-shell/opencode-status.ts} "$out/share/seele-shell/opencode-status.ts"
               install -m644 ${./_seele-shell/pi-status.ts} "$out/share/seele-shell/pi-status.ts"
@@ -73,6 +81,7 @@
               install -m755 ${./_seele-shell/agent-run.sh} "$out/libexec/seele-shell/agent-run"
               install -m755 ${./_seele-shell/control.sh} "$out/libexec/seele-shell/control"
               install -m755 ${./_seele-shell/ctl.sh} "$out/libexec/seele-shell/ctl"
+              install -m755 ${./_seele-shell/clock.sh} "$out/libexec/seele-shell/clock"
               install -m755 ${./_seele-shell/yubikey-watch.sh} "$out/libexec/seele-shell/yubikey-watch"
               patchShebangs "$out/libexec/seele-shell"
 
@@ -94,6 +103,9 @@
               makeWrapper "$out/libexec/seele-shell/ctl" "$out/bin/seele-shellctl" \
                 --set SEELE_SHELL_PATH "$out/share/seele-shell" \
                 --prefix PATH : "$out/bin:${runtimePath}"
+              makeWrapper "$out/libexec/seele-shell/clock" "$out/bin/seele-clock" \
+                --set TZDIR "${pkgs.tzdata}/share/zoneinfo" \
+                --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/yubikey-watch" "$out/bin/seele-yubikey-watch" \
                 --prefix PATH : "$out/bin:${runtimePath}"
 
@@ -107,13 +119,19 @@
               runHook preInstallCheck
 
               test -f "$out/share/seele-shell/shell.qml"
+              test -f "$out/share/seele-shell/seele.svg"
+              test -f "$out/share/seele-shell/claude-code.svg"
+              test -s "$out/share/seele-shell/grain.png"
+              head -c 8 "$out/share/seele-shell/grain.png" | od -An -tx1 | grep -q "89 50 4e 47"
+              test -f "$out/share/seele-shell/media.js"
+              test -f "$out/share/seele-shell/time.js"
               test -f "$out/share/seele-shell/CameraPreview.qml"
               test -f "$out/share/seele-shell/opencode-status.ts"
               test -f "$out/share/seele-shell/pi-status.ts"
               test -f "$out/share/vicinae/extensions/seele-shell/package.json"
               test -f "$out/share/vicinae/extensions/seele-shell/seele.js"
               test -f "$out/share/vicinae/extensions/seele-shell/keybindings.js"
-              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-shellctl seele-yubikey-watch; do
+              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-shellctl seele-clock seele-yubikey-watch; do
                 test -x "$out/bin/$command"
               done
               bash -n "$out/libexec/seele-shell/"*
@@ -123,6 +141,10 @@
                 "$out/share/seele-shell/opencode-status.ts" \
                 "$out/libexec/seele-shell/control" \
                 "$out/libexec/seele-shell/agent-hook"
+              node ${./_seele-shell/tests/media.js} "$out/share/seele-shell/media.js"
+              node ${./_seele-shell/tests/time.js} "$out/share/seele-shell/time.js"
+              bash ${./_seele-shell/tests/clock.sh} "$out/bin/seele-clock"
+              PATH="${runtimePath}:$PATH" bash ${./_seele-shell/tests/network-vpn.sh} "$out/libexec/seele-shell/control"
 
               runHook postInstallCheck
             '';

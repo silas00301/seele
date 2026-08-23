@@ -5,7 +5,7 @@ seele_config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/seele-shell
 tray_config=$seele_config_dir/tray.json
 librepods_config=${XDG_CONFIG_HOME:-$HOME/.config}/AirPodsTrayApp/AirPodsTrayApp.conf
 bluetooth_scan_pidfile=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-scan.pid
-bluetooth_scan_timeout=180
+bluetooth_scan_timeout=30
 agent_state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell/agents
 
 timestamp() {
@@ -491,7 +491,48 @@ airpods_set_ear_detection() {
   systemctl --user start librepods.service >/dev/null 2>&1 || true
 }
 
+tailscale_state() {
+  local raw
+  if ! command -v tailscale >/dev/null 2>&1; then
+    jq -nc '{available:false,backend:"Unavailable",connected:false,needsLogin:false,name:"",ip:"",tailnet:"",peers:0,onlinePeers:0}'
+    return
+  fi
+  raw=$(timeout 2 tailscale status --json 2>/dev/null || printf '{}')
+  jq -nc --argjson status "$raw" '
+    ($status.BackendState // "Unavailable") as $backend
+    | ($status.Peer // {} | to_entries | map(.value)) as $peers
+    | {
+        available:true,
+        backend:$backend,
+        connected:($backend == "Running"),
+        needsLogin:($backend == "NeedsLogin"),
+        name:($status.Self.HostName // ""),
+        ip:($status.Self.TailscaleIPs[0] // ""),
+        tailnet:($status.CurrentTailnet.Name // $status.MagicDNSSuffix // ""),
+        peers:($peers | length),
+        onlinePeers:([$peers[] | select(.Online)] | length)
+      }
+  '
+}
+
+proton_vpn_state() {
+  local connection_line connection
+  if ! command -v protonvpn >/dev/null 2>&1; then
+    jq -nc '{available:false,connected:false,connection:""}'
+    return
+  fi
+  connection_line=$(nmcli -t -f TYPE,NAME connection show --active 2>/dev/null |
+    awk -F: 'tolower($0) ~ /proton[[:space:]_-]*vpn|protonvpn|pvpn/ && $1 ~ /^(vpn|wireguard|tun)$/ {print; exit}')
+  connection=${connection_line#*:}
+  jq -nc \
+    --argjson connected "$([[ -n $connection_line ]] && printf true || printf false)" \
+    --arg connection "$connection" \
+    '{available:true,connected:$connected,connection:$connection}'
+}
+
 status() {
+  [[ ${SEELE_CONTROL_NO_STATUS:-0} != 1 ]] || return 0
+
   audio=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || printf 'Volume: 0.00')
   volume=$(percent_for "$audio")
   muted=false
@@ -514,6 +555,8 @@ status() {
   wifi_enabled=false
   [[ $(nmcli -t -f WIFI general 2>/dev/null || true) == enabled ]] && wifi_enabled=true
   connectivity=$(nmcli networking connectivity 2>/dev/null || printf 'unknown')
+  tailscale=$(tailscale_state)
+  proton_vpn=$(proton_vpn_state)
 
   route=$(ip -json route get 1.1.1.1 2>/dev/null || printf '[]')
   ip_address=$(jq -r '.[0].prefsrc // ""' <<<"$route")
@@ -561,6 +604,8 @@ status() {
     --argjson wifiAvailable "$wifi_available" \
     --arg ipAddress "$ip_address" \
     --arg gateway "$gateway" \
+    --argjson tailscale "$tailscale" \
+    --argjson protonVpn "$proton_vpn" \
     --argjson bluetooth "$bluetooth" \
     --argjson batteries "$batteries" \
     --argjson earDetection "$ear_detection" \
@@ -587,6 +632,8 @@ status() {
       wifiAvailable:$wifiAvailable,
       ipAddress:$ipAddress,
       gateway:$gateway,
+      tailscale:$tailscale,
+      protonVpn:$protonVpn,
       bluetoothAvailable:$bluetooth.available,
       bluetoothPowered:$bluetooth.powered,
       bluetoothScanning:$bluetooth.scanning,
@@ -615,6 +662,7 @@ status() {
 
 case "${1:-status}" in
   status) status ;;
+  bluetooth-status) bluetooth_state ;;
   volume)
     case "${2:-}" in
       up) wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+ ;;
@@ -766,6 +814,24 @@ case "${1:-status}" in
           makoctl dismiss --no-history >/dev/null 2>&1 || break
         done
         ;;
+      *) exit 2 ;;
+    esac
+    status
+    ;;
+  tailscale)
+    case "${2:-toggle}" in
+      up) tailscale up ;;
+      down) tailscale down ;;
+      login) setsid -f ghostty -e tailscale up >/dev/null 2>&1 ;;
+      *) exit 2 ;;
+    esac
+    status
+    ;;
+  proton-vpn)
+    case "${2:-toggle}" in
+      connect) timeout 90 protonvpn connect ;;
+      disconnect) timeout 30 protonvpn disconnect ;;
+      open) setsid -f protonvpn-app >/dev/null 2>&1 ;;
       *) exit 2 ;;
     esac
     status

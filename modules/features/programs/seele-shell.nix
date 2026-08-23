@@ -143,6 +143,7 @@ let
           };
           Service = {
             Environment = [
+              "QT_QPA_PLATFORMTHEME=gtk3"
               "SEELE_SHELL_WALLPAPER=${wallpaper}"
               "SEELE_SHELL_CODEXBAR=${lib.getExe selfPackages.codexbar}"
               "SEELE_SHELL_PI=${lib.getExe config.programs.pi-coding-agent.package}"

@@ -148,6 +148,12 @@ let
           --   bezier = "smoothIn",
           -- })
 
+          -- Popup tooltips should appear and disappear immediately.
+          hl.animation({
+            leaf = "fadePopups",
+            enabled = false,
+          })
+
           hl.animation({
             leaf = "fadeDim",
             enabled = true,
@@ -438,6 +444,20 @@ let
               namespace = "waybar",
             },
             blur = true,
+          })
+
+          -- The shell's bar and panels are translucent so the surface behind
+          -- them reads as frosted glass. The wallpaper and the click-away
+          -- catcher are left out: one is opaque and the other is empty.
+          -- ignore_alpha keeps the blur off transparent pixels, which matters
+          -- because the AI cockpit stays mapped while closed and its rounded
+          -- corners would otherwise sit on a squared-off pane of glass.
+          hl.layer_rule({
+            match = {
+              namespace = "^seele-shell-(bar|osd|agents|tray-menu|calendar|clock|audio|network|bluetooth|airpods|battery|notifications|camera|session)$",
+            },
+            blur = true,
+            ignore_alpha = 0.4,
           })
         '';
       };

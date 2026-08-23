@@ -10,6 +10,8 @@ import Quickshell.Services.Mpris
 import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 import Quickshell.Widgets
+import "media.js" as Media
+import "time.js" as Time
 
 ShellRoot {
   id: root
@@ -32,7 +34,44 @@ ShellRoot {
   property color iosRed: "#ff453a"
   property string wallpaper: Quickshell.env("SEELE_SHELL_WALLPAPER") || "/etc/wallpaper/wallpaper.jpg"
 
+  // Shared shape and surface tokens. Hyprland rounds windows at 8px, so every
+  // panel, button, and bar entry rounds the same way, and each hover, press,
+  // and selection tint is defined once instead of per widget.
+  readonly property int radius: 8
+  readonly property int radiusSmall: 6
+  readonly property int barHeight: 30
+  readonly property int barItemHeight: 22
+  readonly property int barSpacing: 2
+  readonly property int barPadding: 4
+  readonly property int panelGap: 5
+  readonly property int osdGap: 16
+  readonly property int panelMargin: 16
+  readonly property int panelSpacing: 10
+  readonly property int scrollGutter: 8
+  // Textured chrome. Surfaces stay translucent so the compositor's blur
+  // shows through, a quiet vertical wash gives them depth, and a fixed grain
+  // film keeps a large panel from reading as flat plastic.
+  readonly property string grain: "grain.png"
+  readonly property real grainOpacity: 0.05
+  readonly property color panelColor: alpha(base, 0.86)
+  readonly property color panelBorder: alpha(accent, 0.65)
+  readonly property color hoverColor: alpha(accent, 0.18)
+  readonly property color pressColor: alpha(accent, 0.42)
+  readonly property color selectedColor: alpha(accent, 0.24)
+  readonly property color activeTint: alpha(accent, 0.14)
+  readonly property color fillColor: alpha(accent, 0.45)
+  readonly property color fillDanger: alpha(red, 0.45)
+  readonly property color successColor: alpha(green, 0.25)
+  readonly property color dangerTint: alpha(red, 0.14)
+  readonly property color dangerColor: alpha(red, 0.28)
+  readonly property color dangerPress: alpha(red, 0.48)
+
   property bool agentsOpen: false
+  // Panels stay on the screen they were opened from. Tracking Hyprland's
+  // focused monitor instead would move an open panel to another output the
+  // moment the pointer crossed a screen edge.
+  property string overlayScreen: ""
+  property string osdScreen: ""
   property string controlPanel: ""
   property bool trayMenuOpen: false
   property bool trayExpanded: false
@@ -41,6 +80,8 @@ ShellRoot {
   property bool agentUsageOpen: false
   property bool agentModelsOpen: false
   property bool notificationHistoryOpen: false
+  property string temporaryTimezone: ""
+  property var clockData: ({ pinned: [], zones: [] })
   property var activeTrayItem: null
   property bool osdOpen: false
   property string osdKind: "volume"
@@ -49,6 +90,17 @@ ShellRoot {
   property var yubikeyTouchSources: ({})
   property bool yubikeyTouchRequired: false
   property bool statusInitialized: false
+  property bool statusRefreshQueued: false
+  property bool bluetoothStatusRefreshQueued: false
+  property string pendingControlAction: ""
+  property string pendingControlValue: ""
+  property string pendingControlExtra: ""
+  property string completedControlAction: ""
+  property string completedControlValue: ""
+  property string completedControlExtra: ""
+  property string failedControlAction: ""
+  property string failedControlValue: ""
+  property string failedControlExtra: ""
   property int windowsCountdown: -1
   property var agentData: ({
     subscriptions: [],
@@ -68,6 +120,8 @@ ShellRoot {
     wifiAvailable: false,
     ipAddress: "",
     gateway: "",
+    tailscale: { available: false, backend: "Unavailable", connected: false, needsLogin: false, name: "", ip: "", tailnet: "", peers: 0, onlinePeers: 0 },
+    protonVpn: { available: false, connected: false, connection: "" },
     bluetoothAvailable: false,
     bluetoothPowered: false,
     bluetoothConnected: 0,
@@ -90,6 +144,10 @@ ShellRoot {
   })
   property bool agentRefreshing: false
   property string bluetoothBusy: ""
+  property string bluetoothAction: ""
+  property int bluetoothScanIntent: -1
+  property int bluetoothScanQueued: -1
+  readonly property bool bluetoothScanActive: bluetoothScanIntent >= 0 ? bluetoothScanIntent === 1 : !!systemData.bluetoothScanning
   property string bluetoothForget: ""
   property string agentError: ""
   property date now: new Date()
@@ -102,6 +160,15 @@ ShellRoot {
     return !Hyprland.focusedMonitor || Hyprland.focusedMonitor.name === screen.name
   }
 
+  function currentScreen() {
+    return Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+  }
+
+  function pinnedScreen(pin, screen) {
+    if (!screen) return false
+    return pin === "" ? focusedScreen(screen) : pin === screen.name
+  }
+
   function closeTrayMenu() {
     trayMenuOpen = false
     activeTrayItem = null
@@ -110,6 +177,7 @@ ShellRoot {
   function closeOverlays() {
     agentsOpen = false
     controlPanel = ""
+    overlayScreen = ""
     closeTrayMenu()
     windowsCountdown = -1
     windowsTimer.stop()
@@ -123,18 +191,22 @@ ShellRoot {
     Quickshell.execDetached(["vicinae", "toggle"])
   }
 
-  function toggleAgents() {
+  function toggleAgents(screen) {
     var shouldOpen = !agentsOpen
     closeOverlays()
     agentsOpen = shouldOpen
-    if (agentsOpen && (!agentData.generatedAt || agentError !== "")) refreshAgents()
+    if (!agentsOpen) return
+    overlayScreen = screen || currentScreen()
+    if (!agentData.generatedAt || agentError !== "") refreshAgents()
   }
 
-  function toggleControl(panel) {
+  function toggleControl(panel, screen) {
     var shouldOpen = controlPanel !== panel
     closeOverlays()
     controlPanel = shouldOpen ? panel : ""
-    if (controlPanel !== "") refreshStatus()
+    if (controlPanel === "") return
+    overlayScreen = screen || currentScreen()
+    refreshStatus()
   }
 
   function toggleControls() {
@@ -150,7 +222,13 @@ ShellRoot {
   }
 
   function refreshStatus() {
-    if (!statusProcess.running) statusProcess.running = true
+    if (statusProcess.running) root.statusRefreshQueued = true
+    else statusProcess.running = true
+  }
+
+  function refreshBluetoothStatus() {
+    if (bluetoothStatusProcess.running) root.bluetoothStatusRefreshQueued = true
+    else bluetoothStatusProcess.running = true
   }
 
   function parseAgentData(output) {
@@ -177,10 +255,35 @@ ShellRoot {
         root.statusInitialized = true
         root.volumeDrag = -1
         root.microphoneDrag = -1
+        root.reconcileBluetoothScanIntent(!!parsed.bluetoothScanning)
       }
     } catch (error) {
       console.warn("seele-shell/status", error)
     }
+  }
+
+  function parseBluetoothData(output) {
+    try {
+      var parsed = JSON.parse(String(output || ""))
+      if (!parsed) return
+      root.patchSystemData({
+        bluetoothAvailable: !!parsed.available,
+        bluetoothPowered: !!parsed.powered,
+        bluetoothScanning: !!parsed.scanning,
+        bluetoothConnected: Number(parsed.connected || 0),
+        bluetoothDevices: parsed.devices || [],
+        airpodsConnected: !!parsed.airpodsConnected,
+        airpodsName: String(parsed.airpodsName || "")
+      })
+      root.reconcileBluetoothScanIntent(!!parsed.scanning)
+    } catch (error) {
+      console.warn("seele-shell/bluetooth-status", error)
+    }
+  }
+
+  function reconcileBluetoothScanIntent(scanning) {
+    if (root.bluetoothScanIntent >= 0 && scanning === (root.bluetoothScanIntent === 1)) root.bluetoothScanIntent = -1
+    if (!scanning) bluetoothScanTimer.stop()
   }
 
   function formatTokens(value) {
@@ -234,6 +337,16 @@ ShellRoot {
     return false
   }
 
+  function activateWorkspace(id) {
+    var values = Hyprland.workspaces.values || []
+    for (var i = 0; i < values.length; i++) {
+      if (values[i].id === id) {
+        values[i].activate()
+        return
+      }
+    }
+  }
+
   function activeWindow(screen) {
     var monitors = Hyprland.monitors.values || []
     for (var i = 0; i < monitors.length; i++) {
@@ -256,36 +369,55 @@ ShellRoot {
     return String(ipc.title || window.title || "")
   }
 
-  function windowIcon(window) {
-    if (!window) return ""
+  function windowClasses(window) {
+    if (!window) return []
     var ipc = window.lastIpcObject || {}
-    var appId = String(ipc.class || ipc.initialClass || window.appId || "").toLowerCase()
-    var entries = DesktopEntries.applications.values || []
-    for (var i = 0; i < entries.length; i++) {
-      var id = String(entries[i].id || "").toLowerCase().replace(/\.desktop$/, "")
-      if (id === appId || appId.indexOf(id) >= 0 || id.indexOf(appId) >= 0) return entries[i].icon
+    var candidates = [ipc.class, ipc.initialClass, window.appId]
+    var classes = []
+    for (var i = 0; i < candidates.length; i++) {
+      var appId = String(candidates[i] || "").trim()
+      if (appId !== "") classes.push(appId)
+    }
+    return classes
+  }
+
+  function windowIcon(window) {
+    if (DesktopEntries.applications.values.length === 0) return ""
+    var classes = root.windowClasses(window)
+    for (var i = 0; i < classes.length; i++) {
+      var entry = DesktopEntries.heuristicLookup(classes[i])
+      if (entry && entry.icon) return Quickshell.iconPath(String(entry.icon))
     }
     return ""
   }
 
-  function spotifyPlayer() {
-    var players = Mpris.players.values || []
-    for (var i = 0; i < players.length; i++) {
-      if (players[i].isPlaying && String(players[i].identity || players[i].desktopEntry || "").toLowerCase().indexOf("spotify") >= 0) return players[i]
+  // Window titles follow the document, not the application: Spotify names the
+  // playing track and browsers name the page. Always label the entry with the app.
+  function windowAppName(window) {
+    var classes = root.windowClasses(window)
+    for (var i = 0; i < classes.length; i++) {
+      var entry = DesktopEntries.heuristicLookup(classes[i])
+      if (entry && String(entry.name || "") !== "") return String(entry.name)
     }
-    return null
+    if (classes.length === 0) return ""
+    var fallback = classes[0].split(".").pop().replace(/[-_]+/g, " ").trim()
+    return fallback === "" ? "" : fallback.charAt(0).toUpperCase() + fallback.slice(1)
+  }
+
+  function windowLabel(window) {
+    return root.windowAppName(window) || root.windowTitle(window)
+  }
+
+  function spotifyPlayer() {
+    return Media.spotifyPlayer(Mpris.players.values || [])
   }
 
   function devicePlayer() {
-    var players = Mpris.players.values || []
-    for (var i = 0; i < players.length; i++) {
-      var spotify = String(players[i].identity || players[i].desktopEntry || "").toLowerCase().indexOf("spotify") >= 0
-      if (players[i].isPlaying && !spotify) return players[i]
-    }
-    for (var j = 0; j < players.length; j++) {
-      if (players[j].isPlaying) return players[j]
-    }
-    return null
+    return Media.devicePlayer(Mpris.players.values || [])
+  }
+
+  function mediaLabel(player) {
+    return Media.label(player)
   }
 
   function agentStatus(id) {
@@ -316,7 +448,11 @@ ShellRoot {
   function bluetoothDetail(device) {
     if (!device) return ""
     if (root.bluetoothForget === device.address) return "Tap again to forget"
-    if (root.bluetoothBusy === device.address) return device.connected ? "Disconnecting…" : device.paired ? "Connecting…" : "Pairing…"
+    if (root.bluetoothBusy === device.address) {
+      if (root.bluetoothAction === "trust") return "Updating autoconnect…"
+      if (root.bluetoothAction === "forget") return "Forgetting…"
+      return device.connected ? "Disconnecting…" : device.paired ? "Connecting…" : "Pairing…"
+    }
     var suffix = device.trusted ? " · auto" : ""
     if (device.connected) return "Connected" + suffix
     if (device.paired) return "Paired" + suffix
@@ -340,10 +476,33 @@ ShellRoot {
   }
 
   function runBluetooth(command, value) {
-    if (bluetoothProcess.running) return
-    if (command !== "scan") root.bluetoothBusy = String(value)
-    bluetoothProcess.command = ["seele-control", "bluetooth", String(command), String(value)]
+    if (bluetoothProcess.running) return false
+    root.bluetoothAction = String(command)
+    if (command !== "scan" && command !== "toggle") root.bluetoothBusy = String(value || "")
+    bluetoothProcess.command = ["seele-control", "bluetooth", String(command), String(value || "")]
     bluetoothProcess.running = true
+    return true
+  }
+
+  function setBluetoothScanning(active) {
+    root.bluetoothScanIntent = active ? 1 : 0
+    if (active) bluetoothScanTimer.restart()
+    else bluetoothScanTimer.stop()
+    if (bluetoothProcess.running) {
+      root.bluetoothScanQueued = active ? 1 : 0
+      return
+    }
+    root.runBluetooth("scan", active ? "on" : "off")
+  }
+
+  function toggleBluetoothPower() {
+    var powered = !root.systemData.bluetoothPowered
+    if (!root.runBluetooth("toggle", "")) return
+    root.patchSystemData({ bluetoothPowered: powered })
+    if (!powered) {
+      root.bluetoothScanIntent = 0
+      bluetoothScanTimer.stop()
+    }
   }
 
   function forgetBluetoothDevice(device) {
@@ -386,7 +545,45 @@ ShellRoot {
 
   function toggleTrayItemHidden(item) {
     if (!item) return
-    root.runControl("tray", "toggle", String(item.id))
+    var id = String(item.id)
+    if (!root.runControl("tray", "toggle", id)) return
+    var hidden = root.trayHiddenIds().slice()
+    var index = hidden.indexOf(id)
+    if (index >= 0) hidden.splice(index, 1)
+    else hidden.push(id)
+    root.patchSystemData({ trayHidden: hidden })
+  }
+
+  function setAudioDevice(id) {
+    id = String(id)
+    if (!root.runControl("audio-device", id)) return
+    var devices = root.systemData.audioDevices || []
+    var kind = ""
+    for (var i = 0; i < devices.length; i++) if (String(devices[i].id) === id) kind = devices[i].kind
+    var updated = []
+    for (var j = 0; j < devices.length; j++) {
+      var device = {}
+      for (var key in devices[j]) device[key] = devices[j][key]
+      if (device.kind === kind) device.default = String(device.id) === id
+      updated.push(device)
+    }
+    root.patchSystemData({ audioDevices: updated })
+  }
+
+  function dismissNotification(id) {
+    id = String(id)
+    if (!root.runControl("notifications", "dismiss", id)) return
+    var notifications = root.systemData.notifications || { count: 0, items: [], history: [] }
+    var items = []
+    for (var i = 0; i < (notifications.items || []).length; i++) {
+      if (String(notifications.items[i].id) !== id) items.push(notifications.items[i])
+    }
+    root.patchSystemData({ notifications: { count: items.length, items: items, history: notifications.history || [] } })
+  }
+
+  function clearNotifications() {
+    if (!root.runControl("notifications", "clear")) return
+    root.patchSystemData({ notifications: { count: 0, items: [], history: [] } })
   }
 
   function batteryEntries() {
@@ -437,6 +634,26 @@ ShellRoot {
       }
     }
     return values.join(" · ")
+  }
+
+  function privateNetworkActive() {
+    return !!(root.systemData.tailscale && root.systemData.tailscale.connected)
+      || !!(root.systemData.protonVpn && root.systemData.protonVpn.connected)
+  }
+
+  function tailscaleDetail() {
+    var state = root.systemData.tailscale || {}
+    if (!state.available || state.backend === "Unavailable") return "Service unavailable"
+    if (state.needsLogin) return "Sign in required"
+    if (!state.connected) return "Disconnected"
+    var identity = state.tailnet || state.ip || state.name || "Connected"
+    return identity + " · " + Number(state.onlinePeers || 0) + "/" + Number(state.peers || 0) + " peers online"
+  }
+
+  function protonVpnDetail() {
+    var state = root.systemData.protonVpn || {}
+    if (!state.available) return "Client unavailable"
+    return state.connected ? (state.connection || "Connected") : "Disconnected · fastest server on connect"
   }
 
   function audioDevices(kind) {
@@ -508,6 +725,7 @@ ShellRoot {
   function showTimedOsd(kind) {
     if (root.yubikeyTouchRequired) return
     root.osdKind = kind
+    root.osdScreen = root.currentScreen()
     root.osdOpen = true
     osdTimer.restart()
   }
@@ -528,6 +746,7 @@ ShellRoot {
     if (required) {
       osdTimer.stop()
       root.osdKind = "yubikey"
+      root.osdScreen = root.currentScreen()
       root.osdOpen = true
     } else if (root.osdKind === "yubikey") {
       root.osdOpen = false
@@ -541,13 +760,44 @@ ShellRoot {
     Quickshell.execDetached(args)
   }
 
+  function controlArgument(value) {
+    return value === undefined || value === null ? "" : String(value)
+  }
+
+  function controlBusy(action, value, extra) {
+    return root.pendingControlAction === String(action)
+      && root.pendingControlValue === root.controlArgument(value)
+      && root.pendingControlExtra === root.controlArgument(extra)
+  }
+
+  function controlCompleted(action, value, extra) {
+    return root.completedControlAction === String(action)
+      && root.completedControlValue === root.controlArgument(value)
+      && root.completedControlExtra === root.controlArgument(extra)
+  }
+
+  function controlFailed(action, value, extra) {
+    return root.failedControlAction === String(action)
+      && root.failedControlValue === root.controlArgument(value)
+      && root.failedControlExtra === root.controlArgument(extra)
+  }
+
   function runControl(action, value, extra) {
+    if (controlProcess.running) return false
+    var controlValue = root.controlArgument(value)
+    var controlExtra = root.controlArgument(extra)
     var args = ["seele-control", action]
-    if (value !== undefined && String(value) !== "") args.push(String(value))
-    if (extra !== undefined && String(extra) !== "") args.push(String(extra))
+    if (controlValue !== "") args.push(controlValue)
+    if (controlExtra !== "") args.push(controlExtra)
+    root.pendingControlAction = String(action)
+    root.pendingControlValue = controlValue
+    root.pendingControlExtra = controlExtra
+    root.completedControlAction = ""
+    root.failedControlAction = ""
     controlProcess.command = args
     controlProcess.running = true
     if (action === "volume") root.showTimedOsd("volume")
+    return true
   }
 
   function toggleWindowsReboot() {
@@ -583,6 +833,43 @@ ShellRoot {
   function menuBarCapacity(id) {
     var limit = root.subscriptionLimit(id)
     return limit ? root.freePercent(limit) : -1
+  }
+
+  function refreshClock() {
+    if (!clockProcess.running) clockProcess.running = true
+  }
+
+  function parseClockData(output) {
+    try {
+      var parsed = JSON.parse(String(output || ""))
+      if (parsed && parsed.zones) root.clockData = parsed
+    } catch (error) {
+      console.warn("seele-shell/clock", error)
+    }
+  }
+
+  function clockZone(id) {
+    var zones = root.clockData.zones || []
+    for (var i = 0; i < zones.length; i++) if (zones[i].id === id) return zones[i]
+    return null
+  }
+
+  function shownTimezone() {
+    return root.clockZone(root.temporaryTimezone)
+  }
+
+  function timezonePinned(id) {
+    return (root.clockData.pinned || []).indexOf(id) >= 0
+  }
+
+  function filteredTimezones(query) {
+    return Time.orderZones(root.clockData.zones || [], root.clockData.pinned || [], query)
+  }
+
+  function pinTimezone(id) {
+    if (clockActionProcess.running) return
+    clockActionProcess.command = root.timezonePinned(id) ? ["seele-clock", "unpin", id] : ["seele-clock", "pin", id]
+    clockActionProcess.running = true
   }
 
   FileView {
@@ -625,19 +912,67 @@ ShellRoot {
   }
 
   Process {
+    id: clockProcess
+    command: ["seele-clock", "list"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.parseClockData(text)
+    }
+  }
+
+  Process {
+    id: clockActionProcess
+    onExited: root.refreshClock()
+  }
+
+  Process {
     id: statusProcess
     command: ["seele-control", "status"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.parseSystemData(text)
     }
+    onExited: {
+      if (root.statusRefreshQueued) {
+        root.statusRefreshQueued = false
+        Qt.callLater(function() { statusProcess.running = true })
+      }
+    }
   }
 
   Process {
     id: controlProcess
+    environment: ({ SEELE_CONTROL_NO_STATUS: "1" })
+    onExited: function(exitCode) {
+      if (exitCode === 0) {
+        root.completedControlAction = root.pendingControlAction
+        root.completedControlValue = root.pendingControlValue
+        root.completedControlExtra = root.pendingControlExtra
+      } else {
+        root.failedControlAction = root.pendingControlAction
+        root.failedControlValue = root.pendingControlValue
+        root.failedControlExtra = root.pendingControlExtra
+      }
+      root.pendingControlAction = ""
+      root.pendingControlValue = ""
+      root.pendingControlExtra = ""
+      controlFeedbackTimer.restart()
+      root.refreshStatus()
+    }
+  }
+
+  Process {
+    id: bluetoothStatusProcess
+    command: ["seele-control", "bluetooth-status"]
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: root.parseSystemData(text)
+      onStreamFinished: root.parseBluetoothData(text)
+    }
+    onExited: {
+      if (root.bluetoothStatusRefreshQueued) {
+        root.bluetoothStatusRefreshQueued = false
+        Qt.callLater(function() { bluetoothStatusProcess.running = true })
+      }
     }
   }
 
@@ -652,11 +987,17 @@ ShellRoot {
 
   Process {
     id: bluetoothProcess
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.parseSystemData(text)
+    environment: ({ SEELE_CONTROL_NO_STATUS: "1" })
+    onExited: {
+      root.bluetoothBusy = ""
+      root.bluetoothAction = ""
+      root.refreshBluetoothStatus()
+      if (root.bluetoothScanQueued >= 0) {
+        var scan = root.bluetoothScanQueued === 1
+        root.bluetoothScanQueued = -1
+        Qt.callLater(function() { root.runBluetooth("scan", scan ? "on" : "off") })
+      }
     }
-    onExited: root.bluetoothBusy = ""
   }
 
   Timer {
@@ -679,7 +1020,38 @@ ShellRoot {
     interval: 30000
     repeat: true
     running: true
-    onTriggered: root.now = new Date()
+    triggeredOnStart: true
+    onTriggered: {
+      root.now = new Date()
+      root.refreshClock()
+    }
+  }
+
+  Timer {
+    id: controlFeedbackTimer
+    interval: 1200
+    onTriggered: {
+      root.completedControlAction = ""
+      root.completedControlValue = ""
+      root.completedControlExtra = ""
+      root.failedControlAction = ""
+      root.failedControlValue = ""
+      root.failedControlExtra = ""
+    }
+  }
+
+  Timer {
+    id: bluetoothScanTimer
+    interval: 30000
+    onTriggered: root.setBluetoothScanning(false)
+  }
+
+  Timer {
+    interval: 500
+    repeat: true
+    running: root.bluetoothScanActive && root.controlPanel === "bluetooth"
+    triggeredOnStart: true
+    onTriggered: root.refreshBluetoothStatus()
   }
 
   Timer {
@@ -725,22 +1097,78 @@ ShellRoot {
     function close(): void { root.closeOverlays() }
   }
 
+  component RefreshGlyph: Item {
+    id: refreshGlyph
+
+    property bool spinning: false
+    property color color: root.accent
+    property alias font: idleRefresh.font
+    onColorChanged: activitySpinner.requestPaint()
+
+    Text {
+      id: idleRefresh
+
+      visible: !refreshGlyph.spinning
+      anchors.fill: parent
+      text: "󰑐"
+      color: refreshGlyph.color
+      font.family: root.fontFamily
+      font.pixelSize: 16
+      horizontalAlignment: Text.AlignHCenter
+      verticalAlignment: Text.AlignVCenter
+    }
+
+    Canvas {
+      id: activitySpinner
+
+      visible: refreshGlyph.spinning
+      anchors.centerIn: parent
+      width: Math.min(parent.width, parent.height, idleRefresh.font.pixelSize)
+      height: width
+      antialiasing: true
+      transformOrigin: Item.Center
+      onVisibleChanged: if (visible) requestPaint()
+      onWidthChanged: requestPaint()
+      onPaint: {
+        var context = getContext("2d")
+        context.clearRect(0, 0, width, height)
+        context.beginPath()
+        context.lineWidth = Math.max(1.5, width * 0.14)
+        context.lineCap = "round"
+        context.strokeStyle = refreshGlyph.color
+        context.arc(width / 2, height / 2, Math.max(1, width / 2 - context.lineWidth), -Math.PI / 2, Math.PI)
+        context.stroke()
+      }
+
+      NumberAnimation on rotation {
+        from: 0
+        to: 360
+        duration: 720
+        loops: Animation.Infinite
+        running: activitySpinner.visible
+      }
+    }
+  }
+
   component ControlSwitch: Rectangle {
     id: control
 
     property bool checked: false
+    property bool busy: false
     signal toggled()
 
     implicitWidth: 40
     implicitHeight: 22
+    opacity: enabled ? 1 : 0.42
     radius: height / 2
-    color: control.checked ? root.accent : root.alpha(root.overlay, 0.4)
+    color: switchMouse.pressed ? root.alpha(control.checked ? root.accent : root.text, 0.72) : control.checked ? root.accent : root.alpha(root.overlay, 0.4)
     border.width: 1
-    border.color: switchMouse.containsMouse ? root.accent : "transparent"
+    border.color: control.busy ? root.accent : switchMouse.pressed ? root.text : switchMouse.containsMouse ? root.accent : "transparent"
 
-    Behavior on color { ColorAnimation { duration: 140 } }
+    Behavior on color { ColorAnimation { duration: 80 } }
 
     Rectangle {
+      visible: !control.busy
       width: parent.height - 6
       height: width
       radius: width / 2
@@ -748,10 +1176,20 @@ ShellRoot {
       x: control.checked ? control.width - width - 3 : 3
       color: control.checked ? root.base : root.text
 
-      Behavior on x { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+      Behavior on x { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
     }
 
-    MouseArea { id: switchMouse; anchors.fill: parent; hoverEnabled: true; onClicked: control.toggled() }
+    RefreshGlyph {
+      visible: control.busy
+      anchors.centerIn: parent
+      width: 16
+      height: 16
+      spinning: visible
+      color: control.checked ? root.base : root.text
+      font.pixelSize: 11
+    }
+
+    MouseArea { id: switchMouse; anchors.fill: parent; enabled: control.enabled && !control.busy; hoverEnabled: true; cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor; onClicked: control.toggled() }
   }
 
   component AirpodsIcon: Item {
@@ -775,6 +1213,53 @@ ShellRoot {
     }
   }
 
+  // Depth wash, drawn under a surface's content and inside its border.
+  component SurfaceWash: Rectangle {
+    anchors.fill: parent
+    anchors.margins: 1
+    color: "transparent"
+
+    gradient: Gradient {
+      GradientStop { position: 0.0; color: root.alpha(root.text, 0.06) }
+      GradientStop { position: 0.55; color: "transparent" }
+      GradientStop { position: 1.0; color: root.alpha(root.mantle, 0.45) }
+    }
+  }
+
+  // Grain film and edge highlight, drawn over a surface's content so the
+  // texture is even across the panel and the cards inside it. Neither layer
+  // accepts input, so everything underneath stays clickable. A tiled image
+  // cannot follow a rounded corner, so `inset` pulls the film inside the arc:
+  // anything past radius * (1 - 1 / sqrt(2)) stays within the surface.
+  component SurfaceGrain: Item {
+    id: grainLayer
+
+    property real inset: 0
+
+    anchors.fill: parent
+    z: 1
+
+    Image {
+      anchors.fill: parent
+      anchors.margins: grainLayer.inset
+      source: root.grain
+      fillMode: Image.Tile
+      opacity: root.grainOpacity
+      smooth: false
+    }
+
+    Rectangle {
+      anchors.top: parent.top
+      anchors.topMargin: 1
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.leftMargin: grainLayer.inset * 3
+      anchors.rightMargin: grainLayer.inset * 3
+      height: 1
+      color: root.alpha(root.text, 0.1)
+    }
+  }
+
   component HoverTip: PopupWindow {
     id: hoverTip
 
@@ -782,6 +1267,7 @@ ShellRoot {
     property string text: ""
 
     visible: mouse !== null && mouse.containsMouse && text !== ""
+      && root.controlPanel === "" && !root.agentsOpen && !root.trayMenuOpen
     implicitWidth: hoverTipLabel.implicitWidth + 20
     implicitHeight: 26
     color: "transparent"
@@ -808,9 +1294,9 @@ ShellRoot {
 
     Rectangle {
       anchors.fill: parent
-      radius: 7
-      color: root.alpha(root.base, 0.98)
-      border.color: root.alpha(root.accent, 0.55)
+      radius: root.radiusSmall
+      color: root.panelColor
+      border.color: root.panelBorder
       border.width: 1
 
       Text {
@@ -822,6 +1308,53 @@ ShellRoot {
         font.pixelSize: 10
       }
     }
+  }
+
+  // Shared chrome for every floating panel, so panels differ only in what
+  // they hold, never in how they are framed.
+  component PanelSurface: Rectangle {
+    anchors.fill: parent
+    radius: root.radius
+    color: root.panelColor
+    border.color: root.panelBorder
+    border.width: 1
+    antialiasing: true
+
+    SurfaceWash { radius: root.radius - 1 }
+    SurfaceGrain { inset: 3 }
+  }
+
+  // Scroll indicators are hairlines rather than the platform's full-width
+  // bars, and panels reserve `scrollGutter` for them so a bar never sits on
+  // top of the content's own edge.
+  component SlimScrollBar: ScrollBar {
+    id: scrollBar
+
+    policy: ScrollBar.AsNeeded
+    implicitWidth: root.scrollGutter
+    padding: 2
+
+    background: Item {}
+    contentItem: Rectangle {
+      implicitWidth: root.scrollGutter - 4
+      radius: width / 2
+      color: root.alpha(root.overlay, scrollBar.pressed ? 1 : 0.75)
+    }
+  }
+
+  // Every bar entry is a rounded pill on the same radius as windows, buttons,
+  // and panels, and takes its hover, press, and open state from here so the
+  // whole strip reacts identically.
+  component BarItem: Rectangle {
+    property bool hovered: false
+    property bool active: false
+
+    anchors.verticalCenter: parent.verticalCenter
+    height: root.barItemHeight
+    radius: root.radius
+    color: active ? root.selectedColor : hovered ? root.hoverColor : "transparent"
+
+    Behavior on color { ColorAnimation { duration: 110 } }
   }
 
   Timer {
@@ -866,21 +1399,32 @@ ShellRoot {
       required property var modelData
       screen: modelData
       anchors { top: true; left: true; right: true }
-      implicitHeight: 30
-      color: root.alpha(root.mantle, 0.96)
+      implicitHeight: root.barHeight
+      color: root.alpha(root.mantle, 0.9)
       WlrLayershell.layer: WlrLayer.Top
       WlrLayershell.namespace: "seele-shell-bar"
 
+      SurfaceWash {}
+
       Row {
         anchors.left: parent.left
+        anchors.leftMargin: root.barPadding
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        spacing: 0
+        spacing: root.barSpacing
 
-        Rectangle {
-          width: 30; height: parent.height; radius: 0
-          color: menuMouse.containsMouse ? root.alpha(root.accent, 0.18) : "transparent"
-          Text { anchors.centerIn: parent; text: "󰣇"; color: root.accent; font.family: root.fontFamily; font.pixelSize: 17 }
+        BarItem {
+          width: 30
+          hovered: menuMouse.containsMouse
+          Image {
+            anchors.centerIn: parent
+            width: 20
+            height: 20
+            source: "seele.svg"
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
+          }
           MouseArea {
             id: menuMouse
             anchors.fill: parent
@@ -896,7 +1440,7 @@ ShellRoot {
             required property int modelData
             readonly property bool active: root.workspaceActive(modelData, barWindow.modelData)
             readonly property bool occupied: root.workspaceOccupied(modelData)
-            width: active ? 44 : 22
+            width: active ? 46 : 24
             height: parent.height
 
             Behavior on width {
@@ -905,10 +1449,10 @@ ShellRoot {
 
             Rectangle {
               id: workspacePill
-              width: parent.active ? 40 : 18
-              height: 18
+              width: parent.active ? 42 : 20
+              height: root.barItemHeight
               anchors.centerIn: parent
-              radius: 9
+              radius: root.radius
               color: parent.active ? root.accent : workspaceMouse.containsMouse ? root.alpha(root.accent, 0.55) : parent.occupied ? root.alpha(root.subtext, 0.65) : root.alpha(root.subtext, 0.3)
 
               Behavior on width {
@@ -933,18 +1477,18 @@ ShellRoot {
               id: workspaceMouse
               anchors.fill: parent
               hoverEnabled: true
-              onClicked: Quickshell.execDetached(["hyprctl", "dispatch", "workspace", String(parent.modelData)])
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.activateWorkspace(parent.modelData)
             }
             HoverTip { mouse: workspaceMouse; text: "Workspace " + modelData }
           }
         }
 
-        Rectangle {
+        BarItem {
           readonly property var window: root.activeWindow(barWindow.modelData)
-          visible: window !== null && root.windowTitle(window) !== ""
+          visible: window !== null && root.windowLabel(window) !== ""
           width: Math.min(230, activeWindowRow.implicitWidth + 14)
-          height: parent.height
-          color: activeWindowMouse.containsMouse ? root.alpha(root.accent, 0.14) : "transparent"
+          hovered: activeWindowMouse.containsMouse
           Row {
             id: activeWindowRow
             anchors.centerIn: parent
@@ -954,12 +1498,12 @@ ShellRoot {
               visible: source !== ""
               anchors.verticalCenter: parent.verticalCenter
               implicitWidth: 15; implicitHeight: 15
-              source: root.windowIcon(parent.parent.window) === "" ? "" : Quickshell.iconPath(root.windowIcon(parent.parent.window))
+              source: root.windowIcon(parent.parent.window)
             }
             Text {
               anchors.verticalCenter: parent.verticalCenter
               width: Math.min(190, implicitWidth)
-              text: root.windowTitle(parent.parent.window)
+              text: root.windowLabel(parent.parent.window)
               elide: Text.ElideRight
               color: root.subtext
               font.family: root.fontFamily
@@ -970,9 +1514,9 @@ ShellRoot {
           HoverTip { mouse: activeWindowMouse; text: root.windowTitle(activeWindowMouse.parent.window) }
         }
 
-        Rectangle {
-          width: 30; height: parent.height
-          color: voxtypeMouse.containsMouse ? root.alpha(root.accent, 0.18) : "transparent"
+        BarItem {
+          width: 30
+          hovered: voxtypeMouse.containsMouse
           Text {
             anchors.centerIn: parent
             text: root.systemData.voxtypeStatus === "recording" ? "󰍬" : root.systemData.voxtypeStatus === "transcribing" ? "󰔟" : "󰍭"
@@ -989,29 +1533,45 @@ ShellRoot {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        spacing: 8
-        Text {
-          height: parent.height
-          text: Qt.formatDateTime(root.now, "HH:mm")
-          color: root.text
-          verticalAlignment: Text.AlignVCenter
-          font.family: root.fontFamily
-          font.pixelSize: 12
-          font.bold: true
+        spacing: root.barSpacing
+
+        BarItem {
+          width: localClock.implicitWidth + 14
+          hovered: clockMouse.containsMouse
+          active: root.controlPanel === "clock"
+          Text {
+            id: localClock
+            anchors.centerIn: parent
+            text: Qt.formatDateTime(root.now, "HH:mm")
+            color: root.text
+            font.family: root.fontFamily
+            font.pixelSize: 12
+            font.bold: true
+          }
+          MouseArea { id: clockMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: root.toggleControl("clock", barWindow.modelData.name) }
+          HoverTip { mouse: clockMouse; text: "Time zones" }
         }
-        Text {
-          height: parent.height
-          text: Qt.formatDateTime(root.now, "yyyy-MM-dd")
-          color: root.subtext
-          verticalAlignment: Text.AlignVCenter
-          font.family: root.fontFamily
-          font.pixelSize: 12
+
+        BarItem {
+          width: localDate.implicitWidth + 14
+          hovered: dateMouse.containsMouse
+          active: root.controlPanel === "calendar"
+          Text {
+            id: localDate
+            anchors.centerIn: parent
+            text: Qt.formatDateTime(root.now, "yyyy-MM-dd")
+            color: root.subtext
+            font.family: root.fontFamily
+            font.pixelSize: 12
+          }
+          MouseArea { id: dateMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: root.toggleControl("calendar", barWindow.modelData.name) }
+          HoverTip { mouse: dateMouse; text: "Calendar" }
         }
 
         Rectangle {
           visible: root.systemData.microphoneMuted
           anchors.verticalCenter: parent.verticalCenter
-          width: 24; height: 18; radius: 6
+          width: 26; height: 18; radius: root.radiusSmall
           color: root.alpha(root.overlay, 0.35)
           Text {
             anchors.centerIn: parent
@@ -1054,7 +1614,7 @@ ShellRoot {
           anchors.verticalCenter: parent.verticalCenter
           width: 9; height: 9; radius: 4.5
           color: root.iosGreen
-          MouseArea { id: cameraActiveIndicator; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("camera") }
+          MouseArea { id: cameraActiveIndicator; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("camera", barWindow.modelData.name) }
           HoverTip { mouse: cameraActiveIndicator; text: "Camera in use" }
         }
 
@@ -1070,18 +1630,18 @@ ShellRoot {
 
       Row {
         anchors.right: parent.right
+        anchors.rightMargin: root.barPadding
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        spacing: 0
+        spacing: root.barSpacing
 
-        Rectangle {
+        BarItem {
           id: deviceMediaItem
 
           readonly property var player: root.devicePlayer()
           visible: player !== null
           width: visible ? Math.min(210, deviceMediaRow.implicitWidth + 14) : 0
-          height: parent.height
-          color: deviceMediaMouse.containsMouse ? root.alpha(root.accent, 0.18) : "transparent"
+          hovered: deviceMediaMouse.containsMouse
           Row {
             id: deviceMediaRow
             anchors.centerIn: parent
@@ -1095,6 +1655,10 @@ ShellRoot {
                 anchors.fill: parent
                 source: deviceMediaItem.player ? String(deviceMediaItem.player.trackArtUrl || "") : ""
                 fillMode: Image.PreserveAspectCrop
+                sourceSize.width: width * 4
+                sourceSize.height: height * 4
+                smooth: true
+                mipmap: true
                 asynchronous: true
                 cache: true
                 visible: status === Image.Ready
@@ -1111,7 +1675,7 @@ ShellRoot {
             Text {
               anchors.verticalCenter: parent.verticalCenter
               width: Math.min(175, implicitWidth)
-              text: parent.parent.player ? parent.parent.player.trackTitle : ""
+              text: root.mediaLabel(parent.parent.player)
               elide: Text.ElideRight
               color: root.text
               font.family: root.fontFamily
@@ -1119,18 +1683,16 @@ ShellRoot {
             }
           }
           MouseArea { id: deviceMediaMouse; anchors.fill: parent; hoverEnabled: true; onClicked: if (parent.player) parent.player.togglePlaying() }
-          HoverTip { mouse: deviceMediaMouse; text: deviceMediaItem.player ? deviceMediaItem.player.trackArtist + " — " + deviceMediaItem.player.trackTitle : "" }
+          HoverTip { mouse: deviceMediaMouse; text: root.mediaLabel(deviceMediaItem.player) }
         }
 
-        Rectangle {
+        BarItem {
           id: spotifyMediaItem
 
           readonly property var player: root.spotifyPlayer()
-          readonly property var device: root.devicePlayer()
-          visible: player !== null && player !== device
+          visible: player !== null
           width: visible ? Math.min(210, spotifyMediaRow.implicitWidth + 14) : 0
-          height: parent.height
-          color: spotifyMediaMouse.containsMouse ? root.alpha(root.green, 0.18) : "transparent"
+          hovered: spotifyMediaMouse.containsMouse
           Row {
             id: spotifyMediaRow
             anchors.centerIn: parent
@@ -1144,6 +1706,10 @@ ShellRoot {
                 anchors.fill: parent
                 source: spotifyMediaItem.player ? String(spotifyMediaItem.player.trackArtUrl || "") : ""
                 fillMode: Image.PreserveAspectCrop
+                sourceSize.width: width * 4
+                sourceSize.height: height * 4
+                smooth: true
+                mipmap: true
                 asynchronous: true
                 cache: true
                 visible: status === Image.Ready
@@ -1160,7 +1726,7 @@ ShellRoot {
             Text {
               anchors.verticalCenter: parent.verticalCenter
               width: Math.min(175, implicitWidth)
-              text: parent.parent.player ? parent.parent.player.trackTitle : ""
+              text: root.mediaLabel(parent.parent.player)
               elide: Text.ElideRight
               color: root.text
               font.family: root.fontFamily
@@ -1168,13 +1734,13 @@ ShellRoot {
             }
           }
           MouseArea { id: spotifyMediaMouse; anchors.fill: parent; hoverEnabled: true; onClicked: if (parent.player) parent.player.togglePlaying() }
-          HoverTip { mouse: spotifyMediaMouse; text: spotifyMediaItem.player ? spotifyMediaItem.player.trackArtist + " — " + spotifyMediaItem.player.trackTitle : "" }
+          HoverTip { mouse: spotifyMediaMouse; text: root.mediaLabel(spotifyMediaItem.player) }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.trayHiddenCount() > 0
-          width: 20; height: parent.height; radius: 0
-          color: trayExpandMouse.containsMouse ? root.surface : "transparent"
+          width: 22
+          hovered: trayExpandMouse.containsMouse
           Text {
             anchors.centerIn: parent
             text: root.trayExpanded ? "󰅂" : "󰅁"
@@ -1188,10 +1754,10 @@ ShellRoot {
 
         Repeater {
           model: root.trayItems()
-          Rectangle {
+          BarItem {
             required property var modelData
-            width: 30; height: parent.height; radius: 0
-            color: trayMouse.containsMouse ? root.surface : "transparent"
+            width: 30
+            hovered: trayMouse.containsMouse
             opacity: root.trayItemHidden(modelData) ? 0.45 : 1
             IconImage {
               anchors.centerIn: parent
@@ -1211,6 +1777,7 @@ ShellRoot {
                   if (!sameMenu) {
                     root.activeTrayItem = parent.modelData
                     root.trayMenuOpen = true
+                    root.overlayScreen = barWindow.modelData.name
                   }
                 } else {
                   Quickshell.execDetached(["seele-control", "tray-menu", parent.modelData.id])
@@ -1232,28 +1799,40 @@ ShellRoot {
           }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.systemData.cameraActive || (root.systemData.cameraDevices && root.systemData.cameraDevices.length > 0)
-          width: 30; height: parent.height
-          color: cameraMouse.containsMouse || root.controlPanel === "camera" ? root.alpha(root.accent, 0.18) : "transparent"
+          width: 30
+          hovered: cameraMouse.containsMouse
+          active: root.controlPanel === "camera"
           Text { anchors.centerIn: parent; text: root.systemData.cameraActive ? "󰄀" : "󰄁"; color: root.systemData.cameraActive ? root.red : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
-          MouseArea { id: cameraMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("camera") }
+          MouseArea { id: cameraMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("camera", barWindow.modelData.name) }
           HoverTip { mouse: cameraMouse; text: root.systemData.cameraActive ? "Camera in use" : "Camera" }
         }
 
         Repeater {
           model: root.activeAgents()
-          Rectangle {
+          BarItem {
             required property var modelData
             id: agentBadgeItem
 
             readonly property color stateColor: root.agentColor(modelData.status)
-            width: 28; height: parent.height; radius: 0
-            color: agentBadgeMouse.containsMouse ? root.alpha(root.accent, 0.18) : "transparent"
+            width: 28
+            hovered: agentBadgeMouse.containsMouse
             Column {
               anchors.centerIn: parent
               spacing: 2
+              Image {
+                visible: modelData.id === "claude"
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 13
+                height: 13
+                source: "claude-code.svg"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                mipmap: true
+              }
               Text {
+                visible: modelData.id !== "claude"
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.agentBadge(modelData.id)
                 color: agentBadgeItem.stateColor
@@ -1276,15 +1855,16 @@ ShellRoot {
                 }
               }
             }
-            MouseArea { id: agentBadgeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleAgents() }
+            MouseArea { id: agentBadgeMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleAgents(barWindow.modelData.name) }
             HoverTip { mouse: agentBadgeMouse; text: modelData.name + " · " + (modelData.status === "input" ? "needs input" : modelData.status) }
           }
         }
 
 
-        Rectangle {
-          width: aiBarContent.implicitWidth + 14; height: parent.height; radius: 0
-          color: aiMouse.containsMouse || root.agentsOpen ? root.alpha(root.accent, 0.18) : "transparent"
+        BarItem {
+          width: aiBarContent.implicitWidth + 14
+          hovered: aiMouse.containsMouse
+          active: root.agentsOpen
           visible: root.agentData.launchers && root.agentData.launchers.length > 0
           Row {
             id: aiBarContent
@@ -1335,28 +1915,30 @@ ShellRoot {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-            onClicked: function(mouse) {
+            onPressed: function(mouse) {
               if (mouse.button === Qt.RightButton) root.runAgent("pi", "")
               else if (mouse.button === Qt.MiddleButton) root.refreshAgents()
-              else root.toggleAgents()
+              else root.toggleAgents(barWindow.modelData.name)
             }
           }
           HoverTip { mouse: aiMouse; text: "AI cockpit · middle-click to refresh · right-click to launch Pi" }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.systemData.airpodsConnected
-          width: 30; height: parent.height; radius: 0
-          color: airpodsMouse.containsMouse || root.controlPanel === "airpods" ? root.alpha(root.accent, 0.18) : "transparent"
+          width: 30
+          hovered: airpodsMouse.containsMouse
+          active: root.controlPanel === "airpods"
           AirpodsIcon { anchors.centerIn: parent; tint: root.accent }
-          MouseArea { id: airpodsMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("airpods") }
+          MouseArea { id: airpodsMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("airpods", barWindow.modelData.name) }
           HoverTip { mouse: airpodsMouse; text: root.systemData.airpodsName || "AirPods" }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.systemData.bluetoothAvailable
-          width: 30; height: parent.height; radius: 0
-          color: bluetoothMouse.containsMouse || root.controlPanel === "bluetooth" ? root.alpha(root.accent, 0.18) : "transparent"
+          width: 30
+          hovered: bluetoothMouse.containsMouse
+          active: root.controlPanel === "bluetooth"
           Text {
             anchors.centerIn: parent
             text: root.systemData.bluetoothPowered ? "󰂯" : "󰂲"
@@ -1364,28 +1946,35 @@ ShellRoot {
             font.family: root.fontFamily
             font.pixelSize: 14
           }
-          MouseArea { id: bluetoothMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("bluetooth") }
+          MouseArea { id: bluetoothMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("bluetooth", barWindow.modelData.name) }
           HoverTip { mouse: bluetoothMouse; text: "Bluetooth · " + (root.systemData.bluetoothPowered ? root.systemData.bluetoothConnected + " connected" : "off") }
         }
 
-        Rectangle {
-          width: 30; height: parent.height; radius: 0
-          color: networkMouse.containsMouse || root.controlPanel === "network" ? root.alpha(root.accent, 0.18) : "transparent"
+        BarItem {
+          width: 30
+          hovered: networkMouse.containsMouse
+          active: root.controlPanel === "network"
           Text {
             anchors.centerIn: parent
             text: root.systemData.connection === "Disconnected" ? "󰖪" : root.systemData.connectionType.indexOf("wireless") >= 0 ? "󰖩" : "󰈀"
-            color: root.systemData.connectivity === "full" ? root.text : root.yellow
+            color: root.privateNetworkActive() ? root.accent : root.systemData.connectivity === "full" ? root.text : root.yellow
             font.family: root.fontFamily
             font.pixelSize: 14
           }
-          MouseArea { id: networkMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("network") }
-          HoverTip { mouse: networkMouse; text: "Network · " + (root.systemData.connection || "Disconnected") }
+          MouseArea { id: networkMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("network", barWindow.modelData.name) }
+          HoverTip {
+            mouse: networkMouse
+            text: "Network · " + (root.systemData.connection || "Disconnected")
+              + (root.systemData.tailscale && root.systemData.tailscale.connected ? " · Tailscale" : "")
+              + (root.systemData.protonVpn && root.systemData.protonVpn.connected ? " · Proton VPN" : "")
+          }
         }
 
 
-        Rectangle {
-          width: audioBarContent.implicitWidth + 12; height: parent.height; radius: 0
-          color: audioMouse.containsMouse || root.controlPanel === "audio" ? root.alpha(root.accent, 0.18) : "transparent"
+        BarItem {
+          width: audioBarContent.implicitWidth + 14
+          hovered: audioMouse.containsMouse
+          active: root.controlPanel === "audio"
           Row {
             id: audioBarContent
             anchors.centerIn: parent
@@ -1400,13 +1989,14 @@ ShellRoot {
             }
             Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.volume + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
           }
-          MouseArea { id: audioMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("audio") }
+          MouseArea { id: audioMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("audio", barWindow.modelData.name) }
           HoverTip { mouse: audioMouse; text: "Volume · " + (root.systemData.muted ? "muted" : root.systemData.volume + "%") }
         }
 
-        Rectangle {
-          width: notificationBarContent.implicitWidth + 12; height: parent.height
-          color: notificationMouse.containsMouse || root.controlPanel === "notifications" ? root.alpha(root.accent, 0.18) : "transparent"
+        BarItem {
+          width: notificationBarContent.implicitWidth + 14
+          hovered: notificationMouse.containsMouse
+          active: root.controlPanel === "notifications"
           Row {
             id: notificationBarContent
             anchors.centerIn: parent
@@ -1415,17 +2005,18 @@ ShellRoot {
             Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.dnd ? "󰂛" : "󰂚"; color: root.systemData.dnd ? root.yellow : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
             Text { visible: Number(root.systemData.notifications.count || 0) > 0; anchors.verticalCenter: parent.verticalCenter; text: String(root.systemData.notifications.count); color: root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
           }
-          MouseArea { id: notificationMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("notifications") }
+          MouseArea { id: notificationMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("notifications", barWindow.modelData.name) }
           HoverTip { mouse: notificationMouse; text: "Notifications · " + (root.systemData.dnd ? "do not disturb" : root.systemData.notifications.count || 0) }
         }
 
-        Rectangle {
+        BarItem {
           id: batteryBarItem
 
           readonly property var entry: root.batteryPrimary()
           visible: root.batteryEntries().length > 0
-          width: batteryBarContent.implicitWidth + 12; height: parent.height; radius: 0
-          color: batteryMouse.containsMouse || root.controlPanel === "battery" ? root.alpha(root.accent, 0.18) : "transparent"
+          width: batteryBarContent.implicitWidth + 14
+          hovered: batteryMouse.containsMouse
+          active: root.controlPanel === "battery"
           Row {
             id: batteryBarContent
             anchors.centerIn: parent
@@ -1446,41 +2037,341 @@ ShellRoot {
               font.pixelSize: 10
             }
           }
-          MouseArea { id: batteryMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("battery") }
+          MouseArea { id: batteryMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("battery", barWindow.modelData.name) }
           HoverTip { mouse: batteryMouse; text: "Battery · " + (batteryBarItem.entry ? batteryBarItem.entry.name + " " + Number(batteryBarItem.entry.percent) + "%" : "unavailable") }
         }
 
-        Rectangle {
-          width: 30; height: parent.height; radius: 0
-          color: sessionMouse.containsMouse || root.controlPanel === "system" ? root.alpha(root.accent, 0.18) : "transparent"
+        BarItem {
+          width: 30
+          hovered: sessionMouse.containsMouse
+          active: root.controlPanel === "system"
           Text { anchors.centerIn: parent; text: "󰐥"; color: root.windowsCountdown >= 0 ? root.yellow : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
-          MouseArea { id: sessionMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleControl("system") }
+          MouseArea { id: sessionMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("system", barWindow.modelData.name) }
           HoverTip { mouse: sessionMouse; text: "Power and session" }
         }
+      }
+
+      SurfaceGrain {}
+
+      Rectangle {
+        anchors.bottom: parent.bottom
+        width: parent.width
+        height: 1
+        z: 1
+        color: root.alpha(root.accent, 0.2)
       }
     }
   }
 
   // Click-away catcher ---------------------------------------------------------
-  // Declared before the popouts so they stack above it; the bar strip stays
-  // clickable so one click can switch between panels.
+  // Keep this surface mapped with an empty input mask while idle. Mapping it
+  // under a stationary pointer can make Hyprland defer the next click until
+  // pointer motion. The bar strip stays clickable so one press can toggle or
+  // switch panels.
   Variants {
     model: Quickshell.screens
     PanelWindow {
+      id: clickAwayWindow
       required property var modelData
+      readonly property bool active: root.controlPanel !== "" || root.agentsOpen || root.trayMenuOpen
       screen: modelData
-      visible: root.controlPanel !== "" || root.agentsOpen || root.trayMenuOpen
+      visible: true
       anchors { top: true; bottom: true; left: true; right: true }
-      margins { top: 30 }
+      margins { top: root.barHeight }
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
+      mask: Region {
+        width: clickAwayWindow.active ? clickAwayWindow.width : 0
+        height: clickAwayWindow.active ? clickAwayWindow.height : 0
+      }
       WlrLayershell.layer: WlrLayer.Top
       WlrLayershell.namespace: "seele-shell-clickaway"
 
       MouseArea {
         anchors.fill: parent
+        enabled: clickAwayWindow.active
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         onPressed: root.closeOverlays()
+      }
+    }
+  }
+
+  // Calendar ------------------------------------------------------------------
+  Variants {
+    model: Quickshell.screens
+    PanelWindow {
+      id: calendarWindow
+      required property var modelData
+      screen: modelData
+      visible: root.controlPanel === "calendar" && root.pinnedScreen(root.overlayScreen, modelData)
+      anchors { top: true }
+      margins.top: root.barHeight + root.panelGap
+      implicitWidth: 390
+      implicitHeight: Math.min(modelData.height - 60, 470)
+      exclusionMode: ExclusionMode.Ignore
+      color: "transparent"
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.namespace: "seele-shell-calendar"
+
+      onVisibleChanged: if (visible) Qt.callLater(function() { calendarMonths.positionViewAtIndex(60, ListView.Beginning) })
+
+      PanelSurface {
+        Column {
+          anchors.fill: parent
+          anchors.margins: root.panelMargin
+          spacing: root.panelSpacing
+
+          Row {
+            width: parent.width
+            height: 42
+            Column {
+              width: parent.width - 84
+              Text { text: Qt.formatDate(root.now, "dddd"); color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+              Text { text: Qt.formatDate(root.now, "d MMMM yyyy") + " · week " + Time.isoWeek(root.now); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
+            }
+            Rectangle {
+              width: 84; height: 30; radius: root.radius
+              anchors.verticalCenter: parent.verticalCenter
+              color: todayMouse.pressed ? root.pressColor : todayMouse.containsMouse ? root.hoverColor : root.surface
+              Text { anchors.centerIn: parent; text: "Today"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+              MouseArea { id: todayMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: calendarMonths.positionViewAtIndex(60, ListView.Beginning) }
+            }
+          }
+
+          ListView {
+            id: calendarMonths
+            width: parent.width
+            height: parent.height - 52
+            model: 121
+            spacing: 8
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            delegate: Item {
+              id: monthDelegate
+              required property int modelData
+              readonly property int monthOffset: modelData - 60
+              readonly property date month: Time.monthDate(root.now, monthOffset)
+              width: ListView.view.width
+              height: 258
+
+              Column {
+                anchors.fill: parent
+                spacing: 6
+                Text {
+                  width: parent.width
+                  height: 28
+                  text: Qt.formatDate(monthDelegate.month, "MMMM yyyy")
+                  color: monthDelegate.monthOffset === 0 ? root.accent : root.text
+                  font.family: root.fontFamily
+                  font.pixelSize: 14
+                  font.bold: true
+                  verticalAlignment: Text.AlignVCenter
+                }
+                Grid {
+                  width: parent.width
+                  height: 22
+                  columns: 8
+                  Repeater {
+                    model: ["Wk", "Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+                    Text {
+                      required property string modelData
+                      width: parent.width / 8
+                      height: 22
+                      text: modelData
+                      color: modelData === "Wk" ? root.overlay : root.subtext
+                      font.family: root.fontFamily
+                      font.pixelSize: 9
+                      font.bold: true
+                      horizontalAlignment: Text.AlignHCenter
+                      verticalAlignment: Text.AlignVCenter
+                    }
+                  }
+                }
+                Grid {
+                  id: monthGrid
+                  width: parent.width
+                  height: 198
+                  columns: 8
+                  Repeater {
+                    model: Time.calendarCells(root.now, monthDelegate.monthOffset)
+                    Item {
+                      id: calendarCell
+                      required property var modelData
+                      width: monthGrid.width / 8
+                      height: 33
+                      Rectangle {
+                        visible: !calendarCell.modelData.week && calendarCell.modelData.today
+                        anchors.centerIn: parent
+                        width: 27; height: 27; radius: 13.5
+                        color: root.accent
+                      }
+                      Text {
+                        anchors.centerIn: parent
+                        text: calendarCell.modelData.week ? "W" + calendarCell.modelData.label : calendarCell.modelData.day
+                        color: calendarCell.modelData.week ? root.overlay : calendarCell.modelData.today ? root.base : calendarCell.modelData.inMonth ? root.text : root.overlay
+                        opacity: calendarCell.modelData.week || calendarCell.modelData.inMonth || calendarCell.modelData.today ? 1 : 0.5
+                        font.family: root.fontFamily
+                        font.pixelSize: calendarCell.modelData.week ? 8 : 10
+                        font.bold: calendarCell.modelData.today
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            ScrollBar.vertical: SlimScrollBar {}
+          }
+        }
+      }
+    }
+  }
+
+  // World clock ---------------------------------------------------------------
+  Variants {
+    model: Quickshell.screens
+    PanelWindow {
+      id: clockWindow
+      required property var modelData
+      screen: modelData
+      visible: root.controlPanel === "clock" && root.pinnedScreen(root.overlayScreen, modelData)
+      anchors { top: true }
+      margins.top: root.barHeight + root.panelGap
+      implicitWidth: 430
+      implicitHeight: Math.min(modelData.height - 60, 560)
+      exclusionMode: ExclusionMode.Ignore
+      color: "transparent"
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+      WlrLayershell.namespace: "seele-shell-clock"
+
+      PanelSurface {
+        Column {
+          anchors.fill: parent
+          anchors.margins: root.panelMargin
+          spacing: root.panelSpacing
+
+          Row {
+            width: parent.width
+            height: 42
+            Column {
+              width: parent.width - 72
+              Text { text: "World clock"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+              Text { text: "Select temporarily, or pin multiple zones to the top"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+            }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: Qt.formatDateTime(root.now, "HH:mm"); color: root.accent; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignRight }
+          }
+
+          Rectangle {
+            id: selectedTimezoneCard
+            readonly property var zone: root.shownTimezone()
+            visible: zone !== null
+            width: parent.width
+            height: visible ? 58 : 0
+            radius: root.radius
+            color: root.alpha(root.surface, 0.72)
+            Row {
+              anchors.fill: parent
+              anchors.leftMargin: 12
+              anchors.rightMargin: 8
+              spacing: 8
+              Text { visible: selectedTimezoneCard.zone && selectedTimezoneCard.zone.flag !== ""; anchors.verticalCenter: parent.verticalCenter; text: selectedTimezoneCard.zone ? selectedTimezoneCard.zone.flag : ""; font.pixelSize: 19 }
+              Column {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - clearTimezoneButton.width - (selectedTimezoneCard.zone && selectedTimezoneCard.zone.flag !== "" ? 55 : 28)
+                Text { width: parent.width; text: selectedTimezoneCard.zone ? selectedTimezoneCard.zone.label : ""; color: root.text; font.family: root.fontFamily; font.pixelSize: 12; font.bold: true; elide: Text.ElideRight }
+                Text { text: selectedTimezoneCard.zone ? selectedTimezoneCard.zone.id + " · " + selectedTimezoneCard.zone.day + " · " + selectedTimezoneCard.zone.abbreviation : ""; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+              }
+              Rectangle {
+                id: clearTimezoneButton
+                width: 66; height: 32; radius: root.radius
+                anchors.verticalCenter: parent.verticalCenter
+                color: clearTimezoneMouse.pressed ? root.pressColor : clearTimezoneMouse.containsMouse ? root.hoverColor : root.mantle
+                Text { anchors.centerIn: parent; text: "Clear"; color: root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
+                MouseArea {
+                  id: clearTimezoneMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.temporaryTimezone = ""
+                }
+              }
+            }
+          }
+
+          TextField {
+            id: timezoneSearch
+            width: parent.width
+            height: 38
+            placeholderText: "Search PST, UTC, Europe/London, city…"
+            color: root.text
+            placeholderTextColor: root.overlay
+            selectionColor: root.accent
+            selectedTextColor: root.base
+            font.family: root.fontFamily
+            font.pixelSize: 10
+            leftPadding: 12
+            rightPadding: 12
+            background: Rectangle { radius: root.radius; color: root.surface; border.color: timezoneSearch.activeFocus ? root.accent : "transparent"; border.width: 1 }
+            onAccepted: {
+              var matches = root.filteredTimezones(text)
+              if (matches.length > 0) root.temporaryTimezone = matches[0].id
+            }
+          }
+
+          ListView {
+            id: timezoneList
+            width: parent.width
+            height: parent.height - (selectedTimezoneCard.visible ? 168 : 100)
+            model: root.filteredTimezones(timezoneSearch.text)
+            spacing: 4
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            delegate: Rectangle {
+              id: timezoneRow
+              required property var modelData
+              readonly property bool selected: root.temporaryTimezone === modelData.id
+              readonly property bool pinned: root.timezonePinned(modelData.id)
+              width: ListView.view.width
+              height: 54
+              radius: root.radius
+              color: timezoneRowMouse.pressed ? root.pressColor : selected ? root.hoverColor : timezoneRowMouse.containsMouse ? root.surface : root.alpha(root.surface, 0.45)
+
+              Text { visible: modelData.kind === "city"; anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter; width: 25; text: modelData.flag; font.pixelSize: 16; horizontalAlignment: Text.AlignHCenter }
+              Column {
+                anchors.left: parent.left
+                anchors.leftMargin: modelData.kind === "city" ? 43 : 12
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - (modelData.kind === "city" ? 176 : 145)
+                Text { width: parent.width; text: modelData.label; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true; elide: Text.ElideRight }
+                Text { width: parent.width; text: modelData.id + " · " + modelData.abbreviation + " " + modelData.offset; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 8; elide: Text.ElideRight }
+              }
+              Column {
+                anchors.right: pinTimezoneButton.left
+                anchors.rightMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                width: 76
+                Text { width: parent.width; text: modelData.time; color: root.accent; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignRight }
+                Text { width: parent.width; text: modelData.day; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 8; horizontalAlignment: Text.AlignRight }
+              }
+              MouseArea {
+                id: timezoneRowMouse
+                anchors.left: parent.left; anchors.right: pinTimezoneButton.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.temporaryTimezone = timezoneRow.modelData.id
+              }
+              Rectangle {
+                id: pinTimezoneButton
+                anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                width: 38; height: 30; radius: root.radius
+                color: pinTimezoneMouse.pressed ? root.pressColor : timezoneRow.pinned ? root.selectedColor : pinTimezoneMouse.containsMouse ? root.hoverColor : root.mantle
+                Text { anchors.centerIn: parent; text: timezoneRow.pinned ? "Unpin" : "Pin"; color: timezoneRow.pinned ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 8; font.bold: true }
+                MouseArea { id: pinTimezoneMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.pinTimezone(timezoneRow.modelData.id) }
+              }
+            }
+            ScrollBar.vertical: SlimScrollBar {}
+          }
+        }
       }
     }
   }
@@ -1492,9 +2383,9 @@ ShellRoot {
       id: trayMenuWindow
       required property var modelData
       screen: modelData
-      visible: root.trayMenuOpen && root.focusedScreen(modelData)
+      visible: root.trayMenuOpen && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 310
       implicitHeight: Math.min(420, 58 + Math.max(1, trayMenuOpener.children.values.length) * 36)
       exclusionMode: ExclusionMode.Ignore
@@ -1503,16 +2394,10 @@ ShellRoot {
       WlrLayershell.namespace: "seele-shell-tray-menu"
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-      Rectangle {
-        anchors.fill: parent
-        radius: 8
-        color: root.alpha(root.base, 0.98)
-        border.color: root.alpha(root.accent, 0.65)
-        border.width: 1
-
+      PanelSurface {
         Column {
           anchors.fill: parent
-          anchors.margins: 10
+          anchors.margins: root.panelSpacing
           spacing: 6
 
           Row {
@@ -1529,9 +2414,9 @@ ShellRoot {
               font.bold: true
             }
             Rectangle {
-              width: 72; height: 26; radius: 8
+              width: 72; height: 26; radius: root.radius
               anchors.verticalCenter: parent.verticalCenter
-              color: trayHideMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
+              color: trayHideMouse.pressed ? root.pressColor : trayHideMouse.containsMouse ? root.hoverColor : root.surface
               Text {
                 anchors.centerIn: parent
                 text: root.trayItemHidden(root.activeTrayItem) ? "Show icon" : "Hide icon"
@@ -1544,6 +2429,7 @@ ShellRoot {
                 id: trayHideMouse
                 anchors.fill: parent
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.toggleTrayItemHidden(root.activeTrayItem)
                   root.closeTrayMenu()
@@ -1551,10 +2437,10 @@ ShellRoot {
               }
             }
             Rectangle {
-              width: 30; height: 30; radius: 8
-              color: trayMenuCloseMouse.containsMouse ? root.surface : "transparent"
+              width: 30; height: 30; radius: root.radius
+              color: trayMenuCloseMouse.pressed ? root.pressColor : trayMenuCloseMouse.containsMouse ? root.hoverColor : "transparent"
               Text { anchors.centerIn: parent; text: "󰅖"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 11 }
-              MouseArea { id: trayMenuCloseMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.closeTrayMenu() }
+              MouseArea { id: trayMenuCloseMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.closeTrayMenu() }
             }
           }
 
@@ -1582,8 +2468,8 @@ ShellRoot {
               Rectangle {
                 visible: !parent.modelData.isSeparator
                 anchors.fill: parent
-                radius: 8
-                color: trayMenuEntryMouse.containsMouse && parent.modelData.enabled ? root.alpha(root.accent, 0.18) : "transparent"
+                radius: root.radius
+                color: trayMenuEntryMouse.pressed ? root.pressColor : trayMenuEntryMouse.containsMouse && parent.modelData.enabled ? root.hoverColor : "transparent"
               }
 
               IconImage {
@@ -1631,6 +2517,7 @@ ShellRoot {
                 anchors.fill: parent
                 hoverEnabled: true
                 enabled: !parent.modelData.isSeparator && parent.modelData.enabled
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: {
                   if (parent.modelData.hasChildren) {
                     parent.modelData.display(trayMenuWindow, 10, parent.y + parent.height)
@@ -1653,34 +2540,42 @@ ShellRoot {
     PanelWindow {
       id: agentsWindow
       required property var modelData
+      readonly property bool active: root.agentsOpen && root.pinnedScreen(root.overlayScreen, modelData)
       screen: modelData
-      visible: root.agentsOpen && root.focusedScreen(modelData)
+      visible: true
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
-      implicitWidth: 470
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
+      implicitWidth: 500
       implicitHeight: Math.min(modelData.height - 60, 760)
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
+      mask: Region {
+        width: agentsWindow.active ? agentsWindow.width : 0
+        height: agentsWindow.active ? agentsWindow.height : 0
+      }
       WlrLayershell.layer: WlrLayer.Overlay
-      WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+      WlrLayershell.keyboardFocus: active ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
       WlrLayershell.namespace: "seele-shell-agents"
 
-      Rectangle {
-        anchors.fill: parent
-        radius: 8
-        color: root.alpha(root.base, 0.98)
-        border.color: root.alpha(root.accent, 0.7)
-        border.width: 1
+      PanelSurface {
+        visible: agentsWindow.active
 
-        ScrollView {
+        Flickable {
+          id: agentsScroll
+
           anchors.fill: parent
-          anchors.margins: 18
+          anchors.margins: root.panelMargin
           clip: true
+          contentWidth: width
+          contentHeight: agentsContent.implicitHeight
+          boundsBehavior: Flickable.StopAtBounds
+
+          ScrollBar.vertical: SlimScrollBar {}
 
           Column {
             id: agentsContent
 
-            width: agentsWindow.width - 36
+            width: agentsScroll.width - root.scrollGutter
             spacing: 14
 
             Row {
@@ -1697,9 +2592,10 @@ ShellRoot {
                 }
               }
               Rectangle {
-                width: 34; height: 34; radius: 9; color: refreshMouse.containsMouse ? root.surface : "transparent"
-                Text { anchors.centerIn: parent; text: root.agentRefreshing ? "󰑓" : "󰑐"; color: root.accent; font.family: root.fontFamily; font.pixelSize: 16 }
-                MouseArea { id: refreshMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.refreshAgents() }
+                width: 34; height: 34; radius: root.radius
+                color: refreshMouse.pressed ? root.pressColor : root.agentRefreshing ? root.activeTint : refreshMouse.containsMouse ? root.hoverColor : "transparent"
+                RefreshGlyph { anchors.centerIn: parent; width: 20; height: 20; spinning: root.agentRefreshing }
+                MouseArea { id: refreshMouse; anchors.fill: parent; enabled: !root.agentRefreshing; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.refreshAgents() }
               }
             }
 
@@ -1714,8 +2610,8 @@ ShellRoot {
                 Rectangle {
                   required property var modelData
                   readonly property string status: root.agentStatus(modelData.id)
-                  width: (parent.width - 8) / 2; height: 68; radius: 8
-                  color: launchMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
+                  width: (parent.width - 8) / 2; height: 68; radius: root.radius
+                  color: launchMouse.pressed ? root.pressColor : launchMouse.containsMouse ? root.hoverColor : root.surface
                   border.color: status === "input" ? root.yellow : status === "working" ? root.accent : status === "finished" ? root.green : root.alpha(root.overlay, 0.35)
                   border.width: status === "idle" ? 1 : 2
                   Column {
@@ -1730,7 +2626,7 @@ ShellRoot {
                       font.pixelSize: 9
                     }
                   }
-                  MouseArea { id: launchMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runAgent(parent.modelData.id, "") }
+                  MouseArea { id: launchMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.runAgent(parent.modelData.id, "") }
                 }
               }
             }
@@ -1794,14 +2690,14 @@ ShellRoot {
               width: parent.width
               spacing: 8
               Rectangle {
-                width: (parent.width - 8) / 2; height: 68; radius: 12; color: root.surface
+                width: (parent.width - 8) / 2; height: 68; radius: root.radius; color: root.surface
                 Column { anchors.centerIn: parent; spacing: 4
                   Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.formatTokens(root.agentData.local.today.totalTokens || 0); color: root.accent; font.family: root.fontFamily; font.pixelSize: 20; font.bold: true }
                   Text { anchors.horizontalCenter: parent.horizontalCenter; text: "tokens today"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
                 }
               }
               Rectangle {
-                width: (parent.width - 8) / 2; height: 68; radius: 12; color: root.surface
+                width: (parent.width - 8) / 2; height: 68; radius: root.radius; color: root.surface
                 Column { anchors.centerIn: parent; spacing: 4
                   Text { anchors.horizontalCenter: parent.horizontalCenter; text: "$" + Number(root.agentData.local.totalCost || 0).toFixed(2); color: root.green; font.family: root.fontFamily; font.pixelSize: 20; font.bold: true }
                   Text { anchors.horizontalCenter: parent.horizontalCenter; text: "estimated · 30 days"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
@@ -1814,10 +2710,10 @@ ShellRoot {
               height: 18
               Row {
                 anchors.fill: parent
-                Text { width: parent.width - 20; anchors.verticalCenter: parent.verticalCenter; text: "LAST 7 DAYS"; color: usageHeaderMouse.containsMouse ? root.text : root.overlay; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+                Text { width: parent.width - 20; anchors.verticalCenter: parent.verticalCenter; text: "LAST 7 DAYS"; color: usageHeaderMouse.pressed ? root.accent : usageHeaderMouse.containsMouse ? root.text : root.overlay; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
                 Text { width: 20; anchors.verticalCenter: parent.verticalCenter; text: root.agentUsageOpen ? "󰅃" : "󰅀"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 11; horizontalAlignment: Text.AlignRight }
               }
-              MouseArea { id: usageHeaderMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.agentUsageOpen = !root.agentUsageOpen }
+              MouseArea { id: usageHeaderMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.agentUsageOpen = !root.agentUsageOpen }
             }
 
             Column {
@@ -1850,10 +2746,10 @@ ShellRoot {
               height: 18
               Row {
                 anchors.fill: parent
-                Text { width: parent.width - 20; anchors.verticalCenter: parent.verticalCenter; text: "TOP MODELS"; color: modelsHeaderMouse.containsMouse ? root.text : root.overlay; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+                Text { width: parent.width - 20; anchors.verticalCenter: parent.verticalCenter; text: "TOP MODELS"; color: modelsHeaderMouse.pressed ? root.accent : modelsHeaderMouse.containsMouse ? root.text : root.overlay; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
                 Text { width: 20; anchors.verticalCenter: parent.verticalCenter; text: root.agentModelsOpen ? "󰅃" : "󰅀"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 11; horizontalAlignment: Text.AlignRight }
               }
-              MouseArea { id: modelsHeaderMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.agentModelsOpen = !root.agentModelsOpen }
+              MouseArea { id: modelsHeaderMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.agentModelsOpen = !root.agentModelsOpen }
             }
             Column {
               width: parent.width
@@ -1895,20 +2791,19 @@ ShellRoot {
       readonly property int inputHeight: Math.max(1, Math.min(4, root.audioDevices("input").length)) * 32
       required property var modelData
       screen: modelData
-      visible: root.controlPanel === "audio" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "audio" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 350
-      implicitHeight: 268 + outputHeight + inputHeight
+      implicitHeight: 256 + outputHeight + inputHeight
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-audio"
 
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.98); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 12
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Text { text: "Audio"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
           Row {
             width: parent.width; spacing: 8
@@ -1916,14 +2811,14 @@ ShellRoot {
               id: outputSlider
 
               readonly property int shown: root.volumeDrag >= 0 ? root.volumeDrag : Number(root.systemData.volume)
-              width: parent.width - 52; height: 44; radius: 10
+              width: parent.width - 52; height: 44; radius: root.radius
               color: root.surface
               clip: true
               Rectangle {
                 width: parent.width * Math.max(0, Math.min(1, parent.shown / 100))
                 radius: parent.radius
                 height: parent.height
-                color: root.systemData.muted ? root.alpha(root.red, 0.45) : root.alpha(root.accent, 0.45)
+                color: root.systemData.muted ? root.fillDanger : root.fillColor
               }
               Row {
                 anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
@@ -1968,8 +2863,8 @@ ShellRoot {
               }
             }
             Rectangle {
-              width: 44; height: 44; radius: 10
-              color: root.systemData.muted ? root.alpha(root.red, 0.28) : outputMuteMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
+              width: 44; height: 44; radius: root.radius
+              color: outputMuteMouse.pressed ? root.pressColor : root.systemData.muted ? root.dangerColor : outputMuteMouse.containsMouse ? root.hoverColor : root.surface
               Text {
                 anchors.centerIn: parent
                 text: root.systemData.muted ? "󰝟" : "󰕾"
@@ -1981,9 +2876,9 @@ ShellRoot {
                 id: outputMuteMouse
                 anchors.fill: parent
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                  root.patchSystemData({ muted: !root.systemData.muted })
-                  root.runControl("volume", "mute")
+                  if (root.runControl("volume", "mute")) root.patchSystemData({ muted: !root.systemData.muted })
                 }
               }
               HoverTip { mouse: outputMuteMouse; text: root.systemData.muted ? "Unmute output" : "Mute output" }
@@ -1995,14 +2890,14 @@ ShellRoot {
               id: microphoneSlider
 
               readonly property int shown: root.microphoneDrag >= 0 ? root.microphoneDrag : Number(root.systemData.microphoneVolume)
-              width: parent.width - 52; height: 44; radius: 10
+              width: parent.width - 52; height: 44; radius: root.radius
               color: root.surface
               clip: true
               Rectangle {
                 width: parent.width * Math.max(0, Math.min(1, parent.shown / 100))
                 radius: parent.radius
                 height: parent.height
-                color: root.systemData.microphoneMuted ? root.alpha(root.red, 0.45) : root.alpha(root.accent, 0.35)
+                color: root.systemData.microphoneMuted ? root.fillDanger : root.fillColor
               }
               Row {
                 anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
@@ -2047,8 +2942,8 @@ ShellRoot {
               }
             }
             Rectangle {
-              width: 44; height: 44; radius: 10
-              color: root.systemData.microphoneMuted ? root.alpha(root.red, 0.28) : microphoneMuteMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
+              width: 44; height: 44; radius: root.radius
+              color: microphoneMuteMouse.pressed ? root.pressColor : root.systemData.microphoneMuted ? root.dangerColor : microphoneMuteMouse.containsMouse ? root.hoverColor : root.surface
               Text {
                 anchors.centerIn: parent
                 text: root.systemData.microphoneMuted ? "󰍭" : "󰍬"
@@ -2060,9 +2955,9 @@ ShellRoot {
                 id: microphoneMuteMouse
                 anchors.fill: parent
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                  root.patchSystemData({ microphoneMuted: !root.systemData.microphoneMuted })
-                  root.runControl("microphone", "mute")
+                  if (root.runControl("microphone", "mute")) root.patchSystemData({ microphoneMuted: !root.systemData.microphoneMuted })
                 }
               }
               HoverTip { mouse: microphoneMuteMouse; text: root.systemData.microphoneMuted ? "Unmute microphone" : "Mute microphone" }
@@ -2077,14 +2972,18 @@ ShellRoot {
             model: root.audioDevices("output")
             delegate: Rectangle {
               required property var modelData
-              width: ListView.view.width; height: 28; radius: 8
-              color: modelData.default ? root.alpha(root.accent, 0.2) : outputDeviceMouse.containsMouse ? root.surface : root.alpha(root.surface, 0.5)
+              readonly property bool busy: root.controlBusy("audio-device", String(modelData.id))
+              readonly property bool complete: root.controlCompleted("audio-device", String(modelData.id))
+              width: ListView.view.width; height: 28; radius: root.radius
+              color: outputDeviceMouse.pressed ? root.pressColor : busy ? root.selectedColor : modelData.default || complete ? root.hoverColor : outputDeviceMouse.containsMouse ? root.surface : root.alpha(root.surface, 0.5)
               Row {
+                visible: !parent.busy
                 anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 8
-                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.default ? "󰄬" : "󰓃"; color: modelData.default ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 12 }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: parent.parent.complete || modelData.default ? "󰄬" : "󰓃"; color: parent.parent.complete || modelData.default ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 12 }
                 Text { anchors.verticalCenter: parent.verticalCenter; width: parent.width - 30; text: modelData.name; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
               }
-              MouseArea { id: outputDeviceMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl("audio-device", String(parent.modelData.id)) }
+              RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
+              MouseArea { id: outputDeviceMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.setAudioDevice(parent.modelData.id) }
             }
           }
           Text { text: "INPUT DEVICE"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
@@ -2096,14 +2995,18 @@ ShellRoot {
             model: root.audioDevices("input")
             delegate: Rectangle {
               required property var modelData
-              width: ListView.view.width; height: 28; radius: 8
-              color: modelData.default ? root.alpha(root.accent, 0.2) : inputDeviceMouse.containsMouse ? root.surface : root.alpha(root.surface, 0.5)
+              readonly property bool busy: root.controlBusy("audio-device", String(modelData.id))
+              readonly property bool complete: root.controlCompleted("audio-device", String(modelData.id))
+              width: ListView.view.width; height: 28; radius: root.radius
+              color: inputDeviceMouse.pressed ? root.pressColor : busy ? root.selectedColor : modelData.default || complete ? root.hoverColor : inputDeviceMouse.containsMouse ? root.surface : root.alpha(root.surface, 0.5)
               Row {
+                visible: !parent.busy
                 anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 8
-                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.default ? "󰄬" : "󰍬"; color: modelData.default ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 12 }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: parent.parent.complete || modelData.default ? "󰄬" : "󰍬"; color: parent.parent.complete || modelData.default ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 12 }
                 Text { anchors.verticalCenter: parent.verticalCenter; width: parent.width - 30; text: modelData.name; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
               }
-              MouseArea { id: inputDeviceMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl("audio-device", String(parent.modelData.id)) }
+              RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
+              MouseArea { id: inputDeviceMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.setAudioDevice(parent.modelData.id) }
             }
           }
         }
@@ -2117,37 +3020,111 @@ ShellRoot {
     PanelWindow {
       required property var modelData
       screen: modelData
-      visible: root.controlPanel === "network" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "network" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
-      implicitWidth: 370
-      implicitHeight: 242
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
+      implicitWidth: 390
+      implicitHeight: 430
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-network"
 
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.98); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 12
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Row {
-            width: parent.width; spacing: 8
+            width: parent.width; height: 34; spacing: 8
             Text { width: root.systemData.wifiAvailable ? parent.width - 88 : parent.width; anchors.verticalCenter: parent.verticalCenter; text: "Network"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
             Text { visible: root.systemData.wifiAvailable; anchors.verticalCenter: parent.verticalCenter; text: "Wi-Fi"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
-            ControlSwitch { visible: root.systemData.wifiAvailable; anchors.verticalCenter: parent.verticalCenter; checked: root.systemData.wifiEnabled; onToggled: root.runControl("wifi", "toggle") }
-          }
-          Text { text: root.systemData.connection || "Disconnected"; color: root.text; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true }
-          Text { text: "Connectivity: " + root.systemData.connectivity; color: root.systemData.connectivity === "full" ? root.green : root.yellow; font.family: root.fontFamily; font.pixelSize: 10 }
-          Rectangle {
-            width: parent.width; height: 68; radius: 11; color: root.surface
-            Column {
-              anchors.fill: parent; anchors.margins: 10; spacing: 6
-              Text { text: "IP address    " + (root.systemData.ipAddress || "Unavailable"); color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
-              Text { text: "Gateway       " + (root.systemData.gateway || "Unavailable"); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
-              Text { text: "Type          " + (root.systemData.connectionType || "None"); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
+            ControlSwitch {
+              visible: root.systemData.wifiAvailable
+              anchors.verticalCenter: parent.verticalCenter
+              checked: root.systemData.wifiEnabled
+              busy: root.controlBusy("wifi", "toggle")
+              onToggled: if (root.runControl("wifi", "toggle")) root.patchSystemData({ wifiEnabled: !root.systemData.wifiEnabled })
             }
           }
+          Row {
+            width: parent.width; height: 22
+            Text { width: parent.width * 0.64; text: root.systemData.connection || "Disconnected"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 12; font.bold: true }
+            Text { width: parent.width * 0.36; text: root.systemData.connectivity; color: root.systemData.connectivity === "full" ? root.green : root.yellow; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
+          }
+          Rectangle {
+            width: parent.width; height: 60; radius: root.radius; color: root.surface
+            Column {
+              anchors.fill: parent; anchors.margins: 9; spacing: 4
+              Text { text: "IP address    " + (root.systemData.ipAddress || "Unavailable"); color: root.text; font.family: root.fontFamily; font.pixelSize: 9 }
+              Text { text: "Gateway       " + (root.systemData.gateway || "Unavailable") + " · " + (root.systemData.connectionType || "None"); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+            }
+          }
+
+          Text { text: "PRIVATE NETWORKS"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
+
+          Rectangle {
+            id: tailscaleCard
+            readonly property var state: root.systemData.tailscale || ({})
+            readonly property string action: state.connected ? "down" : state.needsLogin ? "login" : "up"
+            readonly property bool busy: root.controlBusy("tailscale", action)
+            readonly property bool failed: root.controlFailed("tailscale", action)
+            width: parent.width; height: 66; radius: root.radius
+            color: failed ? root.dangerTint : state.connected ? root.activeTint : root.surface
+            Row {
+              anchors.fill: parent; anchors.margins: 10; spacing: 9
+              Text { width: 24; anchors.verticalCenter: parent.verticalCenter; text: "󰛳"; color: tailscaleCard.state.connected ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 17; horizontalAlignment: Text.AlignHCenter }
+              Column {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - 82
+                spacing: 3
+                Text { text: "Tailscale"; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+                Text { width: parent.width; text: tailscaleCard.failed ? "Action failed" : root.tailscaleDetail(); elide: Text.ElideRight; color: tailscaleCard.failed ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 8 }
+              }
+              ControlSwitch {
+                anchors.verticalCenter: parent.verticalCenter
+                enabled: !!tailscaleCard.state.available
+                checked: !!tailscaleCard.state.connected
+                busy: tailscaleCard.busy
+                onToggled: root.runControl("tailscale", tailscaleCard.action)
+              }
+            }
+          }
+
+          Rectangle {
+            id: protonVpnCard
+            readonly property var state: root.systemData.protonVpn || ({})
+            readonly property string action: state.connected ? "disconnect" : "connect"
+            readonly property bool busy: root.controlBusy("proton-vpn", action)
+            readonly property bool failed: root.controlFailed("proton-vpn", action)
+            width: parent.width; height: 66; radius: root.radius
+            color: failed ? root.dangerTint : state.connected ? root.activeTint : root.surface
+            Row {
+              anchors.fill: parent; anchors.margins: 10; spacing: 9
+              Text { width: 24; anchors.verticalCenter: parent.verticalCenter; text: "󰒃"; color: protonVpnCard.state.connected ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 17; horizontalAlignment: Text.AlignHCenter }
+              Column {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - 123
+                spacing: 3
+                Text { text: "Proton VPN"; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+                Text { width: parent.width; text: protonVpnCard.failed ? "Quick connect failed · open the app" : root.protonVpnDetail(); elide: Text.ElideRight; color: protonVpnCard.failed ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 8 }
+              }
+              Rectangle {
+                width: 32; height: 32; radius: root.radius
+                anchors.verticalCenter: parent.verticalCenter
+                color: protonAppMouse.pressed ? root.pressColor : protonAppMouse.containsMouse ? root.hoverColor : root.mantle
+                Text { anchors.centerIn: parent; text: "󰏌"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 12 }
+                MouseArea { id: protonAppMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.runControl("proton-vpn", "open") }
+                HoverTip { mouse: protonAppMouse; text: "Open Proton VPN for sign-in and location selection" }
+              }
+              ControlSwitch {
+                anchors.verticalCenter: parent.verticalCenter
+                enabled: !!protonVpnCard.state.available
+                checked: !!protonVpnCard.state.connected
+                busy: protonVpnCard.busy
+                onToggled: root.runControl("proton-vpn", protonVpnCard.action)
+              }
+            }
+          }
+
           Row {
             width: parent.width; spacing: 8
             Repeater {
@@ -2157,9 +3134,20 @@ ShellRoot {
               ]
               Rectangle {
                 required property var modelData
-                width: (parent.width - 8) / 2; height: 42; radius: 10; color: networkActionMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
-                Text { anchors.centerIn: parent; text: modelData.label; color: root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
-                MouseArea { id: networkActionMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl(parent.modelData.action, parent.modelData.value) }
+                readonly property bool busy: root.controlBusy(modelData.action, modelData.value)
+                readonly property bool complete: root.controlCompleted(modelData.action, modelData.value)
+                readonly property bool failed: root.controlFailed(modelData.action, modelData.value)
+                width: (parent.width - 8) / 2; height: 38; radius: root.radius
+                color: networkActionMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : networkActionMouse.containsMouse ? root.hoverColor : root.surface
+                Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "× Failed" : parent.complete ? (modelData.action === "copy-ip" ? "✓ Copied" : "✓ Opened") : modelData.label; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
+                RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 18; height: 18; spinning: visible; font.pixelSize: 13 }
+                MouseArea {
+                  id: networkActionMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.runControl(parent.modelData.action, parent.modelData.value)
+                }
               }
             }
           }
@@ -2178,9 +3166,9 @@ ShellRoot {
       readonly property var devices: root.bluetoothDevices()
       readonly property int listHeight: Math.min(6, devices.length) * 44
       screen: modelData
-      visible: root.controlPanel === "bluetooth" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "bluetooth" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 360
       implicitHeight: root.systemData.bluetoothPowered ? 124 + (devices.length === 0 ? 26 : listHeight) : 88
       exclusionMode: ExclusionMode.Ignore
@@ -2188,10 +3176,9 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-bluetooth"
 
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.98); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 10
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Row {
             width: parent.width; spacing: 8
             Column {
@@ -2206,20 +3193,37 @@ ShellRoot {
                 font.pixelSize: 11
               }
             }
-            ControlSwitch { anchors.verticalCenter: parent.verticalCenter; checked: root.systemData.bluetoothPowered; onToggled: root.runControl("bluetooth", "toggle") }
+            ControlSwitch {
+              anchors.verticalCenter: parent.verticalCenter
+              checked: root.systemData.bluetoothPowered
+              busy: bluetoothProcess.running && root.bluetoothAction === "toggle"
+              onToggled: root.toggleBluetoothPower()
+            }
           }
           Row {
             visible: root.systemData.bluetoothPowered
             width: parent.width; spacing: 8
             Text {
-              width: parent.width - 48
+              width: parent.width - 42
               anchors.verticalCenter: parent.verticalCenter
-              text: root.systemData.bluetoothScanning ? "Searching for devices…" : "Search for new devices"
-              color: root.systemData.bluetoothScanning ? root.accent : root.subtext
+              text: root.bluetoothScanActive ? "Searching for devices…" : "Search for new devices"
+              color: root.bluetoothScanActive ? root.accent : root.subtext
               font.family: root.fontFamily
               font.pixelSize: 11
             }
-            ControlSwitch { anchors.verticalCenter: parent.verticalCenter; checked: root.systemData.bluetoothScanning; onToggled: root.runBluetooth("scan", "toggle") }
+            Rectangle {
+              width: 34; height: 34; radius: root.radius
+              color: bluetoothScanMouse.pressed ? root.pressColor : root.bluetoothScanActive ? root.activeTint : bluetoothScanMouse.containsMouse ? root.hoverColor : "transparent"
+              RefreshGlyph { anchors.centerIn: parent; width: 20; height: 20; spinning: root.bluetoothScanActive }
+              MouseArea {
+                id: bluetoothScanMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.setBluetoothScanning(!root.bluetoothScanActive)
+              }
+              HoverTip { mouse: bluetoothScanMouse; text: root.bluetoothScanActive ? "Stop searching" : "Search for 30 seconds" }
+            }
           }
           ListView {
             visible: root.systemData.bluetoothPowered && bluetoothWindow.devices.length > 0
@@ -2230,10 +3234,11 @@ ShellRoot {
             model: bluetoothWindow.devices
             delegate: Rectangle {
               required property var modelData
+              readonly property bool busy: root.bluetoothBusy === modelData.address
               readonly property bool forgetArmed: root.bluetoothForget === modelData.address
-              readonly property bool rowActions: modelData.paired && (deviceMouse.containsMouse || forgetMouse.containsMouse || autoConnectMouse.containsMouse || forgetArmed)
-              width: ListView.view.width; height: 40; radius: 8
-              color: deviceMouse.containsMouse ? root.alpha(root.accent, 0.2) : modelData.connected ? root.alpha(root.accent, 0.1) : root.alpha(root.surface, 0.55)
+              readonly property bool rowActions: !busy && modelData.paired && (deviceMouse.containsMouse || forgetMouse.containsMouse || autoConnectMouse.containsMouse || forgetArmed)
+              width: ListView.view.width; height: 40; radius: root.radius
+              color: deviceMouse.pressed ? root.pressColor : busy ? root.selectedColor : deviceMouse.containsMouse ? root.hoverColor : modelData.connected ? root.activeTint : root.alpha(root.surface, 0.55)
               Row {
                 anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 10
                 Text {
@@ -2259,23 +3264,24 @@ ShellRoot {
                 }
                 Text {
                   anchors.verticalCenter: parent.verticalCenter
-                  visible: !rowActions
+                  visible: !rowActions && !parent.parent.busy
                   text: root.bluetoothSignal(modelData)
                   color: root.overlay
                   font.family: root.fontFamily
                   font.pixelSize: 11
                 }
               }
-              MouseArea { id: deviceMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.toggleBluetoothDevice(parent.modelData) }
+              RefreshGlyph { visible: parent.busy; anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
+              MouseArea { id: deviceMouse; anchors.fill: parent; enabled: !parent.busy; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleBluetoothDevice(parent.modelData) }
               Rectangle {
                 visible: rowActions
                 anchors.right: parent.right
                 anchors.rightMargin: 38
                 anchors.verticalCenter: parent.verticalCenter
-                width: 44; height: 24; radius: 12
-                color: modelData.trusted ? root.alpha(root.accent, 0.3) : autoConnectMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.alpha(root.surface, 0.95)
+                width: 44; height: 24; radius: root.radius
+                color: autoConnectMouse.pressed ? root.pressColor : modelData.trusted ? root.selectedColor : autoConnectMouse.containsMouse ? root.hoverColor : root.alpha(root.surface, 0.95)
                 Text { anchors.centerIn: parent; text: "Auto"; color: modelData.trusted ? root.accent : root.subtext; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
-                MouseArea { id: autoConnectMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runBluetooth("trust", modelData.address) }
+                MouseArea { id: autoConnectMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.runBluetooth("trust", modelData.address) }
                 HoverTip { mouse: autoConnectMouse; text: modelData.trusted ? "Autoconnect on" : "Autoconnect off" }
               }
               Rectangle {
@@ -2283,17 +3289,17 @@ ShellRoot {
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                width: 24; height: 24; radius: 12
-                color: forgetArmed ? root.alpha(root.red, 0.3) : forgetMouse.containsMouse ? root.alpha(root.red, 0.22) : root.alpha(root.surface, 0.95)
+                width: 24; height: 24; radius: root.radius
+                color: forgetMouse.pressed || forgetArmed ? root.dangerPress : forgetMouse.containsMouse ? root.dangerColor : root.alpha(root.surface, 0.95)
                 Text { anchors.centerIn: parent; text: "󰅖"; color: forgetArmed || forgetMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 11 }
-                MouseArea { id: forgetMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.forgetBluetoothDevice(modelData) }
+                MouseArea { id: forgetMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.forgetBluetoothDevice(modelData) }
               }
             }
           }
           Text {
             visible: root.systemData.bluetoothPowered && bluetoothWindow.devices.length === 0
             width: parent.width
-            text: root.systemData.bluetoothScanning ? "Looking for nearby devices…" : "No devices yet · turn on search"
+            text: root.bluetoothScanActive ? "Looking for nearby devices…" : "No devices yet · start a search"
             color: root.overlay
             font.family: root.fontFamily
             font.pixelSize: 10
@@ -2309,9 +3315,9 @@ ShellRoot {
     PanelWindow {
       required property var modelData
       screen: modelData
-      visible: root.controlPanel === "airpods" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "airpods" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 340
       implicitHeight: 252
       exclusionMode: ExclusionMode.Ignore
@@ -2319,10 +3325,9 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-airpods"
 
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.98); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 10
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Row {
             width: parent.width; spacing: 8
             AirpodsIcon { anchors.verticalCenter: parent.verticalCenter; width: 22; height: 22; tint: root.accent }
@@ -2346,10 +3351,14 @@ ShellRoot {
               model: [{label:"Off", mode:"off"}, {label:"ANC", mode:"anc"}, {label:"Aware", mode:"transparency"}, {label:"Adaptive", mode:"adaptive"}]
               Rectangle {
                 required property var modelData
-                width: (parent.width - 18) / 4; height: 40; radius: 8
-                color: airpodsModeMouse.containsMouse ? root.alpha(root.accent, 0.22) : root.surface
-                Text { anchors.centerIn: parent; text: modelData.label; color: root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
-                MouseArea { id: airpodsModeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl("airpods", parent.modelData.mode) }
+                readonly property bool busy: root.controlBusy("airpods", modelData.mode)
+                readonly property bool complete: root.controlCompleted("airpods", modelData.mode)
+                readonly property bool failed: root.controlFailed("airpods", modelData.mode)
+                width: (parent.width - 18) / 4; height: 40; radius: root.radius
+                color: airpodsModeMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : airpodsModeMouse.containsMouse ? root.hoverColor : root.surface
+                Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "×" : parent.complete ? "✓ " + modelData.label : modelData.label; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
+                RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
+                MouseArea { id: airpodsModeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.runControl("airpods", parent.modelData.mode) }
               }
             }
           }
@@ -2365,13 +3374,19 @@ ShellRoot {
             ControlSwitch {
               anchors.verticalCenter: parent.verticalCenter
               checked: root.systemData.airpodsEarDetection
-              onToggled: root.runControl("airpods", "ear-detection", "toggle")
+              busy: root.controlBusy("airpods", "ear-detection", "toggle")
+              onToggled: if (root.runControl("airpods", "ear-detection", "toggle")) root.patchSystemData({ airpodsEarDetection: !root.systemData.airpodsEarDetection })
             }
           }
           Rectangle {
-            width: parent.width; height: 38; radius: 8; color: airpodsDetailsMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
-            Text { anchors.centerIn: parent; text: "Battery and AirPods settings"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
-            MouseArea { id: airpodsDetailsMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl("airpods", "open") }
+            readonly property bool busy: root.controlBusy("airpods", "open")
+            readonly property bool complete: root.controlCompleted("airpods", "open")
+            readonly property bool failed: root.controlFailed("airpods", "open")
+            width: parent.width; height: 38; radius: root.radius
+            color: airpodsDetailsMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : airpodsDetailsMouse.containsMouse ? root.hoverColor : root.surface
+            Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "× Could not open" : parent.complete ? "✓ Opened" : "Battery and AirPods settings"; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+            RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
+            MouseArea { id: airpodsDetailsMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.runControl("airpods", "open") }
           }
         }
       }
@@ -2387,9 +3402,9 @@ ShellRoot {
       required property var modelData
       readonly property var entries: root.batteryEntries()
       screen: modelData
-      visible: root.controlPanel === "battery" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "battery" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 330
       implicitHeight: 74 + Math.max(1, Math.min(5, entries.length)) * 50
       exclusionMode: ExclusionMode.Ignore
@@ -2397,10 +3412,9 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-battery"
 
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.98); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 10
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Text { text: "Batteries"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
           ListView {
             visible: batteryWindow.entries.length > 0
@@ -2461,9 +3475,9 @@ ShellRoot {
         ? (root.systemData.notifications.history || [])
         : (root.systemData.notifications.items || [])
       screen: modelData
-      visible: root.controlPanel === "notifications" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "notifications" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 400
       implicitHeight: Math.min(520, 142 + Math.max(1, entries.length) * 66)
       exclusionMode: ExclusionMode.Ignore
@@ -2471,10 +3485,9 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-notifications"
 
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.98); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 10
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Row {
             width: parent.width
             Text {
@@ -2488,13 +3501,18 @@ ShellRoot {
             }
             Text { width: 40; anchors.verticalCenter: parent.verticalCenter; text: String(notificationWindow.entries.length); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 11; horizontalAlignment: Text.AlignRight }
             Text { width: 40; anchors.verticalCenter: parent.verticalCenter; leftPadding: 10; text: "DND"; color: root.systemData.dnd ? root.yellow : root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
-            ControlSwitch { anchors.verticalCenter: parent.verticalCenter; checked: root.systemData.dnd; onToggled: root.runControl("dnd", "") }
+            ControlSwitch {
+              anchors.verticalCenter: parent.verticalCenter
+              checked: root.systemData.dnd
+              busy: root.controlBusy("dnd", "")
+              onToggled: if (root.runControl("dnd", "")) root.patchSystemData({ dnd: !root.systemData.dnd })
+            }
           }
           Row {
             width: parent.width; spacing: 8
             Rectangle {
-              width: (parent.width - 8) / 2; height: 36; radius: 8
-              color: root.notificationHistoryOpen ? root.alpha(root.accent, 0.25) : historyMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
+              width: (parent.width - 8) / 2; height: 36; radius: root.radius
+              color: historyMouse.pressed ? root.pressColor : root.notificationHistoryOpen ? root.selectedColor : historyMouse.containsMouse ? root.hoverColor : root.surface
               Text {
                 anchors.centerIn: parent
                 text: root.notificationHistoryOpen ? "Back" : "History"
@@ -2503,14 +3521,18 @@ ShellRoot {
                 font.pixelSize: 10
                 font.bold: true
               }
-              MouseArea { id: historyMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.notificationHistoryOpen = !root.notificationHistoryOpen }
+              MouseArea { id: historyMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.notificationHistoryOpen = !root.notificationHistoryOpen }
               HoverTip { mouse: historyMouse; text: root.notificationHistoryOpen ? "Show current notifications" : "Show the past 24 hours" }
             }
             Rectangle {
-              width: (parent.width - 8) / 2; height: 36; radius: 8
-              color: clearMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
-              Text { anchors.centerIn: parent; text: "Clear"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
-              MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl("notifications", "clear") }
+              readonly property bool busy: root.controlBusy("notifications", "clear")
+              readonly property bool complete: root.controlCompleted("notifications", "clear")
+              readonly property bool failed: root.controlFailed("notifications", "clear")
+              width: (parent.width - 8) / 2; height: 36; radius: root.radius
+              color: clearMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : clearMouse.containsMouse ? root.hoverColor : root.surface
+              Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "× Failed" : parent.complete ? "✓ Cleared" : "Clear"; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+              RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
+              MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.clearNotifications() }
             }
           }
           ListView {
@@ -2524,7 +3546,7 @@ ShellRoot {
               id: notificationEntry
 
               required property var modelData
-              width: ListView.view.width; height: 60; radius: 8; color: root.surface
+              width: ListView.view.width; height: 60; radius: root.radius; color: root.surface
               Column {
                 anchors.fill: parent; anchors.margins: 9; spacing: 3
                 Row {
@@ -2532,15 +3554,18 @@ ShellRoot {
                   Text { width: parent.width - 84; text: modelData.summary || modelData.app_name || "Notification"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
                   Text { width: 58; text: root.agoText(modelData.time); color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
                   Rectangle {
+                    readonly property bool busy: root.controlBusy("notifications", "dismiss", String(notificationEntry.modelData.id))
                     visible: !root.notificationHistoryOpen
-                    width: visible ? 26 : 0; height: 20; radius: 6
-                    color: notificationDismissMouse.containsMouse ? root.alpha(root.red, 0.22) : "transparent"
-                    Text { anchors.centerIn: parent; text: "󰅖"; color: notificationDismissMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
+                    width: visible ? 26 : 0; height: 20; radius: root.radiusSmall
+                    color: notificationDismissMouse.pressed ? root.dangerPress : busy ? root.selectedColor : notificationDismissMouse.containsMouse ? root.dangerColor : "transparent"
+                    Text { visible: !parent.busy; anchors.centerIn: parent; text: "󰅖"; color: notificationDismissMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
+                    RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 14; height: 14; spinning: visible; font.pixelSize: 10 }
                     MouseArea {
                       id: notificationDismissMouse
                       anchors.fill: parent
                       hoverEnabled: true
-                      onClicked: root.runControl("notifications", "dismiss", String(notificationEntry.modelData.id))
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: root.dismissNotification(notificationEntry.modelData.id)
                     }
                   }
                 }
@@ -2568,25 +3593,24 @@ ShellRoot {
 
       required property var modelData
       screen: modelData
-      visible: root.controlPanel === "camera" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "camera" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 360
-      implicitHeight: 348
+      implicitHeight: 340
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-camera"
 
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.98); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 12
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Text { text: "Webcam"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
           Text { text: root.systemData.cameraActive ? "Camera is in use" : root.systemData.cameraDevices.length + " camera device" + (root.systemData.cameraDevices.length === 1 ? "" : "s"); color: root.systemData.cameraActive ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 11 }
           Text { width: parent.width; text: root.systemData.cameraDevices.length > 0 ? root.systemData.cameraDevices[0].name : "No camera detected"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
           Rectangle {
-            width: parent.width; height: 176; radius: 8; color: root.mantle; clip: true
+            width: parent.width; height: 176; radius: root.radius; color: root.mantle; clip: true
             Loader {
               id: cameraPreviewLoader
               anchors.fill: parent
@@ -2621,9 +3645,14 @@ ShellRoot {
               model: [{label:"Preview window", action:"camera-preview"}, {label:"Camera settings", action:"camera-settings"}]
               Rectangle {
                 required property var modelData
-                width: (parent.width - 8) / 2; height: 42; radius: 8; color: cameraActionMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
-                Text { anchors.centerIn: parent; text: modelData.label; color: root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
-                MouseArea { id: cameraActionMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl(parent.modelData.action, root.systemData.cameraDevice) }
+                readonly property bool busy: root.controlBusy(modelData.action, root.systemData.cameraDevice)
+                readonly property bool complete: root.controlCompleted(modelData.action, root.systemData.cameraDevice)
+                readonly property bool failed: root.controlFailed(modelData.action, root.systemData.cameraDevice)
+                width: (parent.width - 8) / 2; height: 42; radius: root.radius
+                color: cameraActionMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : cameraActionMouse.containsMouse ? root.hoverColor : root.surface
+                Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "× Failed" : parent.complete ? "✓ Opened" : modelData.label; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+                RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
+                MouseArea { id: cameraActionMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.runControl(parent.modelData.action, root.systemData.cameraDevice) }
               }
             }
           }
@@ -2638,26 +3667,19 @@ ShellRoot {
     PanelWindow {
       required property var modelData
       screen: modelData
-      visible: root.controlPanel === "system" && root.focusedScreen(modelData)
+      visible: root.controlPanel === "system" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
-      margins { top: 35; right: 5 }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 420
-      implicitHeight: 220
+      implicitHeight: 218
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-session"
 
-      Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        radius: 8
-        antialiasing: true
-        color: root.alpha(root.base, 0.98)
-        border.color: root.alpha(root.accent, 0.65)
-        border.width: 1
+      PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: 16; spacing: 12
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Text { text: "Power"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
           Grid {
             width: parent.width
@@ -2675,8 +3697,8 @@ ShellRoot {
               ]
               Rectangle {
                 required property var modelData
-                width: (parent.width - 16) / 3; height: 72; radius: 8
-                color: modelData.variant === "destructive" ? (sessionActionMouse.containsMouse ? root.alpha(root.red, 0.28) : root.alpha(root.red, 0.14)) : sessionActionMouse.containsMouse ? root.alpha(root.accent, 0.2) : root.surface
+                width: (parent.width - 16) / 3; height: 72; radius: root.radius
+                color: modelData.variant === "destructive" ? (sessionActionMouse.pressed ? root.dangerPress : sessionActionMouse.containsMouse ? root.dangerColor : root.dangerTint) : sessionActionMouse.pressed ? root.pressColor : sessionActionMouse.containsMouse ? root.hoverColor : root.surface
                 border.width: modelData.variant === "outline" ? 1 : 0
                 border.color: root.windowsCountdown >= 0 && modelData.action === "reboot-windows" ? root.yellow : root.accent
                 Column {
@@ -2689,6 +3711,7 @@ ShellRoot {
                   id: sessionActionMouse
                   anchors.fill: parent
                   hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     if (parent.modelData.action === "reboot-windows") root.toggleWindowsReboot()
                     else {
@@ -2711,17 +3734,16 @@ ShellRoot {
     PanelWindow {
       required property var modelData
       screen: modelData
-      visible: root.osdOpen && root.focusedScreen(modelData)
+      visible: root.osdOpen && root.pinnedScreen(root.osdScreen, modelData)
       anchors { top: true }
-      margins.top: 46
+      margins.top: root.barHeight + root.osdGap
       implicitWidth: 300
       implicitHeight: 58
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-osd"
-      Rectangle {
-        anchors.fill: parent; radius: 8; color: root.alpha(root.base, 0.96); border.color: root.alpha(root.accent, 0.65); border.width: 1
+      PanelSurface {
         Row {
           visible: root.osdKind === "volume"
           anchors.fill: parent; anchors.margins: 14; spacing: 12

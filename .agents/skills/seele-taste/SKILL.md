@@ -40,14 +40,20 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Manage the devices or connections a panel owns inside that panel rather than deferring to an external settings application. Confirm a destructive row action in place, and escalate a step that needs a human answer, such as a pairing passkey, to an interactive terminal instead of attempting it silently.
 - Let the user hide chrome they did not ask for, such as individual tray icons, and keep the hidden set reachable behind one affordance rather than dropping it.
 - Reuse a running helper application instead of spawning another instance, and keep a companion app's own autostart entry disabled when a managed service already runs it.
+- Integrate with a tool through its own lifecycle hooks or extension API before inferring state by observation, and declare those hooks in a layer that does not own the mutable file the tool writes itself, such as a managed drop-in or a system config layer. Keep the observational fallback for harnesses that expose nothing.
 
 ## Visual defaults
 
 - Default to dark **Catppuccin Mocha** with **Lavender** as the accent. Consume the repository's shared Catppuccin values instead of copying palette literals.
 - Prefer **Maple Mono NF CN** for terminal and monospace UI; Geist Mono is an available secondary font.
 - Favor rounded borders, small gaps, capsule or powerline-shaped status elements, restrained transparency, and background blur. Match shell popup radii to the compositor's normal window radius, and align screen-edge flyout offsets with its outer window gap.
-- Keep shell popouts and application launchers immediate. Reserve animation for small in-surface state changes rather than moving whole windows or layer surfaces. Avoid startup noise, tips, changelog clutter, and ornamental motion that slows interaction.
+- Round every shell surface on that one radius — panels, buttons, list rows, and menu bar entries alike — and derive shape, spacing, and the hover, press, selection, and semantic tints from a shared token block instead of per-widget literals. Reserve pill and circular shapes for switches, meters, and status dots.
+- Give shell chrome a textured, Zen-like material rather than flat fills: translucent surfaces the compositor blurs, a quiet vertical wash for depth, and a faint grain film over the content. Generate a texture asset at build time from a seeded script instead of committing an image.
+- Keep a popup on the screen that opened it until it closes. Track the output at open time rather than the compositor's focused monitor, which would otherwise move an open surface the moment the pointer crossed a screen edge.
+- Keep shell popouts, application launchers, and tooltips immediate. Reserve animation for small in-surface state changes rather than moving whole windows or layer surfaces. Avoid startup noise, tips, changelog clutter, and ornamental motion that slows interaction.
+- Acknowledge asynchronous popup actions immediately without changing control geometry. Animate an in-place refresh glyph only while work is active, and briefly show completion or failure when the resulting state is not self-evident.
 - Balance compactness with legibility: show useful state, icons, previews, and status, but remove redundant labels and inactive widgets.
+- Label a status entry with the stable identity of the thing it tracks — the application's name, not its current window title — and let the changing detail live in the entry's value or its tooltip. Read now playing as `<title> · <artist>`.
 - Use 24-hour time, ISO-style dates, and Europe/Berlin when a timezone must be chosen. The desktop language is primarily English; preserve the German keyboard layout where host input is concerned.
 
 ## Preferred stack
