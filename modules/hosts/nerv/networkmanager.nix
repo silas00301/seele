@@ -1,8 +1,18 @@
 { ... }:
 let
-  module = {
-    networking.networkmanager.enable = true;
-  };
+  module =
+    { config, ... }:
+    {
+      networking.networkmanager.enable = true;
+
+      services.tailscale = {
+        enable = true;
+        disableUpstreamLogging = true;
+        extraSetFlags = [ "--operator=${config.username}" ];
+        openFirewall = true;
+        useRoutingFeatures = "client";
+      };
+    };
 in
 {
   flake.modules.nixos.nerv-networkmanager = module;
