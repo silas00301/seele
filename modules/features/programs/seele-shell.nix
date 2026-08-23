@@ -195,7 +195,57 @@ let
         hl.bind("SUPER + K", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae cmd launch @seele/seele-shell:keybindings"))
       '';
     };
+  # Pi and OpenCode publish session state from extensions the Home Manager
+  # profile installs. Claude Code and Codex have no extension API but expose the
+  # same five lifecycle events through hooks, so both are configured at the
+  # system layer, where neither fights the mutable config those tools write for
+  # themselves and where Codex trusts the hooks without an approval prompt.
+  systemModule =
+    { lib, selfPackages, ... }:
+    let
+      hook = agent: status: "${selfPackages.seele-shell}/bin/seele-agent-hook ${agent} ${status}";
+      lifecycle = {
+        SessionStart = "input";
+        UserPromptSubmit = "working";
+        Stop = "input";
+        SessionEnd = "end";
+      };
+    in
+    {
+      environment.etc = {
+        "claude-code/managed-settings.d/50-seele-shell-status.json".text = builtins.toJSON {
+          hooks = lib.mapAttrs (_: status: [
+            {
+              hooks = [
+                {
+                  type = "command";
+                  command = hook "claude" status;
+                }
+              ];
+            }
+          ]) (lifecycle // { Notification = "input"; });
+        };
+
+        "codex/requirements.toml".text = ''
+          [features]
+          hooks = true
+
+          [hooks]
+        ''
+        + lib.concatStrings (
+          lib.mapAttrsToList (event: status: ''
+
+            [[hooks.${event}]]
+
+            [[hooks.${event}.hooks]]
+            type = "command"
+            command = "${hook "codex" status}"
+          '') (lifecycle // { PermissionRequest = "input"; })
+        );
+      };
+    };
 in
 {
   flake.modules.homeManager.seele-shell = homeModule;
+  flake.modules.nixos.seele-shell-agent-status = systemModule;
 }

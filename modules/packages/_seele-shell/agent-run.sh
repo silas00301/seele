@@ -7,7 +7,7 @@ shift
 state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell/agents
 mkdir -p "$state_dir"
 state_file=$state_dir/$agent-heuristic-$$.json
-started_at=$(date --iso-8601=seconds)
+started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Harnesses such as Claude Code do their work in helper processes, so measure
 # CPU time across the whole subtree instead of only the launched command.
@@ -53,7 +53,7 @@ write_state() {
     --arg status "$status" \
     --arg source "heuristic" \
     --arg startedAt "$started_at" \
-    --arg updatedAt "$(date --iso-8601=seconds)" \
+    --arg updatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg endedAt "$ended_at" \
     --argjson pid "$$" \
     --argjson exitCode "$exit_code" \
@@ -91,5 +91,5 @@ set +e
 wait "$child"
 exit_code=$?
 set -e
-write_state finished "$(date --iso-8601=seconds)" "$exit_code"
+write_state finished "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$exit_code"
 exit "$exit_code"

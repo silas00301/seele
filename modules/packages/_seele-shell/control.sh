@@ -6,6 +6,11 @@ tray_config=$seele_config_dir/tray.json
 librepods_config=${XDG_CONFIG_HOME:-$HOME/.config}/AirPodsTrayApp/AirPodsTrayApp.conf
 bluetooth_scan_pidfile=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-scan.pid
 bluetooth_scan_timeout=180
+agent_state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell/agents
+
+timestamp() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
 
 percent_for() {
   awk '{ printf "%d", $2 * 100 }' <<<"$1"
@@ -30,26 +35,118 @@ audio_devices() {
   ' <<<"$1"
 }
 
-agent_processes() {
+agent_root_pids() {
   # Reading /proc through awk keeps this in the tens of milliseconds; a shell
   # loop over every pid made each control action feel sluggish.
   {
     awk 'FNR == 1 {
+      split(FILENAME, path, "/")
       name = $0
       sub(/^\./, "", name)
       sub(/-wrapp(ed)?$/, "", name)
-      if (name == "pi" || name == "opencode" || name == "codex" || name == "claude") print name
+      if (name ~ /^(pi|opencode|codex|claude)$/) print path[3], name
     }' /proc/[0-9]*/comm 2>/dev/null
     awk 'BEGIN { RS = "\0" }
       FNR == 1 {
+        split(FILENAME, path, "/")
         name = $0
         sub(/.*\//, "", name)
         sub(/^\./, "", name)
         sub(/-wrapp(ed)?$/, "", name)
-        if (name ~ /^(pi|opencode|codex|claude)$/) print name
+        if (name ~ /^(pi|opencode|codex|claude)$/) print path[3], name
         nextfile
       }' /proc/[0-9]*/cmdline 2>/dev/null
-  } | jq -Rsc 'split("\n") | map(select(length > 0)) | unique'
+  } | sort -u
+}
+
+# Harnesses without a lifecycle integration still reveal whether they are
+# thinking or waiting for the user: a session that burns no CPU across several
+# refreshes is waiting. Measure whole subtrees, because Claude Code and Pi do
+# their work in helper processes.
+agent_cpu_records() {
+  local roots subtrees sample_file previous now records
+  roots=$(agent_root_pids)
+  if [[ -z $roots ]]; then
+    printf '[]'
+    return
+  fi
+
+  subtrees=$(awk -v roots="$roots" '
+    BEGIN {
+      total = split(roots, lines, "\n")
+      for (i = 1; i <= total; i++) {
+        split(lines[i], entry, " ")
+        if (entry[1] != "") owner[entry[1]] = entry[2]
+      }
+    }
+    {
+      pid = $1
+      match($0, /\(.*\)/)
+      rest = substr($0, RSTART + RLENGTH + 2)
+      split(rest, fields, " ")
+      parent[pid] = fields[2]
+      ticks[pid] = fields[12] + fields[13]
+      pids[++count] = pid
+    }
+    END {
+      for (root in owner) {
+        delete member
+        member[root] = 1
+        changed = 1
+        while (changed) {
+          changed = 0
+          for (i = 1; i <= count; i++) {
+            if (!(pids[i] in member) && (parent[pids[i]] in member)) {
+              member[pids[i]] = 1
+              changed = 1
+            }
+          }
+        }
+        total = 0
+        for (i = 1; i <= count; i++) {
+          if (pids[i] in member) total += ticks[pids[i]]
+        }
+        print root, owner[root], total
+      }
+    }
+  ' /proc/[0-9]*/stat 2>/dev/null)
+
+  sample_file=$agent_state_dir/.cpu-sample.json
+  previous='{}'
+  [[ -r $sample_file ]] && previous=$(jq -c 'if type == "object" then . else {} end' "$sample_file" 2>/dev/null || printf '{}')
+  now=$(date +%s)
+
+  records=$(jq -Rsc \
+    --argjson previous "$previous" \
+    --argjson now "$now" \
+    --arg updatedAt "$(timestamp)" '
+    split("\n")
+    | map(select(length > 0) | split(" ") | {pid: (.[0] | tonumber), agent: .[1], ticks: (.[2] | tonumber)})
+    | map(. as $sample
+        | ($previous[$sample.pid | tostring] // null) as $last
+        | (if $last == null then 0 else ($now - ($last.at // $now)) end) as $elapsed
+        | (if $last == null then 0 else ($sample.ticks - ($last.ticks // $sample.ticks)) end) as $burnt
+        | (if $last == null or $elapsed <= 0 or $burnt > (2 * $elapsed) then 0
+           else (($last.idle // 0) + $elapsed) end) as $quiet
+        | $sample + {
+            source: "cpu",
+            at: $now,
+            idle: $quiet,
+            updatedAt: $updatedAt,
+            status: (if $quiet >= 20 then "input" else "working" end)
+          })
+  ' <<<"$subtrees")
+
+  mkdir -p "$agent_state_dir"
+  local tmp
+  tmp=$(mktemp "$agent_state_dir/.cpu-sample.XXXXXX")
+  if jq -c 'map({key: (.pid | tostring), value: {ticks, at, idle}}) | from_entries' <<<"$records" >"$tmp"; then
+    mv "$tmp" "$sample_file"
+  else
+    rm -f "$tmp"
+  fi
+
+  printf '%s' "$records"
 }
 
 screen_recording() {
@@ -69,47 +166,61 @@ screen_recording() {
   fi
 }
 
-live_agent_records() {
-  local records=$1 pid
-  while IFS= read -r pid; do
-    if [[ $pid =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
-      printf '%s\n' "$pid"
-    fi
+# A record only describes a session while its process is alive. Runs that ended
+# stay visible briefly so a completed launch can report itself, then their files
+# are removed instead of pinning a stale status to the cockpit forever.
+agent_records() {
+  local files=() records pid live now
+  if [[ -d $agent_state_dir ]]; then
+    shopt -s nullglob
+    files=("$agent_state_dir"/*.json)
+    shopt -u nullglob
+  fi
+  if ((${#files[@]} == 0)); then
+    printf '[]'
+    return
+  fi
+
+  records=$(jq -c '. + {file: input_filename}' "${files[@]}" 2>/dev/null |
+    jq -sc 'map(select(type == "object" and (.agent | type) == "string"))' 2>/dev/null || printf '[]')
+
+  live=$(while IFS= read -r pid; do
+    [[ $pid =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null && printf '%s\n' "$pid"
   done < <(jq -r '.[].pid // empty' <<<"$records") |
-    jq -Rsc 'split("\n") | map(select(length > 0) | tonumber) | unique' |
-    jq -c --argjson records "$records" '. as $pids | $records | map(select(.pid as $pid | $pids | index($pid)))'
+    jq -Rsc 'split("\n") | map(select(length > 0) | tonumber) | unique')
+  now=$(date +%s)
+
+  records=$(jq -c --argjson live "$live" --argjson now "$now" '
+    map(. + {
+      live: (((.pid // -1) as $pid | $live | index($pid)) != null),
+      age: ($now - ((.updatedAt // .endedAt // .startedAt // "") | fromdateiso8601? // 0))
+    })' <<<"$records")
+
+  while IFS= read -r file; do
+    [[ -n $file ]] && rm -f "$file"
+  done < <(jq -r '.[] | select((.live | not) and .age >= 300) | .file // empty' <<<"$records")
+
+  jq -c 'map(select(.live or .age < 300))' <<<"$records"
 }
 
 agent_states() {
-  local state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell/agents
-  local files=() records running live
-  if [[ -d $state_dir ]]; then
-    shopt -s nullglob
-    files=("$state_dir"/*.json)
-    shopt -u nullglob
-  fi
-  if ((${#files[@]} > 0)); then
-    records=$(jq -s 'map(select(type == "object" and (.agent | type) == "string"))' "${files[@]}" 2>/dev/null || printf '[]')
-  else
-    records='[]'
-  fi
-  running=$(agent_processes)
-  live=$(live_agent_records "$records")
-  jq -nc --argjson records "$records" --argjson running "$running" --argjson live "$live" '
-    def timestamp: .updatedAt // .endedAt // .startedAt // "";
+  local records sampled
+  records=$(agent_records)
+  sampled=$(agent_cpu_records)
+  jq -nc --argjson records "$records" --argjson sampled "$sampled" '
+    def ordered: sort_by(.updatedAt // .endedAt // .startedAt // "");
     def status($items):
       if any($items[]; .status == "input") then "input"
       elif any($items[]; .status == "working") then "working"
-      elif any($items[]; .status == "running") then "running"
-      else ($items | sort_by(timestamp) | last | .status // "running")
+      else ($items | ordered | last | .status // "running")
       end;
-    reduce (([$running[], $records[].agent] | unique)[]) as $agent ({};
-      ($records | map(select(.agent == $agent)) | sort_by(timestamp)) as $saved
-      | ($live | map(select(.agent == $agent and .source == "native"))) as $native
-      | ($live | map(select(.agent == $agent and .source != "native"))) as $heuristic
-      | ((($running | index($agent)) != null) or (($native + $heuristic) | length > 0)) as $active
-      | ($saved | last // {agent:$agent}) as $latest
-      | (($native | sort_by(timestamp) | last) // ($heuristic | sort_by(timestamp) | last) // $latest) as $base
+    reduce (([$records[].agent, $sampled[].agent] | unique)[]) as $agent ({};
+      ($records | map(select(.agent == $agent)) | ordered) as $saved
+      | ($saved | map(select(.live and .source == "native"))) as $native
+      | ($saved | map(select(.live and .source != "native"))) as $heuristic
+      | ($sampled | map(select(.agent == $agent))) as $running
+      | ((($native + $heuristic + $running) | length) > 0) as $active
+      | (($native | last) // ($heuristic | last) // ($running | last) // ($saved | last) // {agent: $agent}) as $base
       | . + { ($agent): (
           $base + {
             agent: $agent,
@@ -117,12 +228,13 @@ agent_states() {
             status: (
               if ($native | length) > 0 then status($native)
               elif ($heuristic | length) > 0 then status($heuristic)
-              elif $active then "running"
-              elif ($latest.status == "working" or $latest.status == "input" or $latest.status == "running") then "idle"
-              else ($latest.status // "idle")
+              elif ($running | length) > 0 then status($running)
+              elif ($saved | length) > 0 then ($saved | last | .status // "idle")
+              else "idle"
               end
             )
           }
+          | del(.file, .live, .age, .ticks, .at, .idle)
         ) }
     )
   '

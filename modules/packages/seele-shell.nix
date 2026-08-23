@@ -68,6 +68,7 @@
               esbuild keybindings.tsx --bundle --platform=node --format=cjs --external:@raycast/api --external:react --external:react/jsx-runtime --outfile="$out/share/vicinae/extensions/seele-shell/keybindings.js"
 
               install -m755 ${./_seele-shell/agent-state.sh} "$out/libexec/seele-shell/agent-state"
+              install -m755 ${./_seele-shell/agent-hook.sh} "$out/libexec/seele-shell/agent-hook"
               install -m755 ${./_seele-shell/agent-launch.sh} "$out/libexec/seele-shell/agent-launch"
               install -m755 ${./_seele-shell/agent-run.sh} "$out/libexec/seele-shell/agent-run"
               install -m755 ${./_seele-shell/control.sh} "$out/libexec/seele-shell/control"
@@ -85,6 +86,8 @@
               makeWrapper "$out/libexec/seele-shell/agent-launch" "$out/bin/seele-agent" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/agent-run" "$out/bin/seele-agent-run" \
+                --prefix PATH : "$out/bin:${runtimePath}"
+              makeWrapper "$out/libexec/seele-shell/agent-hook" "$out/bin/seele-agent-hook" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/control" "$out/bin/seele-control" \
                 --prefix PATH : "$out/bin:${runtimePath}"
@@ -110,7 +113,7 @@
               test -f "$out/share/vicinae/extensions/seele-shell/package.json"
               test -f "$out/share/vicinae/extensions/seele-shell/seele.js"
               test -f "$out/share/vicinae/extensions/seele-shell/keybindings.js"
-              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-control seele-shellctl seele-yubikey-watch; do
+              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-shellctl seele-yubikey-watch; do
                 test -x "$out/bin/$command"
               done
               bash -n "$out/libexec/seele-shell/"*
@@ -118,7 +121,8 @@
               bash ${./_seele-shell/tests/harness-status.sh} \
                 "$out/share/seele-shell/pi-status.ts" \
                 "$out/share/seele-shell/opencode-status.ts" \
-                "$out/libexec/seele-shell/control"
+                "$out/libexec/seele-shell/control" \
+                "$out/libexec/seele-shell/agent-hook"
 
               runHook postInstallCheck
             '';
