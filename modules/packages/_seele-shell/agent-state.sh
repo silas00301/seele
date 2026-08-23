@@ -24,8 +24,16 @@ collect() {
     printf '[]'
 }
 
-usage=$(collect usage)
-cost=$(collect cost)
+# Usage and cost are independent network-backed queries. Run them together so
+# an explicit cockpit refresh waits for the slower query, not both in series.
+collect usage >"$work_dir/usage.json" &
+usage_pid=$!
+collect cost >"$work_dir/cost.json" &
+cost_pid=$!
+wait "$usage_pid"
+wait "$cost_pid"
+usage=$(<"$work_dir/usage.json")
+cost=$(<"$work_dir/cost.json")
 
 jq -n \
   --argjson usage "$usage" \
