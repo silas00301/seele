@@ -15,14 +15,17 @@
               pkgs.findutils
               pkgs.gawk
               pkgs.ghostty
+              pkgs.git
               pkgs.hyprland
               pkgs.hyprlock
               pkgs.iproute2
               pkgs.jq
+              pkgs.jujutsu
               pkgs.librepods
               pkgs.mako
               pkgs.networkmanager
               pkgs.networkmanagerapplet
+              pkgs.ookla-speedtest
               pkgs.pipewire
               pkgs.playerctl
               pkgs.proton-vpn
@@ -80,6 +83,7 @@
               install -m755 ${./_seele-shell/agent-launch.sh} "$out/libexec/seele-shell/agent-launch"
               install -m755 ${./_seele-shell/agent-run.sh} "$out/libexec/seele-shell/agent-run"
               install -m755 ${./_seele-shell/control.sh} "$out/libexec/seele-shell/control"
+              install -m755 ${./_seele-shell/os-session.sh} "$out/libexec/seele-shell/os-session"
               install -m755 ${./_seele-shell/ctl.sh} "$out/libexec/seele-shell/ctl"
               install -m755 ${./_seele-shell/clock.sh} "$out/libexec/seele-shell/clock"
               install -m755 ${./_seele-shell/yubikey-watch.sh} "$out/libexec/seele-shell/yubikey-watch"
@@ -99,6 +103,8 @@
               makeWrapper "$out/libexec/seele-shell/agent-hook" "$out/bin/seele-agent-hook" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/control" "$out/bin/seele-control" \
+                --prefix PATH : "$out/bin:${runtimePath}"
+              makeWrapper "$out/libexec/seele-shell/os-session" "$out/bin/seele-os-session" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/ctl" "$out/bin/seele-shellctl" \
                 --set SEELE_SHELL_PATH "$out/share/seele-shell" \
@@ -131,7 +137,7 @@
               test -f "$out/share/vicinae/extensions/seele-shell/package.json"
               test -f "$out/share/vicinae/extensions/seele-shell/seele.js"
               test -f "$out/share/vicinae/extensions/seele-shell/keybindings.js"
-              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-shellctl seele-clock seele-yubikey-watch; do
+              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-os-session seele-shellctl seele-clock seele-yubikey-watch; do
                 test -x "$out/bin/$command"
               done
               bash -n "$out/libexec/seele-shell/"*

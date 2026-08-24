@@ -7,11 +7,22 @@ trap 'rm -rf "$work"' EXIT
 export XDG_STATE_HOME=$work/state
 
 result=$($clock list)
+# The list is derived from tzdata rather than curated, so it must carry the
+# whole database, name each zone's countries, and still reach a zone by either
+# of its abbreviations.
 jq -e '
   .pinned == []
+  and (.zones | length) > 200
   and any(.zones[]; .id == "UTC" and .zone == "UTC")
-  and any(.zones[]; .id == "PST" and (.aliases | contains("PST")))
   and any(.zones[]; .id == "Europe/London" and .flag == "🇬🇧" and .kind == "city")
+  and any(.zones[]; .id == "Asia/Kathmandu" and .flag == "🇳🇵" and .label == "Kathmandu")
+  and any(.zones[]; .id == "America/Argentina/Buenos_Aires" and .label == "Buenos Aires")
+  and any(.zones[]; .id == "America/Los_Angeles"
+    and (.aliases | contains("PST")) and (.aliases | contains("PDT"))
+    and (.aliases | contains("United States")))
+  and any(.zones[];
+    ([.id, .zone, .label, .aliases] | join(" ") | ascii_downcase | contains("utc+1")))
+  and all(.zones[]; .time != "" and .offset != "")
 ' <<<"$result" >/dev/null
 
 $clock pin Europe/London

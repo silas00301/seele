@@ -241,14 +241,14 @@ agent_states() {
 }
 
 notification_state() {
-  local active history times now state_file result
+  local active history times now state_file result temp
   state_file=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell/notification-times.json
   active=$(makoctl list -j 2>/dev/null || printf '[]')
   history=$(makoctl history -j 2>/dev/null || printf '[]')
   now=$(date +%s)
   times='{}'
   if [[ -r $state_file ]]; then
-    times=$(jq -c 'if type == "object" then . else {} end' "$state_file" 2>/dev/null || printf '{}')
+    times=$(jq -cs 'if length == 1 and (.[0] | type == "object") then .[0] else {} end' "$state_file" 2>/dev/null) || times='{}'
   fi
   # mako does not timestamp notifications, so remember when each id first
   # appeared and use that to build the 24 hour history view.
@@ -275,8 +275,48 @@ notification_state() {
         )
       }')
   mkdir -p "${state_file%/*}"
-  jq -c '.stamps' <<<"$result" >"$state_file.new" && mv "$state_file.new" "$state_file"
+  temp=$(mktemp "${state_file}.XXXXXX")
+  if jq -c '.stamps' <<<"$result" >"$temp"; then
+    mv "$temp" "$state_file"
+  else
+    rm -f "$temp"
+  fi
   jq -c 'del(.stamps)' <<<"$result"
+}
+
+speedtest_result() {
+  speedtest \
+    --accept-license \
+    --accept-gdpr \
+    --format=jsonl \
+    --progress=yes \
+    --progress-update-interval=250 \
+    | jq --unbuffered -ce '
+        if .type == "ping" then
+          {phase:"ping", ping:(.ping.latency // 0), jitter:(.ping.jitter // 0)}
+        elif .type == "download" then
+          {phase:"download", download:((.download.bandwidth // 0) * 8 / 1000000)}
+        elif .type == "upload" then
+          {phase:"upload", upload:((.upload.bandwidth // 0) * 8 / 1000000)}
+        elif .type == "result" then
+          {
+            ping:(.ping.latency // 0),
+            jitter:(.ping.jitter // 0),
+            download:((.download.bandwidth // 0) * 8 / 1000000),
+            upload:((.upload.bandwidth // 0) * 8 / 1000000),
+            server:(.server.name // "Ookla Speedtest")
+          }
+        else empty
+        end
+      '
+}
+
+launcher_toggle() {
+  if vicinae state open; then
+    vicinae close
+  else
+    vicinae open
+  fi
 }
 
 bluetooth_scan_active() {
@@ -522,7 +562,7 @@ proton_vpn_state() {
     return
   fi
   connection_line=$(nmcli -t -f TYPE,NAME connection show --active 2>/dev/null |
-    awk -F: 'tolower($0) ~ /proton[[:space:]_-]*vpn|protonvpn|pvpn/ && $1 ~ /^(vpn|wireguard|tun)$/ {print; exit}')
+    awk -F: 'tolower($0) ~ /proton[[:space:]_-]*vpn|protonvpn|pvpn/ && $1 ~ /^(vpn|wireguard|tun)$/ {print; exit}' || true)
   connection=${connection_line#*:}
   jq -nc \
     --argjson connected "$([[ -n $connection_line ]] && printf true || printf false)" \
@@ -543,7 +583,7 @@ status() {
   microphone_muted=false
   [[ $microphone == *MUTED* ]] && microphone_muted=true
 
-  connection_line=$(nmcli -t -f TYPE,NAME connection show --active 2>/dev/null | awk -F: '$1 ~ /(wireless|ethernet|wifi)/ {print; exit}')
+  connection_line=$(nmcli -t -f TYPE,NAME connection show --active 2>/dev/null | awk -F: '$1 ~ /(wireless|ethernet|wifi)/ {print; exit}' || true)
   connection_type=${connection_line%%:*}
   connection=${connection_line#*:}
   [[ -n $connection_line ]] || {
@@ -570,7 +610,7 @@ status() {
   voxtype_status=$(voxtype status 2>/dev/null | head -1 || printf 'unavailable')
   [[ -n $voxtype_status ]] || voxtype_status=unavailable
 
-  camera_devices=$(v4l2-ctl --list-devices 2>/dev/null |
+  camera_devices=$((v4l2-ctl --list-devices 2>/dev/null || true) |
     awk '/^[^[:space:]]/ {name=$0; sub(/:$/, "", name)} /^[[:space:]]*\/dev\/video/ {print name "\t" $1}' |
     jq -Rsc 'split("\n") | map(select(length > 0) | split("\t") | {name:.[0],device:.[1]})')
   camera_device=$(jq -r '.[0].device // ""' <<<"$camera_devices")
@@ -662,6 +702,8 @@ status() {
 
 case "${1:-status}" in
   status) status ;;
+  speedtest) speedtest_result ;;
+  launcher-toggle) launcher_toggle ;;
   bluetooth-status) bluetooth_state ;;
   volume)
     case "${2:-}" in

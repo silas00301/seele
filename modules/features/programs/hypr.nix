@@ -432,6 +432,15 @@ let
             float = true,
           })
 
+          -- The AI cockpit's session for changing Seele itself keeps its own
+          -- workspace, so a rebuild never buries the terminal running it.
+          hl.window_rule({
+            match = {
+              class = [[^org\.seele\.os-session$]],
+            },
+            workspace = "9",
+          })
+
           hl.layer_rule({
             match = {
               namespace = "gtk-layer-shell",

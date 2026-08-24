@@ -129,6 +129,7 @@ let
             padding = 14;
             text-color = colors.text.hex;
             width = 380;
+            "body~=\"^<html\"".format = "<b>%s</b>";
             "mode=do-not-disturb".invisible = true;
           };
         };
@@ -151,6 +152,9 @@ let
               "SEELE_SHELL_CODEX=${lib.getExe pkgs.codex}"
               "SEELE_SHELL_CLAUDE=${lib.getExe pkgs.claude-code}"
               "SEELE_SHELL_GHOSTTY=${lib.getExe pkgs.ghostty}"
+              "SEELE_SHELL_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
+              "SEELE_SHELL_NH=${lib.getExe config.programs.nh.package}"
+              "SEELE_SHELL_REPO=${config.programs.nh.flake}"
             ];
             ExecStart = lib.getExe package;
             Restart = "on-failure";

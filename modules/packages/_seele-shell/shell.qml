@@ -2,6 +2,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -48,6 +49,10 @@ ShellRoot {
   readonly property int panelMargin: 16
   readonly property int panelSpacing: 10
   readonly property int scrollGutter: 8
+  readonly property int scrollInset: 4
+  readonly property int panelHeaderHeight: 28
+  // Text needs more contrast than decorative borders and inactive glyphs.
+  readonly property color mutedText: subtext
   // Textured chrome. Surfaces stay translucent so the compositor's blur
   // shows through, a quiet vertical wash gives them depth, and a fixed grain
   // film keeps a large panel from reading as flat plastic.
@@ -150,6 +155,10 @@ ShellRoot {
   readonly property bool bluetoothScanActive: bluetoothScanIntent >= 0 ? bluetoothScanIntent === 1 : !!systemData.bluetoothScanning
   property string bluetoothForget: ""
   property string agentError: ""
+  property var speedtestData: ({ ping: -1, jitter: -1, download: -1, upload: -1, server: "" })
+  property string speedtestError: ""
+  property string speedtestPhase: ""
+  property bool speedtestReceived: false
   property date now: new Date()
 
   function alpha(color, opacity) {
@@ -167,6 +176,14 @@ ShellRoot {
   function pinnedScreen(pin, screen) {
     if (!screen) return false
     return pin === "" ? focusedScreen(screen) : pin === screen.name
+  }
+
+  function panelHere(panel, screen) {
+    return controlPanel === panel && pinnedScreen(overlayScreen, screen)
+  }
+
+  function agentsHere(screen) {
+    return agentsOpen && pinnedScreen(overlayScreen, screen)
   }
 
   function closeTrayMenu() {
@@ -188,7 +205,7 @@ ShellRoot {
 
   function toggleLauncher(mode) {
     closeOverlays()
-    Quickshell.execDetached(["vicinae", "toggle"])
+    Quickshell.execDetached(["seele-control", "launcher-toggle"])
   }
 
   function toggleAgents(screen) {
@@ -253,8 +270,8 @@ ShellRoot {
         }
         systemData = parsed
         root.statusInitialized = true
-        root.volumeDrag = -1
-        root.microphoneDrag = -1
+        if (root.volumeDrag >= 0 && Number(parsed.volume) === root.volumeDrag) root.volumeDrag = -1
+        if (root.microphoneDrag >= 0 && Number(parsed.microphoneVolume) === root.microphoneDrag) root.microphoneDrag = -1
         root.reconcileBluetoothScanIntent(!!parsed.bluetoothScanning)
       }
     } catch (error) {
@@ -570,6 +587,12 @@ ShellRoot {
     root.patchSystemData({ audioDevices: updated })
   }
 
+  function openCameraPreview(device) {
+    cameraPreviewLaunchTimer.device = String(device || "")
+    root.controlPanel = ""
+    cameraPreviewLaunchTimer.restart()
+  }
+
   function dismissNotification(id) {
     id = String(id)
     if (!root.runControl("notifications", "dismiss", id)) return
@@ -654,6 +677,89 @@ ShellRoot {
     var state = root.systemData.protonVpn || {}
     if (!state.available) return "Client unavailable"
     return state.connected ? (state.connection || "Connected") : "Disconnected · fastest server on connect"
+  }
+
+  function startSpeedtest() {
+    if (speedtestProcess.running) return
+    root.speedtestError = ""
+    root.speedtestPhase = "selecting"
+    root.speedtestReceived = false
+    root.speedtestData = { ping: -1, jitter: -1, download: -1, upload: -1, server: "" }
+    speedtestProcess.running = true
+  }
+
+  function patchSpeedtestData(patch) {
+    var next = {}
+    for (var key in root.speedtestData) next[key] = root.speedtestData[key]
+    for (var field in patch) next[field] = patch[field]
+    root.speedtestData = next
+  }
+
+  function handleSpeedtestEvent(output) {
+    try {
+      var parsed = JSON.parse(String(output || ""))
+      if (parsed.phase) {
+        root.speedtestPhase = String(parsed.phase)
+        var patch = {}
+        if (parsed.ping !== undefined) patch.ping = Number(parsed.ping)
+        if (parsed.jitter !== undefined) patch.jitter = Number(parsed.jitter)
+        if (parsed.download !== undefined) patch.download = Number(parsed.download)
+        if (parsed.upload !== undefined) patch.upload = Number(parsed.upload)
+        root.patchSpeedtestData(patch)
+      } else {
+        root.parseSpeedtestData(output)
+      }
+    } catch (error) {
+      root.speedtestError = "Speed test failed"
+    }
+  }
+
+  function parseSpeedtestData(output) {
+    try {
+      var parsed = JSON.parse(String(output || ""))
+      var ping = Number(parsed.ping)
+      var download = Number(parsed.download)
+      var upload = Number(parsed.upload)
+      if (isNaN(ping) || isNaN(download) || isNaN(upload)) throw new Error("missing speed values")
+      root.speedtestData = {
+        ping: ping,
+        jitter: Number(parsed.jitter || 0),
+        download: download,
+        upload: upload,
+        server: String(parsed.server || "Ookla Speedtest")
+      }
+      root.speedtestReceived = true
+      root.speedtestError = ""
+      root.speedtestPhase = ""
+    } catch (error) {
+      root.speedtestReceived = false
+      root.speedtestError = "Speed test failed"
+      root.speedtestPhase = ""
+    }
+  }
+
+  function speedtestPingText() {
+    if (root.speedtestError !== "") return "Failed"
+    var ping = Number(root.speedtestData.ping)
+    if (ping >= 0) return ping.toFixed(1) + " ms"
+    if (root.speedtestPhase === "selecting") return "Locating…"
+    if (root.speedtestPhase === "ping") return "Measuring…"
+    return "—"
+  }
+
+  function speedtestScale() {
+    var maximum = Math.max(Number(root.speedtestData.download || 0), Number(root.speedtestData.upload || 0))
+    if (maximum <= 100) return 100
+    if (maximum <= 250) return 250
+    if (maximum <= 500) return 500
+    if (maximum <= 1000) return 1000
+    return Math.ceil(maximum / 1000) * 1000
+  }
+
+  function speedtestValue(value) {
+    value = Number(value)
+    if (value < 0 || isNaN(value)) return "—"
+    return value.toFixed(value >= 100 ? 0 : 1) + " Mbps"
   }
 
   function audioDevices(kind) {
@@ -753,6 +859,11 @@ ShellRoot {
     }
   }
 
+  function startOsSession() {
+    closeOverlays()
+    Quickshell.execDetached(["seele-os-session"])
+  }
+
   function runAgent(id, prompt) {
     agentsOpen = false
     var args = ["seele-agent", id || "pi"]
@@ -798,6 +909,30 @@ ShellRoot {
     controlProcess.running = true
     if (action === "volume") root.showTimedOsd("volume")
     return true
+  }
+
+  function audioWheelSteps(wheel) {
+    var angle = Number(wheel.angleDelta.y)
+    if (angle !== 0) return (angle > 0 ? 1 : -1) * Math.max(1, Math.round(Math.abs(angle) / 120))
+    var pixels = Number(wheel.pixelDelta.y)
+    return pixels === 0 ? 0 : pixels > 0 ? 1 : -1
+  }
+
+  function adjustAudioFromWheel(wheel, microphone) {
+    var steps = root.audioWheelSteps(wheel)
+    if (steps === 0) return
+    var dragged = microphone ? root.microphoneDrag : root.volumeDrag
+    var reported = Number(microphone ? root.systemData.microphoneVolume : root.systemData.volume)
+    var current = dragged >= 0 ? dragged : isNaN(reported) ? 0 : reported
+    var adjusted = Math.max(0, Math.min(100, Math.round(current + steps * 5)))
+    if (microphone) {
+      root.microphoneDrag = adjusted
+      if (!microphoneDragTimer.running) microphoneDragTimer.start()
+    } else {
+      root.volumeDrag = adjusted
+      if (!volumeDragTimer.running) volumeDragTimer.start()
+    }
+    wheel.accepted = true
   }
 
   function toggleWindowsReboot() {
@@ -952,6 +1087,8 @@ ShellRoot {
         root.failedControlAction = root.pendingControlAction
         root.failedControlValue = root.pendingControlValue
         root.failedControlExtra = root.pendingControlExtra
+        if (root.pendingControlAction === "volume" && String(root.volumeDrag) === root.pendingControlValue) root.volumeDrag = -1
+        if (root.pendingControlAction === "microphone" && String(root.microphoneDrag) === root.pendingControlValue) root.microphoneDrag = -1
       }
       root.pendingControlAction = ""
       root.pendingControlValue = ""
@@ -973,6 +1110,22 @@ ShellRoot {
         root.bluetoothStatusRefreshQueued = false
         Qt.callLater(function() { bluetoothStatusProcess.running = true })
       }
+    }
+  }
+
+  Process {
+    id: speedtestProcess
+    command: ["seele-control", "speedtest"]
+    stdout: SplitParser {
+      onRead: data => root.handleSpeedtestEvent(data)
+    }
+    onExited: function(exitCode) {
+      Qt.callLater(function() {
+        if (exitCode !== 0 || !root.speedtestReceived) {
+          root.speedtestPhase = ""
+          root.speedtestError = "Speed test failed"
+        }
+      })
     }
   }
 
@@ -1038,6 +1191,15 @@ ShellRoot {
       root.failedControlValue = ""
       root.failedControlExtra = ""
     }
+  }
+
+  Timer {
+    id: cameraPreviewLaunchTimer
+
+    property string device: ""
+
+    interval: 400
+    onTriggered: root.runControl("camera-preview", device)
   }
 
   Timer {
@@ -1310,6 +1472,149 @@ ShellRoot {
     }
   }
 
+  // Qt cannot round an Image or a live video surface, so the source is drawn
+  // through a mask instead. The source item must hide itself; the effect draws
+  // it in its place.
+  component RoundedSource: Item {
+    id: roundedSource
+
+    property Item source: null
+    property real radius: root.radius
+
+    Item {
+      id: roundedMask
+
+      anchors.fill: parent
+      layer.enabled: true
+      visible: false
+
+      Rectangle {
+        anchors.fill: parent
+        radius: roundedSource.radius
+        color: "black"
+      }
+    }
+
+    MultiEffect {
+      anchors.fill: parent
+      source: roundedSource.source
+      maskEnabled: true
+      maskSource: roundedMask
+    }
+  }
+
+  // Every panel introduces itself with a glyph, the way the AI cockpit does.
+  component PanelGlyph: Text {
+    anchors.verticalCenter: parent.verticalCenter
+    width: 32
+    color: root.accent
+    font.family: root.fontFamily
+    font.pixelSize: 20
+    horizontalAlignment: Text.AlignLeft
+    verticalAlignment: Text.AlignVCenter
+    transform: Translate { x: 2 }
+  }
+
+  component SpeedGauge: Rectangle {
+    id: speedGauge
+
+    property string label: ""
+    property string icon: ""
+    property real value: -1
+    property real maximum: 100
+    property color tint: root.accent
+    property bool active: false
+    readonly property real ratio: Math.max(0, Math.min(1, value / Math.max(1, maximum)))
+    property real displayedRatio: ratio
+
+    radius: root.radius
+    color: root.mantle
+
+    Behavior on displayedRatio {
+      NumberAnimation { duration: 520; easing.type: Easing.OutCubic }
+    }
+
+    onDisplayedRatioChanged: gaugeCanvas.requestPaint()
+    onTintChanged: gaugeCanvas.requestPaint()
+
+    Text {
+      anchors.top: parent.top; anchors.topMargin: 8; anchors.horizontalCenter: parent.horizontalCenter
+      text: speedGauge.icon + "  " + speedGauge.label
+      color: speedGauge.tint
+      font.family: root.fontFamily
+      font.pixelSize: 8
+      font.bold: true
+    }
+
+    Canvas {
+      id: gaugeCanvas
+
+      anchors.fill: parent
+      onWidthChanged: requestPaint()
+      onHeightChanged: requestPaint()
+      onPaint: {
+        var context = getContext("2d")
+        context.clearRect(0, 0, width, height)
+        var centerX = width / 2
+        var radius = Math.min(width * 0.36, height * 0.42)
+        var centerY = height - radius * 0.55 - 8
+        var start = Math.PI * 0.82
+        var end = Math.PI * 2.18
+        var sweep = end - start
+
+        context.lineCap = "round"
+        context.lineWidth = 6
+        context.strokeStyle = root.alpha(root.overlay, 0.28)
+        context.beginPath()
+        context.arc(centerX, centerY, radius, start, end, false)
+        context.stroke()
+
+        if (speedGauge.displayedRatio > 0) {
+          context.strokeStyle = speedGauge.tint
+          context.beginPath()
+          context.arc(centerX, centerY, radius, start, start + sweep * speedGauge.displayedRatio, false)
+          context.stroke()
+        }
+
+        context.lineCap = "butt"
+        context.lineWidth = 1
+        context.strokeStyle = root.alpha(root.text, 0.34)
+        for (var tick = 0; tick <= 10; tick++) {
+          var tickAngle = start + sweep * tick / 10
+          var tickInner = radius - (tick % 5 === 0 ? 9 : 6)
+          var tickOuter = radius - 2
+          context.beginPath()
+          context.moveTo(centerX + Math.cos(tickAngle) * tickInner, centerY + Math.sin(tickAngle) * tickInner)
+          context.lineTo(centerX + Math.cos(tickAngle) * tickOuter, centerY + Math.sin(tickAngle) * tickOuter)
+          context.stroke()
+        }
+
+        var needleAngle = start + sweep * speedGauge.displayedRatio
+        context.lineCap = "round"
+        context.lineWidth = 2
+        context.strokeStyle = speedGauge.tint
+        context.beginPath()
+        context.moveTo(centerX, centerY)
+        context.lineTo(centerX + Math.cos(needleAngle) * (radius - 12), centerY + Math.sin(needleAngle) * (radius - 12))
+        context.stroke()
+        context.fillStyle = speedGauge.tint
+        context.beginPath()
+        context.arc(centerX, centerY, 3.5, 0, Math.PI * 2, false)
+        context.fill()
+      }
+    }
+
+    Text {
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.bottom: parent.bottom; anchors.bottomMargin: 12
+      text: speedGauge.active && speedGauge.value < 0 ? "Measuring…" : speedGauge.value < 0 ? "" : root.speedtestValue(speedGauge.value)
+      color: speedGauge.tint
+      font.family: root.fontFamily
+      font.pixelSize: 11
+      font.bold: true
+    }
+  }
+
   // Shared chrome for every floating panel, so panels differ only in what
   // they hold, never in how they are framed.
   component PanelSurface: Rectangle {
@@ -1333,40 +1638,65 @@ ShellRoot {
     policy: ScrollBar.AsNeeded
     implicitWidth: root.scrollGutter
     padding: 2
+    opacity: 1
+    visible: policy !== ScrollBar.AlwaysOff && (policy === ScrollBar.AlwaysOn || size < 1)
+    // An attached indicator is a sibling of the view's content, so without
+    // this it renders behind the rows it belongs to.
+    z: 2
+    // A list of every timezone would otherwise grind the handle down to a few
+    // pixels.
+    minimumSize: height > 0 ? Math.min(0.5, 36 / height) : 0
 
     background: Item {}
     contentItem: Rectangle {
       implicitWidth: root.scrollGutter - 4
       radius: width / 2
+      opacity: 1
       color: root.alpha(root.overlay, scrollBar.pressed ? 1 : 0.75)
     }
   }
 
   // Every bar entry is a rounded pill on the same radius as windows, buttons,
   // and panels, and takes its hover, press, and open state from here so the
-  // whole strip reacts identically.
-  component BarItem: Rectangle {
+  // whole strip reacts identically. The entry itself spans the bar's full
+  // height while only the pill is inset, so a pointer thrown at the top of the
+  // screen still lands on the entry under it.
+  component BarItem: Item {
     property bool hovered: false
     property bool active: false
 
     anchors.verticalCenter: parent.verticalCenter
-    height: root.barItemHeight
-    radius: root.radius
-    color: active ? root.selectedColor : hovered ? root.hoverColor : "transparent"
+    height: root.barHeight
 
-    Behavior on color { ColorAnimation { duration: 110 } }
+    Rectangle {
+      anchors.fill: parent
+      anchors.topMargin: root.barPadding
+      anchors.bottomMargin: root.barPadding
+      anchors.leftMargin: root.barSpacing / 2
+      anchors.rightMargin: root.barSpacing / 2
+      radius: root.radius
+      color: parent.active ? root.selectedColor : parent.hovered ? root.hoverColor : "transparent"
+
+      Behavior on color { ColorAnimation { duration: 110 } }
+    }
   }
 
   Timer {
     id: volumeDragTimer
-    interval: 80
-    onTriggered: if (root.volumeDrag >= 0) root.runControl("volume", String(root.volumeDrag))
+    interval: 32
+    onTriggered: {
+      if (root.volumeDrag < 0) return
+      if (!root.runControl("volume", String(root.volumeDrag))) restart()
+    }
   }
 
   Timer {
     id: microphoneDragTimer
-    interval: 80
-    onTriggered: if (root.microphoneDrag >= 0) root.runControl("microphone", String(root.microphoneDrag))
+    interval: 32
+    onTriggered: {
+      if (root.microphoneDrag < 0) return
+      if (!root.runControl("microphone", String(root.microphoneDrag))) restart()
+    }
   }
 
   // Wallpaper ----------------------------------------------------------------
@@ -1408,10 +1738,9 @@ ShellRoot {
 
       Row {
         anchors.left: parent.left
-        anchors.leftMargin: root.barPadding
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        spacing: root.barSpacing
+        spacing: 0
 
         BarItem {
           width: 30
@@ -1440,7 +1769,7 @@ ShellRoot {
             required property int modelData
             readonly property bool active: root.workspaceActive(modelData, barWindow.modelData)
             readonly property bool occupied: root.workspaceOccupied(modelData)
-            width: active ? 46 : 24
+            width: active ? 44 : 22
             height: parent.height
 
             Behavior on width {
@@ -1533,12 +1862,12 @@ ShellRoot {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        spacing: root.barSpacing
+        spacing: 0
 
         BarItem {
           width: localClock.implicitWidth + 14
           hovered: clockMouse.containsMouse
-          active: root.controlPanel === "clock"
+          active: root.panelHere("clock", barWindow.modelData)
           Text {
             id: localClock
             anchors.centerIn: parent
@@ -1555,7 +1884,7 @@ ShellRoot {
         BarItem {
           width: localDate.implicitWidth + 14
           hovered: dateMouse.containsMouse
-          active: root.controlPanel === "calendar"
+          active: root.panelHere("calendar", barWindow.modelData)
           Text {
             id: localDate
             anchors.centerIn: parent
@@ -1568,17 +1897,21 @@ ShellRoot {
           HoverTip { mouse: dateMouse; text: "Calendar" }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.systemData.microphoneMuted
-          anchors.verticalCenter: parent.verticalCenter
-          width: 26; height: 18; radius: root.radiusSmall
-          color: root.alpha(root.overlay, 0.35)
-          Text {
+          width: 30
+          hovered: microphoneMutedIndicator.containsMouse
+          Rectangle {
             anchors.centerIn: parent
-            text: "󰍭"
-            color: root.subtext
-            font.family: root.fontFamily
-            font.pixelSize: 12
+            width: 26; height: 18; radius: root.radiusSmall
+            color: root.alpha(root.overlay, 0.35)
+            Text {
+              anchors.centerIn: parent
+              text: "󰍭"
+              color: root.subtext
+              font.family: root.fontFamily
+              font.pixelSize: 12
+            }
           }
           MouseArea {
             id: microphoneMutedIndicator
@@ -1592,11 +1925,15 @@ ShellRoot {
           HoverTip { mouse: microphoneMutedIndicator; text: "Microphone muted · click to unmute" }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.systemData.microphoneActive && !root.systemData.microphoneMuted
-          anchors.verticalCenter: parent.verticalCenter
-          width: 9; height: 9; radius: 4.5
-          color: root.iosOrange
+          width: 20
+          hovered: microphoneActiveIndicator.containsMouse
+          Rectangle {
+            anchors.centerIn: parent
+            width: 9; height: 9; radius: 4.5
+            color: root.iosOrange
+          }
           MouseArea {
             id: microphoneActiveIndicator
             anchors.fill: parent
@@ -1609,20 +1946,28 @@ ShellRoot {
           HoverTip { mouse: microphoneActiveIndicator; text: "Microphone in use · click to mute" }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.systemData.cameraActive
-          anchors.verticalCenter: parent.verticalCenter
-          width: 9; height: 9; radius: 4.5
-          color: root.iosGreen
+          width: 20
+          hovered: cameraActiveIndicator.containsMouse
+          Rectangle {
+            anchors.centerIn: parent
+            width: 9; height: 9; radius: 4.5
+            color: root.iosGreen
+          }
           MouseArea { id: cameraActiveIndicator; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("camera", barWindow.modelData.name) }
           HoverTip { mouse: cameraActiveIndicator; text: "Camera in use" }
         }
 
-        Rectangle {
+        BarItem {
           visible: root.systemData.screenRecording
-          anchors.verticalCenter: parent.verticalCenter
-          width: 9; height: 9; radius: 4.5
-          color: root.iosRed
+          width: 20
+          hovered: screenRecordingIndicator.containsMouse
+          Rectangle {
+            anchors.centerIn: parent
+            width: 9; height: 9; radius: 4.5
+            color: root.iosRed
+          }
           MouseArea { id: screenRecordingIndicator; anchors.fill: parent; hoverEnabled: true }
           HoverTip { mouse: screenRecordingIndicator; text: "Screen is being recorded" }
         }
@@ -1630,10 +1975,9 @@ ShellRoot {
 
       Row {
         anchors.right: parent.right
-        anchors.rightMargin: root.barPadding
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        spacing: root.barSpacing
+        spacing: 0
 
         BarItem {
           id: deviceMediaItem
@@ -1653,6 +1997,7 @@ ShellRoot {
               Image {
                 id: deviceMediaArt
                 anchors.fill: parent
+                visible: false
                 source: deviceMediaItem.player ? String(deviceMediaItem.player.trackArtUrl || "") : ""
                 fillMode: Image.PreserveAspectCrop
                 sourceSize.width: width * 4
@@ -1661,7 +2006,12 @@ ShellRoot {
                 mipmap: true
                 asynchronous: true
                 cache: true
-                visible: status === Image.Ready
+              }
+              RoundedSource {
+                anchors.fill: parent
+                source: deviceMediaArt
+                radius: root.radiusSmall
+                visible: deviceMediaArt.status === Image.Ready
               }
               Text {
                 anchors.centerIn: parent
@@ -1704,6 +2054,7 @@ ShellRoot {
               Image {
                 id: spotifyMediaArt
                 anchors.fill: parent
+                visible: false
                 source: spotifyMediaItem.player ? String(spotifyMediaItem.player.trackArtUrl || "") : ""
                 fillMode: Image.PreserveAspectCrop
                 sourceSize.width: width * 4
@@ -1712,7 +2063,12 @@ ShellRoot {
                 mipmap: true
                 asynchronous: true
                 cache: true
-                visible: status === Image.Ready
+              }
+              RoundedSource {
+                anchors.fill: parent
+                source: spotifyMediaArt
+                radius: root.radiusSmall
+                visible: spotifyMediaArt.status === Image.Ready
               }
               Text {
                 anchors.centerIn: parent
@@ -1803,7 +2159,7 @@ ShellRoot {
           visible: root.systemData.cameraActive || (root.systemData.cameraDevices && root.systemData.cameraDevices.length > 0)
           width: 30
           hovered: cameraMouse.containsMouse
-          active: root.controlPanel === "camera"
+          active: root.panelHere("camera", barWindow.modelData)
           Text { anchors.centerIn: parent; text: root.systemData.cameraActive ? "󰄀" : "󰄁"; color: root.systemData.cameraActive ? root.red : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
           MouseArea { id: cameraMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("camera", barWindow.modelData.name) }
           HoverTip { mouse: cameraMouse; text: root.systemData.cameraActive ? "Camera in use" : "Camera" }
@@ -1864,7 +2220,7 @@ ShellRoot {
         BarItem {
           width: aiBarContent.implicitWidth + 14
           hovered: aiMouse.containsMouse
-          active: root.agentsOpen
+          active: root.agentsHere(barWindow.modelData)
           visible: root.agentData.launchers && root.agentData.launchers.length > 0
           Row {
             id: aiBarContent
@@ -1928,7 +2284,7 @@ ShellRoot {
           visible: root.systemData.airpodsConnected
           width: 30
           hovered: airpodsMouse.containsMouse
-          active: root.controlPanel === "airpods"
+          active: root.panelHere("airpods", barWindow.modelData)
           AirpodsIcon { anchors.centerIn: parent; tint: root.accent }
           MouseArea { id: airpodsMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("airpods", barWindow.modelData.name) }
           HoverTip { mouse: airpodsMouse; text: root.systemData.airpodsName || "AirPods" }
@@ -1938,7 +2294,7 @@ ShellRoot {
           visible: root.systemData.bluetoothAvailable
           width: 30
           hovered: bluetoothMouse.containsMouse
-          active: root.controlPanel === "bluetooth"
+          active: root.panelHere("bluetooth", barWindow.modelData)
           Text {
             anchors.centerIn: parent
             text: root.systemData.bluetoothPowered ? "󰂯" : "󰂲"
@@ -1953,7 +2309,7 @@ ShellRoot {
         BarItem {
           width: 30
           hovered: networkMouse.containsMouse
-          active: root.controlPanel === "network"
+          active: root.panelHere("network", barWindow.modelData)
           Text {
             anchors.centerIn: parent
             text: root.systemData.connection === "Disconnected" ? "󰖪" : root.systemData.connectionType.indexOf("wireless") >= 0 ? "󰖩" : "󰈀"
@@ -1972,9 +2328,12 @@ ShellRoot {
 
 
         BarItem {
+          id: audioBarItem
+
+          readonly property int shownVolume: root.volumeDrag >= 0 ? root.volumeDrag : Number(root.systemData.volume)
           width: audioBarContent.implicitWidth + 14
           hovered: audioMouse.containsMouse
-          active: root.controlPanel === "audio"
+          active: root.panelHere("audio", barWindow.modelData)
           Row {
             id: audioBarContent
             anchors.centerIn: parent
@@ -1982,21 +2341,34 @@ ShellRoot {
             spacing: 4
             Text {
               anchors.verticalCenter: parent.verticalCenter
-              text: root.systemData.muted ? "󰝟" : Number(root.systemData.volume) > 55 ? "󰕾" : "󰖀"
+              text: root.systemData.muted ? "󰝟" : audioBarItem.shownVolume > 55 ? "󰕾" : "󰖀"
               color: root.systemData.muted ? root.red : root.text
               font.family: root.fontFamily
               font.pixelSize: 14
             }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.volume + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: audioBarItem.shownVolume + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
           }
-          MouseArea { id: audioMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("audio", barWindow.modelData.name) }
-          HoverTip { mouse: audioMouse; text: "Volume · " + (root.systemData.muted ? "muted" : root.systemData.volume + "%") }
+          MouseArea {
+            id: audioMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+            onPressed: function(mouse) {
+              if (mouse.button === Qt.MiddleButton) {
+                if (root.runControl("volume", "mute")) root.patchSystemData({ muted: !root.systemData.muted })
+              } else {
+                root.toggleControl("audio", barWindow.modelData.name)
+              }
+            }
+            onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, false) }
+          }
+          HoverTip { mouse: audioMouse; text: "Volume · " + (root.systemData.muted ? "muted" : audioBarItem.shownVolume + "%") }
         }
 
         BarItem {
           width: notificationBarContent.implicitWidth + 14
           hovered: notificationMouse.containsMouse
-          active: root.controlPanel === "notifications"
+          active: root.panelHere("notifications", barWindow.modelData)
           Row {
             id: notificationBarContent
             anchors.centerIn: parent
@@ -2016,7 +2388,7 @@ ShellRoot {
           visible: root.batteryEntries().length > 0
           width: batteryBarContent.implicitWidth + 14
           hovered: batteryMouse.containsMouse
-          active: root.controlPanel === "battery"
+          active: root.panelHere("battery", barWindow.modelData)
           Row {
             id: batteryBarContent
             anchors.centerIn: parent
@@ -2044,7 +2416,7 @@ ShellRoot {
         BarItem {
           width: 30
           hovered: sessionMouse.containsMouse
-          active: root.controlPanel === "system"
+          active: root.panelHere("system", barWindow.modelData)
           Text { anchors.centerIn: parent; text: "󰐥"; color: root.windowsCountdown >= 0 ? root.yellow : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
           MouseArea { id: sessionMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("system", barWindow.modelData.name) }
           HoverTip { mouse: sessionMouse; text: "Power and session" }
@@ -2124,8 +2496,9 @@ ShellRoot {
           Row {
             width: parent.width
             height: 42
+            PanelGlyph { text: "󰃭"; font.pixelSize: 24 }
             Column {
-              width: parent.width - 84
+              width: parent.width - 116
               Text { text: Qt.formatDate(root.now, "dddd"); color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
               Text { text: Qt.formatDate(root.now, "d MMMM yyyy") + " · week " + Time.isoWeek(root.now); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
             }
@@ -2178,7 +2551,7 @@ ShellRoot {
                       width: parent.width / 8
                       height: 22
                       text: modelData
-                      color: modelData === "Wk" ? root.overlay : root.subtext
+                      color: root.mutedText
                       font.family: root.fontFamily
                       font.pixelSize: 9
                       font.bold: true
@@ -2208,11 +2581,11 @@ ShellRoot {
                       Text {
                         anchors.centerIn: parent
                         text: calendarCell.modelData.week ? "W" + calendarCell.modelData.label : calendarCell.modelData.day
-                        color: calendarCell.modelData.week ? root.overlay : calendarCell.modelData.today ? root.base : calendarCell.modelData.inMonth ? root.text : root.overlay
-                        opacity: calendarCell.modelData.week || calendarCell.modelData.inMonth || calendarCell.modelData.today ? 1 : 0.5
+                        color: calendarCell.modelData.week ? root.mutedText : calendarCell.modelData.today ? root.base : calendarCell.modelData.inMonth ? root.text : root.mutedText
+                        opacity: calendarCell.modelData.week || calendarCell.modelData.inMonth || calendarCell.modelData.today ? 1 : 0.72
                         font.family: root.fontFamily
-                        font.pixelSize: calendarCell.modelData.week ? 8 : 10
-                        font.bold: calendarCell.modelData.today
+                        font.pixelSize: calendarCell.modelData.week ? 9 : 10
+                        font.bold: !!calendarCell.modelData.today || !!calendarCell.modelData.week
                       }
                     }
                   }
@@ -2243,6 +2616,10 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
       WlrLayershell.namespace: "seele-shell-clock"
+      onVisibleChanged: if (visible) Qt.callLater(function() {
+        timezoneSearch.forceActiveFocus()
+        timezoneSearch.selectAll()
+      })
 
       PanelSurface {
         Column {
@@ -2253,8 +2630,9 @@ ShellRoot {
           Row {
             width: parent.width
             height: 42
+            PanelGlyph { text: "󰥔"; font.pixelSize: 24 }
             Column {
-              width: parent.width - 72
+              width: parent.width - 104
               Text { text: "World clock"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
               Text { text: "Select temporarily, or pin multiple zones to the top"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
             }
@@ -2351,7 +2729,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 76
                 Text { width: parent.width; text: modelData.time; color: root.accent; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignRight }
-                Text { width: parent.width; text: modelData.day; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 8; horizontalAlignment: Text.AlignRight }
+                Text { width: parent.width; text: modelData.day; color: root.mutedText; font.family: root.fontFamily; font.pixelSize: 8; horizontalAlignment: Text.AlignRight }
               }
               MouseArea {
                 id: timezoneRowMouse
@@ -2403,8 +2781,15 @@ ShellRoot {
           Row {
             width: parent.width
             height: 30
+            spacing: 8
+            IconImage {
+              visible: source !== ""
+              anchors.verticalCenter: parent.verticalCenter
+              implicitWidth: 18; implicitHeight: 18
+              source: root.activeTrayItem ? (root.activeTrayItem.icon || "") : ""
+            }
             Text {
-              width: parent.width - 106
+              width: parent.width - 132
               anchors.verticalCenter: parent.verticalCenter
               text: root.activeTrayItem ? (root.activeTrayItem.title || root.activeTrayItem.id || "Tray menu") : "Tray menu"
               elide: Text.ElideRight
@@ -2565,6 +2950,7 @@ ShellRoot {
 
           anchors.fill: parent
           anchors.margins: root.panelMargin
+          anchors.rightMargin: root.scrollInset
           clip: true
           contentWidth: width
           contentHeight: agentsContent.implicitHeight
@@ -2575,31 +2961,74 @@ ShellRoot {
           Column {
             id: agentsContent
 
-            width: agentsScroll.width - root.scrollGutter
+            width: agentsScroll.width - root.panelMargin + root.scrollInset
             spacing: 14
 
-            Row {
+            Item {
               width: parent.width
-              spacing: 10
-              Text { text: "󱚣"; color: root.accent; font.family: root.fontFamily; font.pixelSize: 28 }
+              height: 42
+
+              Text {
+                id: cockpitGlyph
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                text: "󱚣"
+                color: root.accent
+                font.family: root.fontFamily
+                font.pixelSize: 28
+              }
               Column {
-                width: parent.width - 110
+                anchors.left: cockpitGlyph.right
+                anchors.leftMargin: 10
+                anchors.right: cockpitRefresh.left
+                anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
                 Text { text: "AI cockpit"; color: root.text; font.family: root.fontFamily; font.pixelSize: 20; font.bold: true }
                 Text {
+                  width: parent.width
+                  elide: Text.ElideRight
                   text: root.agentRefreshing ? "Refreshing usage…" : root.agentError !== "" ? "Usage unavailable" : root.subscriptionSummary()
                   color: root.agentError !== "" ? root.red : root.subtext
                   font.family: root.fontFamily; font.pixelSize: 11
                 }
               }
               Rectangle {
+                id: cockpitRefresh
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
                 width: 34; height: 34; radius: root.radius
                 color: refreshMouse.pressed ? root.pressColor : root.agentRefreshing ? root.activeTint : refreshMouse.containsMouse ? root.hoverColor : "transparent"
                 RefreshGlyph { anchors.centerIn: parent; width: 20; height: 20; spinning: root.agentRefreshing }
                 MouseArea { id: refreshMouse; anchors.fill: parent; enabled: !root.agentRefreshing; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.refreshAgents() }
+                HoverTip { mouse: refreshMouse; text: "Refresh usage" }
               }
             }
 
-            Text { text: "LAUNCH"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+            Text { text: "CHANGE THIS SYSTEM"; color: root.mutedText; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+
+            Rectangle {
+              width: parent.width; height: 48; radius: root.radius
+              color: osSessionMouse.pressed ? root.pressColor : osSessionMouse.containsMouse ? root.hoverColor : root.surface
+              border.color: root.alpha(root.accent, 0.45)
+              border.width: 1
+              Row {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                spacing: 12
+                Text { anchors.verticalCenter: parent.verticalCenter; text: "󱄅"; color: root.accent; font.family: root.fontFamily; font.pixelSize: 22 }
+                Text { anchors.verticalCenter: parent.verticalCenter; width: parent.width - 46; text: "Describe a change to Seele"; color: root.text; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true }
+              }
+              MouseArea {
+                id: osSessionMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.startOsSession()
+              }
+            }
+
+            Text { text: "LAUNCH"; color: root.mutedText; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
 
             Grid {
               width: parent.width
@@ -2795,7 +3224,7 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 350
-      implicitHeight: 256 + outputHeight + inputHeight
+      implicitHeight: audioContent.implicitHeight + root.panelMargin * 2
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -2803,8 +3232,15 @@ ShellRoot {
 
       PanelSurface {
         Column {
+          id: audioContent
+
           anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
-          Text { text: "Audio"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          Row {
+            width: parent.width
+            height: root.panelHeaderHeight
+            PanelGlyph { text: "󰕾" }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Audio"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          }
           Row {
             width: parent.width; spacing: 8
             Rectangle {
@@ -2859,7 +3295,7 @@ ShellRoot {
                   volumeDragTimer.stop()
                   root.runControl("volume", String(root.volumeDrag))
                 }
-                onWheel: function(wheel) { root.runControl("volume", wheel.angleDelta.y > 0 ? "up" : "down") }
+                onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, false) }
               }
             }
             Rectangle {
@@ -2938,7 +3374,7 @@ ShellRoot {
                   microphoneDragTimer.stop()
                   root.runControl("microphone", String(root.microphoneDrag))
                 }
-                onWheel: function(wheel) { root.runControl("microphone", wheel.angleDelta.y > 0 ? "up" : "down") }
+                onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, true) }
               }
             }
             Rectangle {
@@ -3024,7 +3460,7 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 390
-      implicitHeight: 430
+      implicitHeight: networkContent.implicitHeight + root.panelMargin * 2
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -3032,10 +3468,13 @@ ShellRoot {
 
       PanelSurface {
         Column {
-          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
+          id: networkContent
+
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: 6
           Row {
             width: parent.width; height: 34; spacing: 8
-            Text { width: root.systemData.wifiAvailable ? parent.width - 88 : parent.width; anchors.verticalCenter: parent.verticalCenter; text: "Network"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+            PanelGlyph { text: "󰤨" }
+            Text { width: root.systemData.wifiAvailable ? parent.width - 128 : parent.width - 40; anchors.verticalCenter: parent.verticalCenter; text: "Network"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
             Text { visible: root.systemData.wifiAvailable; anchors.verticalCenter: parent.verticalCenter; text: "Wi-Fi"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
             ControlSwitch {
               visible: root.systemData.wifiAvailable
@@ -3056,6 +3495,68 @@ ShellRoot {
               anchors.fill: parent; anchors.margins: 9; spacing: 4
               Text { text: "IP address    " + (root.systemData.ipAddress || "Unavailable"); color: root.text; font.family: root.fontFamily; font.pixelSize: 9 }
               Text { text: "Gateway       " + (root.systemData.gateway || "Unavailable") + " · " + (root.systemData.connectionType || "None"); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+            }
+          }
+
+          Rectangle {
+            id: speedtestCard
+
+            width: parent.width; height: 204; radius: root.radius; color: root.surface
+            Column {
+              anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 10; rightMargin: 10; topMargin: 8 }
+              spacing: 8
+              Item {
+                width: parent.width; height: 30
+                Column {
+                  anchors.centerIn: parent
+                  spacing: 0
+                  Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "PING"
+                    color: root.overlay
+                    font.family: root.fontFamily
+                    font.pixelSize: 8
+                    font.bold: true
+                  }
+                  Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: root.speedtestPingText()
+                    color: root.speedtestError !== "" ? root.red : root.text
+                    font.family: root.fontFamily
+                    font.pixelSize: 10
+                    font.bold: true
+                  }
+                }
+                Rectangle {
+                  anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                  width: 64; height: 24; radius: root.radius
+                  color: speedtestMouse.pressed ? root.pressColor : speedtestProcess.running ? root.selectedColor : speedtestMouse.containsMouse ? root.hoverColor : root.mantle
+                  Text { visible: !speedtestProcess.running; anchors.centerIn: parent; text: root.speedtestReceived ? "Again" : "Run"; color: root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
+                  RefreshGlyph { visible: speedtestProcess.running; anchors.centerIn: parent; width: 14; height: 14; spinning: visible; font.pixelSize: 10 }
+                  MouseArea { id: speedtestMouse; anchors.fill: parent; enabled: !speedtestProcess.running; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.startSpeedtest() }
+                }
+              }
+              Row {
+                width: parent.width; height: 140; spacing: 8
+                SpeedGauge {
+                  width: (parent.width - 8) / 2; height: parent.height; radius: root.radius
+                  label: "DOWNLOAD"
+                  icon: "󰇚"
+                  value: Number(root.speedtestData.download)
+                  maximum: root.speedtestScale()
+                  tint: root.accent
+                  active: root.speedtestPhase === "download"
+                }
+                SpeedGauge {
+                  width: (parent.width - 8) / 2; height: parent.height; radius: root.radius
+                  label: "UPLOAD"
+                  icon: "󰕒"
+                  value: Number(root.speedtestData.upload)
+                  maximum: root.speedtestScale()
+                  tint: root.green
+                  active: root.speedtestPhase === "upload"
+                }
+              }
             }
           }
 
@@ -3181,8 +3682,9 @@ ShellRoot {
           anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Row {
             width: parent.width; spacing: 8
+            PanelGlyph { text: "󰂯" }
             Column {
-              width: parent.width - 48
+              width: parent.width - 88
               anchors.verticalCenter: parent.verticalCenter
               spacing: 2
               Text { text: "Bluetooth"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
@@ -3406,7 +3908,7 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 330
-      implicitHeight: 74 + Math.max(1, Math.min(5, entries.length)) * 50
+      implicitHeight: 78 + Math.max(1, Math.min(5, entries.length)) * 50
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -3415,7 +3917,12 @@ ShellRoot {
       PanelSurface {
         Column {
           anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
-          Text { text: "Batteries"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          Row {
+            width: parent.width
+            height: root.panelHeaderHeight
+            PanelGlyph { text: "󰁹" }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Batteries"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          }
           ListView {
             visible: batteryWindow.entries.length > 0
             width: parent.width
@@ -3479,19 +3986,47 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 400
-      implicitHeight: Math.min(520, 142 + Math.max(1, entries.length) * 66)
+      implicitHeight: entries.length === 0 ? 162 : Math.min(520, 146 + entries.length * 66)
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-notifications"
 
+      function toggleHistory() {
+        if (notificationSwap.running) return
+        notificationSwap.fadeTarget = root.notificationHistoryOpen ? notificationSurface : notificationViewport
+        notificationSwap.start()
+      }
+
+      onVisibleChanged: {
+        if (visible) return
+        notificationSwap.stop()
+        notificationViewport.opacity = 1
+        notificationSurface.opacity = 1
+      }
+
+      SequentialAnimation {
+        id: notificationSwap
+
+        property Item fadeTarget: notificationViewport
+
+        NumberAnimation { target: notificationSwap.fadeTarget; property: "opacity"; to: 0; duration: 55; easing.type: Easing.OutQuad }
+        ScriptAction { script: root.notificationHistoryOpen = !root.notificationHistoryOpen }
+        PauseAnimation { duration: 16 }
+        NumberAnimation { target: notificationSwap.fadeTarget; property: "opacity"; to: 1; duration: 75; easing.type: Easing.InQuad }
+      }
+
       PanelSurface {
+        id: notificationSurface
+
         Column {
           anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Row {
             width: parent.width
+            height: root.panelHeaderHeight
+            PanelGlyph { text: root.systemData.dnd ? "󰂛" : "󰂚" }
             Text {
-              width: parent.width - 120
+              width: parent.width - 152
               anchors.verticalCenter: parent.verticalCenter
               text: root.notificationHistoryOpen ? "Last 24 hours" : "Notifications"
               color: root.text
@@ -3521,7 +4056,7 @@ ShellRoot {
                 font.pixelSize: 10
                 font.bold: true
               }
-              MouseArea { id: historyMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.notificationHistoryOpen = !root.notificationHistoryOpen }
+              MouseArea { id: historyMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: notificationWindow.toggleHistory() }
               HoverTip { mouse: historyMouse; text: root.notificationHistoryOpen ? "Show current notifications" : "Show the past 24 hours" }
             }
             Rectangle {
@@ -3535,51 +4070,61 @@ ShellRoot {
               MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.clearNotifications() }
             }
           }
-          ListView {
-            visible: notificationWindow.entries.length > 0
-            width: parent.width
-            height: parent.height - 78
-            spacing: 6
-            clip: true
-            model: notificationWindow.entries
-            delegate: Rectangle {
-              id: notificationEntry
+          Item {
+            id: notificationViewport
 
-              required property var modelData
-              width: ListView.view.width; height: 60; radius: root.radius; color: root.surface
-              Column {
-                anchors.fill: parent; anchors.margins: 9; spacing: 3
-                Row {
-                  width: parent.width
-                  Text { width: parent.width - 84; text: modelData.summary || modelData.app_name || "Notification"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
-                  Text { width: 58; text: root.agoText(modelData.time); color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
-                  Rectangle {
-                    readonly property bool busy: root.controlBusy("notifications", "dismiss", String(notificationEntry.modelData.id))
-                    visible: !root.notificationHistoryOpen
-                    width: visible ? 26 : 0; height: 20; radius: root.radiusSmall
-                    color: notificationDismissMouse.pressed ? root.dangerPress : busy ? root.selectedColor : notificationDismissMouse.containsMouse ? root.dangerColor : "transparent"
-                    Text { visible: !parent.busy; anchors.centerIn: parent; text: "󰅖"; color: notificationDismissMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
-                    RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 14; height: 14; spinning: visible; font.pixelSize: 10 }
-                    MouseArea {
-                      id: notificationDismissMouse
-                      anchors.fill: parent
-                      hoverEnabled: true
-                      cursorShape: Qt.PointingHandCursor
-                      onClicked: root.dismissNotification(notificationEntry.modelData.id)
+            width: parent.width
+            height: notificationWindow.entries.length > 0 ? parent.height - 78 : 46
+            clip: true
+            ListView {
+              visible: notificationWindow.entries.length > 0
+              anchors.fill: parent
+              spacing: 6
+              clip: true
+              model: notificationWindow.entries
+              delegate: Rectangle {
+                id: notificationEntry
+
+                required property var modelData
+                width: ListView.view.width; height: 60; radius: root.radius; color: root.surface
+                Column {
+                  anchors.fill: parent; anchors.margins: 9; spacing: 3
+                  Row {
+                    width: parent.width
+                    Text { width: parent.width - 84; text: modelData.summary || modelData.app_name || "Notification"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+                    Text { width: 58; text: root.agoText(modelData.time); color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
+                    Rectangle {
+                      readonly property bool busy: root.controlBusy("notifications", "dismiss", String(notificationEntry.modelData.id))
+                      visible: !root.notificationHistoryOpen
+                      width: visible ? 26 : 0; height: 20; radius: root.radiusSmall
+                      color: notificationDismissMouse.pressed ? root.dangerPress : busy ? root.selectedColor : notificationDismissMouse.containsMouse ? root.dangerColor : "transparent"
+                      Text { visible: !parent.busy; anchors.centerIn: parent; text: "󰅖"; color: notificationDismissMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
+                      RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 14; height: 14; spinning: visible; font.pixelSize: 10 }
+                      MouseArea {
+                        id: notificationDismissMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.dismissNotification(notificationEntry.modelData.id)
+                      }
                     }
                   }
+                  Text { width: parent.width; text: modelData.body || modelData.app_name || ""; elide: Text.ElideRight; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
                 }
-                Text { width: parent.width; text: modelData.body || modelData.app_name || ""; elide: Text.ElideRight; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
               }
             }
-          }
-          Text {
-            visible: notificationWindow.entries.length === 0
-            width: parent.width
-            text: root.notificationHistoryOpen ? "Nothing arrived in the past 24 hours" : "No notifications right now"
-            color: root.overlay
-            font.family: root.fontFamily
-            font.pixelSize: 10
+            Item {
+              visible: notificationWindow.entries.length === 0
+              anchors.fill: parent
+              Text {
+                anchors.top: parent.top; anchors.topMargin: 14; anchors.horizontalCenter: parent.horizontalCenter
+                text: root.notificationHistoryOpen ? "Nothing arrived in the past 24 hours" : "No notifications right now"
+                color: root.overlay
+                font.family: root.fontFamily
+                font.pixelSize: 10
+                horizontalAlignment: Text.AlignHCenter
+              }
+            }
           }
         }
       }
@@ -3597,7 +4142,7 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 360
-      implicitHeight: 340
+      implicitHeight: 344
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -3606,15 +4151,21 @@ ShellRoot {
       PanelSurface {
         Column {
           anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
-          Text { text: "Webcam"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          Row {
+            width: parent.width
+            height: root.panelHeaderHeight
+            PanelGlyph { text: "󰄀" }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Webcam"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          }
           Text { text: root.systemData.cameraActive ? "Camera is in use" : root.systemData.cameraDevices.length + " camera device" + (root.systemData.cameraDevices.length === 1 ? "" : "s"); color: root.systemData.cameraActive ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 11 }
           Text { width: parent.width; text: root.systemData.cameraDevices.length > 0 ? root.systemData.cameraDevices[0].name : "No camera detected"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
-          Rectangle {
-            width: parent.width; height: 176; radius: root.radius; color: root.mantle; clip: true
+          ClippingRectangle {
+            z: 2
+            width: parent.width; height: 176; radius: root.radius; color: root.mantle
             Loader {
               id: cameraPreviewLoader
               anchors.fill: parent
-              active: root.systemData.cameraDevices.length > 0
+              active: cameraWindow.visible && root.systemData.cameraDevices.length > 0
               asynchronous: true
               source: "CameraPreview.qml"
             }
@@ -3652,7 +4203,16 @@ ShellRoot {
                 color: cameraActionMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : cameraActionMouse.containsMouse ? root.hoverColor : root.surface
                 Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "× Failed" : parent.complete ? "✓ Opened" : modelData.label; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
                 RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 16; height: 16; spinning: visible; font.pixelSize: 12 }
-                MouseArea { id: cameraActionMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.runControl(parent.modelData.action, root.systemData.cameraDevice) }
+                MouseArea {
+                  id: cameraActionMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (parent.modelData.action === "camera-preview") root.openCameraPreview(root.systemData.cameraDevice)
+                    else root.runControl(parent.modelData.action, root.systemData.cameraDevice)
+                  }
+                }
               }
             }
           }
@@ -3671,7 +4231,7 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 420
-      implicitHeight: 218
+      implicitHeight: 222
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -3680,7 +4240,12 @@ ShellRoot {
       PanelSurface {
         Column {
           anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
-          Text { text: "Power"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          Row {
+            width: parent.width
+            height: root.panelHeaderHeight
+            PanelGlyph { text: "󰐥" }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Power"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          }
           Grid {
             width: parent.width
             columns: 3
@@ -3750,9 +4315,9 @@ ShellRoot {
           Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.muted ? "󰝟" : "󰕾"; color: root.systemData.muted ? root.red : root.accent; font.family: root.fontFamily; font.pixelSize: 20 }
           Rectangle {
             width: 205; height: 8; anchors.verticalCenter: parent.verticalCenter; radius: 4; color: root.surface
-            Rectangle { width: parent.width * Math.max(0, Math.min(1, Number(root.systemData.volume) / 100)); height: parent.height; radius: 4; color: root.accent }
+            Rectangle { width: parent.width * Math.max(0, Math.min(1, Number(root.volumeDrag >= 0 ? root.volumeDrag : root.systemData.volume) / 100)); height: parent.height; radius: 4; color: root.accent }
           }
-          Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.volume + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 11 }
+          Text { anchors.verticalCenter: parent.verticalCenter; text: (root.volumeDrag >= 0 ? root.volumeDrag : root.systemData.volume) + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 11 }
         }
         Row {
           visible: root.osdKind === "airpods"

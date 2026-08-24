@@ -32,7 +32,9 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Use vi-shaped navigation: `h/j/k/l`, a space leader where applicable, and the same directional geometry across editor, multiplexer, and window manager.
 - Favor direct numbered workspaces/tabs, predictable modifier layers, and shortcuts that compose navigation, move, and resize actions.
 - Favor fuzzy search, frecency, previews, command palettes, and session launchers over deep menus or manual path traversal.
+- Focus a searchable popup's query field when it opens and select any retained query so typing starts a fresh search immediately.
 - Keep frequent actions fast and reversible. Automate routine cleanup, session setup, refetching, and integration work.
+- Let the desktop change itself: a session that edits this flake should open in the repository, rebuild on its own when the work is done, and then ask before recording it. Generate the commit message from the repository's own history and keep the decision to commit with the user.
 - Retain explicit gates for trust decisions, destructive operations, credentials, and live-machine activation.
 - Support the mouse where it is convenient, but make the complete primary workflow keyboard-accessible.
 - Hide passive chrome intelligently: auto-hide docks, compact launchers, suppress empty media/privacy indicators, and expose rich previews or status only when relevant.
@@ -49,6 +51,11 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Favor rounded borders, small gaps, capsule or powerline-shaped status elements, restrained transparency, and background blur. Match shell popup radii to the compositor's normal window radius, and align screen-edge flyout offsets with its outer window gap.
 - Round every shell surface on that one radius — panels, buttons, list rows, and menu bar entries alike — and derive shape, spacing, and the hover, press, selection, and semantic tints from a shared token block instead of per-widget literals. Reserve pill and circular shapes for switches, meters, and status dots.
 - Give shell chrome a textured, Zen-like material rather than flat fills: translucent surfaces the compositor blurs, a quiet vertical wash for depth, and a faint grain film over the content. Generate a texture asset at build time from a seeded script instead of committing an image.
+- Give a menu bar entry a hit target that spans the bar to the screen edge while the visible pill stays inset, and highlight an open panel only on the bar it was opened from.
+- Round images, album art, and video previews on the same radius as the surface holding them.
+- Keep scroll indicators thin and show them only when content exceeds the viewport, including in views where scrolling is normally expected.
+- Introduce every panel with its own glyph.
+- Derive a list the system already knows — timezones, devices, locales — from the system's own data rather than curating entries by hand.
 - Keep a popup on the screen that opened it until it closes. Track the output at open time rather than the compositor's focused monitor, which would otherwise move an open surface the moment the pointer crossed a screen edge.
 - Keep shell popouts, application launchers, and tooltips immediate. Reserve animation for small in-surface state changes rather than moving whole windows or layer surfaces. Avoid startup noise, tips, changelog clutter, and ornamental motion that slows interaction.
 - Acknowledge asynchronous popup actions immediately without changing control geometry. Animate an in-place refresh glyph only while work is active, and briefly show completion or failure when the resulting state is not self-evident.

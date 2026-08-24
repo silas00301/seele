@@ -5,42 +5,89 @@ export LC_ALL=C
 state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell
 pin_file=$state_dir/timezone
 zoneinfo_dir=${TZDIR:-/etc/zoneinfo}
+unit_separator=$'\x1f'
 
+# Every zone comes from tzdata itself: zone1970.tab lists the canonical zones
+# with the countries that use them, and iso3166.tab names those countries. The
+# flag is the country code rendered as regional indicator letters, so no zone,
+# label, or flag is maintained by hand here.
 zones() {
-  cat <<'EOF'
-UTC|UTC|Coordinated Universal Time||UTC GMT Z|abbreviation
-PST|America/Los_Angeles|Pacific Time||PST PDT|abbreviation
-MST|America/Denver|Mountain Time||MST MDT|abbreviation
-CST|America/Chicago|Central Time||CST CDT|abbreviation
-EST|America/New_York|Eastern Time||EST EDT|abbreviation
-CET|Europe/Berlin|Central European Time||CET CEST|abbreviation
-JST|Asia/Tokyo|Japan Standard Time||JST|abbreviation
-Europe/Berlin|Europe/Berlin|Berlin|🇩🇪|Germany CET CEST|city
-Europe/London|Europe/London|London|🇬🇧|United Kingdom UK GMT BST|city
-Europe/Paris|Europe/Paris|Paris|🇫🇷|France CET CEST|city
-America/Los_Angeles|America/Los_Angeles|Los Angeles|🇺🇸|US USA Pacific PST PDT|city
-America/Denver|America/Denver|Denver|🇺🇸|US USA Mountain MST MDT|city
-America/Chicago|America/Chicago|Chicago|🇺🇸|US USA Central CST CDT|city
-America/New_York|America/New_York|New York|🇺🇸|US USA Eastern EST EDT|city
-America/Toronto|America/Toronto|Toronto|🇨🇦|Canada Eastern EST EDT|city
-America/Sao_Paulo|America/Sao_Paulo|São Paulo|🇧🇷|Brazil BRT|city
-Asia/Dubai|Asia/Dubai|Dubai|🇦🇪|United Arab Emirates UAE GST|city
-Asia/Kolkata|Asia/Kolkata|Kolkata|🇮🇳|India IST|city
-Asia/Singapore|Asia/Singapore|Singapore|🇸🇬|SGT|city
-Asia/Tokyo|Asia/Tokyo|Tokyo|🇯🇵|Japan JST|city
-Asia/Seoul|Asia/Seoul|Seoul|🇰🇷|South Korea KST|city
-Australia/Sydney|Australia/Sydney|Sydney|🇦🇺|Australia AEST AEDT|city
-Pacific/Auckland|Pacific/Auckland|Auckland|🇳🇿|New Zealand NZST NZDT|city
-EOF
+  awk -F '\t' -v OFS='|' '
+    function flag(code,   first, second) {
+      if (length(code) != 2) return ""
+      first = index("ABCDEFGHIJKLMNOPQRSTUVWXYZ", substr(code, 1, 1)) - 1
+      second = index("ABCDEFGHIJKLMNOPQRSTUVWXYZ", substr(code, 2, 1)) - 1
+      if (first < 0 || second < 0) return ""
+      return sprintf("%c%c%c%c%c%c%c%c", 240, 159, 135, 166 + first, 240, 159, 135, 166 + second)
+    }
+
+    FILENAME ~ /iso3166/ {
+      if ($0 ~ /^#/ || NF < 2) next
+      country[$1] = $2
+      next
+    }
+
+    $0 ~ /^#/ || NF < 3 { next }
+    {
+      zone = $3
+      split($1, codes, ",")
+
+      label = zone
+      sub(/^.*\//, "", label)
+      gsub(/_/, " ", label)
+
+      names = ""
+      for (i = 1; i in codes; i++) {
+        if (codes[i] in country) names = names " " country[codes[i]]
+      }
+
+      region = zone
+      gsub(/[_\/]/, " ", region)
+
+      print zone, zone, label, flag(codes[1]), region names " " $4, "city"
+    }
+  ' "$zoneinfo_dir/iso3166.tab" "$zoneinfo_dir/zone1970.tab" | sort -t '|' -k3,3
+
+  printf '%s\n' 'UTC|UTC|Coordinated Universal Time||UTC GMT Zulu Coordinated Universal Time|abbreviation'
+
+  # tzdata's Etc/GMT files are fixed whole-hour offsets. POSIX reverses their
+  # signs (Etc/GMT-1 is UTC+1), so expose human-facing UTC/GMT spellings while
+  # still deriving every available entry from the packaged database.
+  local path zone suffix magnitude hours display_sign padded
+  for path in "$zoneinfo_dir"/Etc/GMT[+-]*; do
+    [[ -e $path ]] || continue
+    zone=${path#"$zoneinfo_dir"/}
+    suffix=${zone#Etc/GMT}
+    magnitude=${suffix#?}
+    hours=$((10#$magnitude))
+    if [[ $suffix == +* ]]; then
+      display_sign=-
+    else
+      display_sign=+
+    fi
+    printf -v padded '%02d' "$hours"
+    printf 'UTC%s%d|%s|UTC%s%d||UTC%s%d UTC%s%s UTC%s%d:00 UTC%s%s:00 GMT%s%d GMT%s%s GMT%s%d:00 GMT%s%s:00 %s%s00 %s%s:00|offset\n' \
+      "$display_sign" "$hours" "$zone" "$display_sign" "$hours" \
+      "$display_sign" "$hours" "$display_sign" "$padded" \
+      "$display_sign" "$hours" "$display_sign" "$padded" \
+      "$display_sign" "$hours" "$display_sign" "$padded" \
+      "$display_sign" "$hours" "$display_sign" "$padded" \
+      "$display_sign" "$padded" "$display_sign" "$padded"
+  done
 }
 
 resolve_id() {
   local wanted=${1:-}
+  # The whole list is read even after a match: leaving the pipe early would
+  # kill the generator with SIGPIPE, which pipefail then reports as failure.
   zones | awk -F '|' -v wanted="$wanted" '
     BEGIN { wanted = tolower(wanted) }
-    tolower($1) == wanted { print $1; found = 1; exit }
+    tolower($1) == wanted && exact == "" { exact = $1 }
     tolower($2) == wanted && fallback == "" { fallback = $1 }
-    END { if (!found && fallback != "") print fallback }
+    END {
+      if (exact != "") print exact
+      else if (fallback != "") print fallback
+    }
   '
 }
 
@@ -69,31 +116,55 @@ write_pins() {
 }
 
 list() {
-  local pinned id zone label flag aliases kind timezone clock day abbreviation offset
+  local pinned year winter summer
   pinned=$(pinned_ids)
+
+  # Both halves of the year are sampled so a zone stays searchable by either of
+  # its abbreviations, whichever one happens to be in force today.
+  printf -v year '%(%Y)T' -1
+  winter=$(date -d "$year-01-15 12:00" +%s)
+  summer=$(date -d "$year-07-15 12:00" +%s)
 
   zones_json=$(
     while IFS='|' read -r id zone label flag aliases kind; do
+      local timezone clock day abbreviation offset standard daylight
       if [[ $zone == */* ]]; then
         [[ -f $zoneinfo_dir/$zone ]] || continue
         timezone=:$zoneinfo_dir/$zone
       else
         timezone=$zone
       fi
-      IFS='|' read -r clock day abbreviation offset < <(TZ="$timezone" date '+%H:%M|%a %d %b|%Z|%z')
-      jq -cn \
-        --arg id "$id" \
-        --arg zone "$zone" \
-        --arg label "$label" \
-        --arg flag "$flag" \
-        --arg aliases "$aliases" \
-        --arg kind "$kind" \
-        --arg time "$clock" \
-        --arg day "$day" \
-        --arg abbreviation "$abbreviation" \
-        --arg offset "$offset" \
-        '{id:$id, zone:$zone, label:$label, flag:$flag, aliases:$aliases, kind:$kind, time:$time, day:$day, abbreviation:$abbreviation, offset:$offset}'
-    done < <(zones) | jq -s .
+
+      # printf's time format is a shell builtin, so a few hundred zones cost no
+      # processes at all.
+      TZ=$timezone printf -v clock '%(%H:%M)T' -1
+      TZ=$timezone printf -v day '%(%a %d %b)T' -1
+      TZ=$timezone printf -v abbreviation '%(%Z)T' -1
+      TZ=$timezone printf -v offset '%(%z)T' -1
+      TZ=$timezone printf -v standard '%(%Z)T' "$winter"
+      TZ=$timezone printf -v daylight '%(%Z)T' "$summer"
+
+      printf '%s\n' "$id$unit_separator$zone$unit_separator$label$unit_separator$flag$unit_separator$aliases $standard $daylight$unit_separator$kind$unit_separator$clock$unit_separator$day$unit_separator$abbreviation$unit_separator$offset"
+    done < <(zones) | jq -R -s --arg separator "$unit_separator" '
+      split("\n")
+      | map(select(length > 0) | split($separator))
+      | map({
+          id: .[0],
+          zone: .[1],
+          label: .[2],
+          flag: .[3],
+          aliases: (
+            .[4]
+            | [splits("\\s+")]
+            | reduce .[] as $word ([]; if any(.[]; ascii_downcase == ($word | ascii_downcase)) then . else . + [$word] end)
+            | join(" ")
+          ),
+          kind: .[5],
+          time: .[6],
+          day: .[7],
+          abbreviation: .[8],
+          offset: .[9]
+        })'
   )
 
   jq -cn --argjson pinned "$pinned" --argjson zones "$zones_json" '{pinned:$pinned, zones:$zones}'
