@@ -32,7 +32,7 @@ Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, 
 
 Named modules are available through the flake's `modules` output but remain dormant until a profile or host imports them. Home Manager profiles import user features; system and host aggregates import NixOS and Darwin features such as shells, themes, Homebrew applications, and host-only integrations. This replaces the old behavior where an unlisted file under `home/shared/programs/` was dormant.
 
-`modules/hosts/nerv/noctalia.nix` preserves the previous Noctalia settings as the named modules `homeManager.nerv-noctalia` and `nixos.nerv-noctalia`. They are intentionally dormant while Seele Shell is active. The `nerv` constructor imports Noctalia's external option modules so this alternate remains evaluable; `asuka` does not import Noctalia.
+`modules/hosts/nerv/noctalia.nix` preserves the previous Noctalia settings as the named modules `homeManager.nerv-noctalia` and `nixos.nerv-noctalia`. They are intentionally dormant while Seele Shell is active. Home Manager provides the user-level Noctalia options, while the `nerv` constructor imports Noctalia's external NixOS module; `asuka` does not import Noctalia.
 
 `modules/features/` contains program, service, theme, and shared system concerns. `modules/profiles/home/` contains profile-wide Home Manager settings that do not belong to one feature. Raw Nix expressions cannot live directly in the recursive tree; place them below a path containing `/_`.
 
@@ -41,7 +41,7 @@ Named modules are available through the flake's `modules` output but remain dorm
 `modules/hosts/nerv.nix` constructs `nixosConfigurations.nerv` from:
 
 1. NixOS `common`, `linux`, and `nerv` deferred modules
-2. Noctalia's dormant option module and Catppuccin's NixOS module
+2. Noctalia's dormant NixOS option module and Catppuccin's NixOS module
 3. Home Manager's NixOS integration
 4. Home Manager `common`, `linux`, and `nerv` profiles plus external input modules
 
