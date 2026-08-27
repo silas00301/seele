@@ -78,6 +78,18 @@ ShellRoot {
   property string overlayScreen: ""
   property string osdScreen: ""
   property string controlPanel: ""
+  property var mediaPanelPlayer: null
+  // A module being dragged between the Control Center and the menu bar.
+  // `dragKind` is "add" when it came from the panel and "remove" when it was
+  // pulled off the bar; `dragOverBar` is the live drop decision.
+  property string dragModule: ""
+  property string dragKind: ""
+  property bool dragOverBar: false
+  // Set while a draggable bar entry is held. The bar opens its input region
+  // down the screen on the press rather than once the drag is recognised,
+  // because that region change takes a round trip and the pointer would
+  // otherwise leave it — and lose the grab — before it applied.
+  property string barPressModule: ""
   property bool trayMenuOpen: false
   property bool trayExpanded: false
   property int volumeDrag: -1
@@ -142,6 +154,7 @@ ShellRoot {
     audioDevices: [],
     batteries: [],
     trayHidden: [],
+    barModules: ({}),
     airpodsEarDetection: true,
     agentStates: {},
     notifications: { count: 0, items: [], history: [] },
@@ -192,8 +205,10 @@ ShellRoot {
   }
 
   function closeOverlays() {
+    cancelModuleDrag()
     agentsOpen = false
     controlPanel = ""
+    mediaPanelPlayer = null
     overlayScreen = ""
     closeTrayMenu()
     windowsCountdown = -1
@@ -224,6 +239,16 @@ ShellRoot {
     if (controlPanel === "") return
     overlayScreen = screen || currentScreen()
     refreshStatus()
+  }
+
+  function toggleMedia(player, screen) {
+    var samePlayer = root.controlPanel === "media" && root.mediaPanelPlayer === player
+    var shouldOpen = !!player && !(samePlayer && root.overlayScreen === (screen || root.currentScreen()))
+    root.closeOverlays()
+    if (!shouldOpen) return
+    root.mediaPanelPlayer = player
+    root.controlPanel = "media"
+    root.overlayScreen = screen || root.currentScreen()
   }
 
   function toggleControls() {
@@ -437,6 +462,31 @@ ShellRoot {
     return Media.label(player)
   }
 
+  function mediaTitle(player) {
+    return Media.title(player)
+  }
+
+  function mediaSubtitle(player) {
+    return Media.subtitle(player)
+  }
+
+  function formatMediaTime(seconds) {
+    seconds = Math.max(0, Math.floor(Number(seconds) || 0))
+    var minutes = Math.floor(seconds / 60)
+    var remainder = seconds % 60
+    return minutes + ":" + (remainder < 10 ? "0" : "") + remainder
+  }
+
+  function mediaTimelineAvailable(player) {
+    return Media.timelineAvailable(player)
+  }
+
+  // The bar keeps Spotify and the device player in separate entries, but the
+  // Control Center carries one now-playing module, so it needs a single player.
+  function nowPlayingPlayer() {
+    return Media.activePlayer(Mpris.players.values || [])
+  }
+
   function agentStatus(id) {
     var states = systemData.agentStates || {}
     return states[id] ? String(states[id].status || "idle") : "idle"
@@ -593,20 +643,34 @@ ShellRoot {
     cameraPreviewLaunchTimer.restart()
   }
 
-  function dismissNotification(id) {
+
+  // A notification is worth clicking only when it carries an action to invoke.
+  function notificationActionable(entry) {
+    var actions = entry && entry.actions
+    if (!actions) return false
+    for (var key in actions) return true
+    return false
+  }
+
+  function activateNotification(id) {
     id = String(id)
-    if (!root.runControl("notifications", "dismiss", id)) return
+    if (!root.runControl("notifications", "invoke", id)) return
+    // Invoking an action closes the notification, so drop it locally rather
+    // than waiting for the next status read to notice.
     var notifications = root.systemData.notifications || { count: 0, items: [], history: [] }
     var items = []
     for (var i = 0; i < (notifications.items || []).length; i++) {
       if (String(notifications.items[i].id) !== id) items.push(notifications.items[i])
     }
     root.patchSystemData({ notifications: { count: items.length, items: items, history: notifications.history || [] } })
+    root.closeOverlays()
+  }
+  function dismissNotification(id) {
+    root.runControl("notifications", "dismiss", String(id))
   }
 
   function clearNotifications() {
-    if (!root.runControl("notifications", "clear")) return
-    root.patchSystemData({ notifications: { count: 0, items: [], history: [] } })
+    root.runControl("notifications", "clear")
   }
 
   function batteryEntries() {
@@ -677,6 +741,140 @@ ShellRoot {
     var state = root.systemData.protonVpn || {}
     if (!state.available) return "Client unavailable"
     return state.connected ? (state.connection || "Connected") : "Disconnected · fastest server on connect"
+  }
+
+
+  // Menu bar modules -----------------------------------------------------------
+  // Each Control Center module can also carry a menu bar entry. Only a choice
+  // the user actually made is stored, so a module nobody has moved keeps the
+  // placement it shipped with.
+  function moduleGlyph(id) {
+    var glyphs = {
+      network: "󰖩",
+      vpn: "󰒃",
+      bluetooth: "󰂯",
+      camera: "󰄁",
+      airpods: "󰋋",
+      audio: "󰕾",
+      media: "󰎆"
+    }
+    return glyphs[String(id)] || "󰘮"
+  }
+
+  function moduleLabel(id) {
+    var labels = {
+      network: "Network",
+      vpn: "VPN",
+      bluetooth: "Bluetooth",
+      camera: "Camera",
+      airpods: "AirPods",
+      audio: "Sound",
+      media: "Now Playing"
+    }
+    return labels[String(id)] || String(id)
+  }
+
+  // VPN is the one module that had no menu bar entry before the Control Center
+  // existed; everything else keeps the entry it already had.
+  function barModuleDefault(id) {
+    return String(id) !== "vpn"
+  }
+
+  function barModulePinned(id) {
+    var modules = root.systemData.barModules || ({})
+    var value = modules[String(id)]
+    return value === undefined || value === null ? root.barModuleDefault(id) : !!value
+  }
+
+  function setBarModulePinned(id, pinned) {
+    id = String(id)
+    if (root.barModulePinned(id) === !!pinned) return
+    if (!root.runControl("bar", pinned ? "show" : "hide", id)) return
+    var modules = {}
+    var current = root.systemData.barModules || ({})
+    for (var key in current) modules[key] = current[key]
+    modules[id] = !!pinned
+    root.patchSystemData({ barModules: modules })
+  }
+
+  function beginModuleDrag(id, kind) {
+    root.dragModule = String(id)
+    root.dragKind = String(kind)
+    // A module pulled off the bar starts over it; one dragged out of the panel
+    // has to reach the bar before it counts as dropped there.
+    root.dragOverBar = String(kind) === "remove"
+  }
+
+  function updateModuleDrag(overBar) {
+    if (root.dragModule !== "") root.dragOverBar = !!overBar
+  }
+
+  function endModuleDrag() {
+    if (root.dragModule === "") return
+    var id = root.dragModule
+    var pinned = root.dragOverBar
+    root.cancelModuleDrag()
+    root.setBarModulePinned(id, pinned)
+  }
+
+  function cancelModuleDrag() {
+    root.dragModule = ""
+    root.dragKind = ""
+    root.dragOverBar = false
+  }
+  // The VPN module owns one private network: whichever client is already
+  // connected, and otherwise the first one that could connect.
+  function privateNetworkTarget() {
+    var tailscale = root.systemData.tailscale || {}
+    var proton = root.systemData.protonVpn || {}
+    if (tailscale.connected) return "tailscale"
+    if (proton.connected) return "proton-vpn"
+    if (tailscale.available && tailscale.backend !== "Unavailable") return "tailscale"
+    if (proton.available) return "proton-vpn"
+    return ""
+  }
+
+  function privateNetworkAction() {
+    var target = root.privateNetworkTarget()
+    if (target === "tailscale") {
+      var tailscale = root.systemData.tailscale || {}
+      return tailscale.connected ? "down" : tailscale.needsLogin ? "login" : "up"
+    }
+    if (target === "proton-vpn") return (root.systemData.protonVpn || {}).connected ? "disconnect" : "connect"
+    return ""
+  }
+
+  function privateNetworkDetail() {
+    var tailscale = root.systemData.tailscale || {}
+    var proton = root.systemData.protonVpn || {}
+    var names = []
+    if (tailscale.connected) names.push("Tailscale")
+    if (proton.connected) names.push(proton.connection || "Proton VPN")
+    if (names.length > 0) return names.join(" · ")
+    if (root.privateNetworkTarget() === "") return "Unavailable"
+    return tailscale.needsLogin ? "Sign in required" : "Off"
+  }
+
+  function privateNetworkBusy() {
+    var target = root.privateNetworkTarget()
+    return target !== "" && root.controlBusy(target, root.privateNetworkAction())
+  }
+
+  function togglePrivateNetwork() {
+    var target = root.privateNetworkTarget()
+    if (target !== "") root.runControl(target, root.privateNetworkAction())
+  }
+
+  function cameraDetail() {
+    if (root.systemData.cameraActive) return "In use"
+    var devices = root.systemData.cameraDevices || []
+    if (devices.length === 0) return "No camera"
+    return String(devices[0].name || "Ready")
+  }
+
+  function airpodsDetail() {
+    if (!root.systemData.airpodsConnected) return "Not connected"
+    return root.airpodsBatteryText() || "Connected"
   }
 
   function startSpeedtest() {
@@ -1181,6 +1379,14 @@ ShellRoot {
   }
 
   Timer {
+    interval: 1000
+    repeat: true
+    running: root.controlPanel === "clock"
+    triggeredOnStart: true
+    onTriggered: root.now = new Date()
+  }
+
+  Timer {
     id: controlFeedbackTimer
     interval: 1200
     onTriggered: {
@@ -1662,8 +1868,19 @@ ShellRoot {
   // height while only the pill is inset, so a pointer thrown at the top of the
   // screen still lands on the entry under it.
   component BarItem: Item {
+    id: barItem
+
     property bool hovered: false
     property bool active: false
+    // Set on an entry that can be dragged off the bar. The entry has to stay
+    // mapped for the whole gesture — hiding it to preview the removal would
+    // destroy the item holding the pointer grab and cancel the drag — so it
+    // fades instead once the pointer is past the bar.
+    property string module: ""
+
+    opacity: barItem.module !== "" && root.dragModule === barItem.module && !root.dragOverBar ? 0.4 : 1
+
+    Behavior on opacity { NumberAnimation { duration: 110 } }
 
     anchors.verticalCenter: parent.verticalCenter
     height: root.barHeight
@@ -1678,6 +1895,867 @@ ShellRoot {
       color: parent.active ? root.selectedColor : parent.hovered ? root.hoverColor : "transparent"
 
       Behavior on color { ColorAnimation { duration: 110 } }
+    }
+  }
+
+  // A bar label whose baseline stays put no matter what the text contains.
+  // A single glyph the primary font lacks — a heart in a track title, say —
+  // pulls in a fallback whose taller line box moves an auto-sized, centred
+  // Text off the line every neighbouring entry sits on. The invisible
+  // reference pins the baseline to the one the primary font would have
+  // produced, so the drift cannot depend on the words.
+  component BarLabel: Item {
+    id: barLabel
+
+    property alias text: barLabelText.text
+    property color color: root.text
+    property int maximumWidth: 175
+
+    implicitWidth: Math.min(barLabel.maximumWidth, barLabelText.implicitWidth)
+    implicitHeight: root.barHeight
+
+    Text {
+      id: barLabelReference
+
+      visible: false
+      anchors.verticalCenter: parent.verticalCenter
+      text: "M"
+      font.family: root.fontFamily
+      font.pixelSize: 10
+    }
+
+    Text {
+      id: barLabelText
+
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.baseline: barLabelReference.baseline
+      elide: Text.ElideRight
+      color: barLabel.color
+      font.family: root.fontFamily
+      font.pixelSize: 10
+    }
+  }
+
+  // Pointer handling for a Control Center module that can be dragged onto the
+  // menu bar. A press that never moves is still an ordinary click; past the
+  // threshold it becomes a drag, and Wayland's implicit pointer grab keeps the
+  // motion arriving after the pointer has left this surface, which is what lets
+  // a panel track a drop onto a different layer surface at all. The panel sits
+  // `panelGap` below the bar, so a negative enough y is the whole hit test.
+  component ModuleDragArea: MouseArea {
+    id: moduleDrag
+
+    property string module: ""
+    property real originX: 0
+    property real originY: 0
+    property bool dragging: false
+    signal activated(var mouse)
+
+    anchors.fill: parent
+    hoverEnabled: true
+    preventStealing: true
+    cursorShape: Qt.PointingHandCursor
+
+    onPressed: function(mouse) {
+      moduleDrag.originX = mouse.x
+      moduleDrag.originY = mouse.y
+      moduleDrag.dragging = false
+    }
+
+    onPositionChanged: function(mouse) {
+      if (!moduleDrag.pressed || moduleDrag.module === "") return
+      if (!moduleDrag.dragging) {
+        if (Math.abs(mouse.x - moduleDrag.originX) < 6 && Math.abs(mouse.y - moduleDrag.originY) < 6) return
+        moduleDrag.dragging = true
+        root.beginModuleDrag(moduleDrag.module, "add")
+      }
+      // The panel surface starts at the top of the screen, so scene coordinates
+      // are screen coordinates and the bar is simply the first `barHeight` rows.
+      root.updateModuleDrag(moduleDrag.mapToItem(null, mouse.x, mouse.y).y < root.barHeight)
+    }
+
+    onReleased: function(mouse) {
+      if (moduleDrag.dragging) root.endModuleDrag()
+      else moduleDrag.activated(mouse)
+      moduleDrag.dragging = false
+    }
+
+    onCanceled: {
+      if (moduleDrag.dragging) root.cancelModuleDrag()
+      moduleDrag.dragging = false
+    }
+  }
+
+  // Menu bar pointer handling for a module that can be dragged out of the bar.
+  // The panel opens on release rather than on press, because opening it on the
+  // press put the panel — and the click-away catcher it activates — directly in
+  // the path of the drag that follows, where they take the pointer before the
+  // gesture can travel. A modifier would have avoided the conflict, but a layer
+  // surface without keyboard focus never receives modifier state, so
+  // `mouse.modifiers` is always empty up here.
+  component BarModuleArea: MouseArea {
+    id: barModuleArea
+
+    property string module: ""
+    property real originY: 0
+    property bool dragging: false
+    signal activated(var mouse)
+
+    anchors.fill: parent
+    hoverEnabled: true
+    preventStealing: true
+
+    onPressed: function(mouse) {
+      barModuleArea.originY = mouse.y
+      barModuleArea.dragging = false
+      // Opening the bar's input region here rather than once the drag is
+      // recognised: the region change costs a round trip the pointer would
+      // otherwise outrun on its way down the screen.
+      root.barPressModule = barModuleArea.module
+    }
+
+    onPositionChanged: function(mouse) {
+      if (!barModuleArea.pressed || barModuleArea.module === "") return
+      if (!barModuleArea.dragging) {
+        if (mouse.y - barModuleArea.originY < 8) return
+        barModuleArea.dragging = true
+        root.beginModuleDrag(barModuleArea.module, "remove")
+      }
+      root.updateModuleDrag(mouse.y >= 0 && mouse.y < root.barHeight)
+    }
+
+    onReleased: function(mouse) {
+      if (barModuleArea.dragging) root.endModuleDrag()
+      else if (mouse.y >= 0 && mouse.y < root.barHeight) barModuleArea.activated(mouse)
+      barModuleArea.dragging = false
+      root.barPressModule = ""
+    }
+
+    onCanceled: {
+      if (barModuleArea.dragging) root.cancelModuleDrag()
+      barModuleArea.dragging = false
+      root.barPressModule = ""
+    }
+  }
+
+  // Output and microphone share one level control so the Audio panel and the
+  // Control Center cannot drift apart wherever the same slider appears.
+  component AudioLevelRow: Row {
+    id: audioLevelRow
+
+    property bool microphone: false
+    readonly property int shown: audioLevelRow.microphone
+      ? (root.microphoneDrag >= 0 ? root.microphoneDrag : Number(root.systemData.microphoneVolume))
+      : (root.volumeDrag >= 0 ? root.volumeDrag : Number(root.systemData.volume))
+    readonly property bool muted: audioLevelRow.microphone ? !!root.systemData.microphoneMuted : !!root.systemData.muted
+
+    spacing: 8
+
+    Rectangle {
+      width: audioLevelRow.width - 52
+      height: 44
+      radius: root.radius
+      color: root.surface
+      clip: true
+
+      Rectangle {
+        width: parent.width * Math.max(0, Math.min(1, audioLevelRow.shown / 100))
+        radius: parent.radius
+        height: parent.height
+        color: audioLevelRow.muted ? root.fillDanger : root.fillColor
+      }
+
+      Row {
+        anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          width: parent.width - 46
+          text: audioLevelRow.microphone
+            ? (audioLevelRow.muted ? "󰍭  Microphone muted" : root.systemData.microphoneActive ? "󰍬  Microphone in use" : "󰍬  Microphone")
+            : (audioLevelRow.muted ? "󰝟  Output muted" : "󰕾  Output")
+          color: root.text
+          font.family: root.fontFamily
+          font.pixelSize: 11
+          font.bold: true
+        }
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          width: 46
+          text: audioLevelRow.shown + "%"
+          color: root.subtext
+          font.family: root.fontFamily
+          font.pixelSize: 11
+          horizontalAlignment: Text.AlignRight
+        }
+      }
+
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        function valueAt(x) { return Math.max(0, Math.min(100, Math.round(x / width * 100))) }
+        onPressed: function(mouse) {
+          if (audioLevelRow.microphone) {
+            root.microphoneDrag = valueAt(mouse.x)
+            microphoneDragTimer.restart()
+          } else {
+            root.volumeDrag = valueAt(mouse.x)
+            volumeDragTimer.restart()
+          }
+        }
+        onPositionChanged: function(mouse) {
+          if (!pressed) return
+          if (audioLevelRow.microphone) {
+            root.microphoneDrag = valueAt(mouse.x)
+            if (!microphoneDragTimer.running) microphoneDragTimer.restart()
+          } else {
+            root.volumeDrag = valueAt(mouse.x)
+            if (!volumeDragTimer.running) volumeDragTimer.restart()
+          }
+        }
+        onReleased: function(mouse) {
+          if (audioLevelRow.microphone) {
+            root.microphoneDrag = valueAt(mouse.x)
+            microphoneDragTimer.stop()
+            root.runControl("microphone", String(root.microphoneDrag))
+          } else {
+            root.volumeDrag = valueAt(mouse.x)
+            volumeDragTimer.stop()
+            root.runControl("volume", String(root.volumeDrag))
+          }
+        }
+        onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, audioLevelRow.microphone) }
+      }
+    }
+
+    Rectangle {
+      width: 44
+      height: 44
+      radius: root.radius
+      color: audioMuteMouse.pressed ? root.pressColor : audioLevelRow.muted ? root.dangerColor : audioMuteMouse.containsMouse ? root.hoverColor : root.surface
+
+      Text {
+        anchors.centerIn: parent
+        text: audioLevelRow.microphone ? (audioLevelRow.muted ? "󰍭" : "󰍬") : (audioLevelRow.muted ? "󰝟" : "󰕾")
+        color: audioLevelRow.muted ? root.red : root.text
+        font.family: root.fontFamily
+        font.pixelSize: 15
+      }
+
+      ModuleDragArea {
+        id: audioMuteMouse
+        onActivated: {
+          if (audioLevelRow.microphone) {
+            if (root.runControl("microphone", "mute")) root.patchSystemData({ microphoneMuted: !root.systemData.microphoneMuted })
+          } else {
+            if (root.runControl("volume", "mute")) root.patchSystemData({ muted: !root.systemData.muted })
+          }
+        }
+      }
+
+      HoverTip {
+        mouse: audioMuteMouse
+        text: audioLevelRow.microphone
+          ? (audioLevelRow.muted ? "Unmute microphone" : "Mute microphone")
+          : (audioLevelRow.muted ? "Unmute output" : "Mute output")
+      }
+    }
+  }
+
+  // The Control Center treats output and microphone as one module. Its header
+  // opens the Audio panel and owns the drag used to add the module to the bar.
+  // The sliders and mute buttons keep their direct actions.
+  component AudioGroup: Rectangle {
+    id: audioGroup
+
+    property string module: ""
+    signal activated()
+
+    height: 130
+    radius: root.radius
+    color: root.alpha(root.surface, 0.72)
+    opacity: audioGroup.module !== "" && root.dragModule === audioGroup.module ? 0.45 : 1
+
+    Column {
+      anchors.fill: parent
+      anchors.margins: 6
+      spacing: 5
+
+      Rectangle {
+        width: parent.width
+        height: 20
+        radius: root.radiusSmall
+        color: audioGroupMouse.pressed ? root.pressColor : audioGroupMouse.containsMouse ? root.hoverColor : "transparent"
+        Text { anchors.left: parent.left; anchors.leftMargin: 6; anchors.verticalCenter: parent.verticalCenter; text: "Sound"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
+        Text { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; text: "󰅂"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 12 }
+        ModuleDragArea {
+          id: audioGroupMouse
+          module: audioGroup.module
+          onActivated: audioGroup.activated()
+        }
+      }
+      AudioLevelRow { width: parent.width }
+      AudioLevelRow { width: parent.width; microphone: true }
+    }
+  }
+
+  // One radio in the Control Center's connectivity card. The round knob owns
+  // the radio itself and the rest of the row hands off to the panel that owns
+  // the devices behind it, the way macOS expands a module in place.
+  component ConnectivityRow: Item {
+    id: connectivityRow
+
+    property string icon: ""
+    property string label: ""
+    property string detail: ""
+    property string module: ""
+    property bool active: false
+    property bool busy: false
+    property bool toggleEnabled: true
+    signal toggled()
+    signal opened()
+
+    height: 49
+    opacity: connectivityRow.module !== "" && root.dragModule === connectivityRow.module ? 0.45 : 1
+
+    Rectangle {
+      id: connectivityKnob
+
+      anchors.verticalCenter: parent.verticalCenter
+      width: 30
+      height: 30
+      radius: width / 2
+      opacity: connectivityRow.toggleEnabled ? 1 : 0.42
+      color: connectivityKnobMouse.pressed ? root.pressColor : connectivityRow.active ? root.accent : connectivityKnobMouse.containsMouse ? root.hoverColor : root.alpha(root.overlay, 0.35)
+
+      Text {
+        visible: !connectivityRow.busy
+        anchors.centerIn: parent
+        text: connectivityRow.icon
+        color: connectivityRow.active ? root.base : root.text
+        font.family: root.fontFamily
+        font.pixelSize: 15
+      }
+
+      RefreshGlyph {
+        visible: connectivityRow.busy
+        anchors.centerIn: parent
+        width: 16
+        height: 16
+        spinning: visible
+        color: connectivityRow.active ? root.base : root.text
+        font.pixelSize: 11
+      }
+
+      MouseArea {
+        id: connectivityKnobMouse
+        anchors.fill: parent
+        enabled: connectivityRow.toggleEnabled && !connectivityRow.busy
+        hoverEnabled: true
+        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: connectivityRow.toggled()
+      }
+    }
+
+    Rectangle {
+      anchors.left: connectivityKnob.right
+      anchors.leftMargin: 4
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      height: 38
+      radius: root.radius
+      color: connectivityLabelMouse.pressed ? root.pressColor : connectivityLabelMouse.containsMouse ? root.hoverColor : "transparent"
+
+      Column {
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.right: parent.right
+        anchors.rightMargin: 22
+        spacing: 1
+
+        Text { width: parent.width; text: connectivityRow.label; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+        Text { width: parent.width; text: connectivityRow.detail; elide: Text.ElideRight; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+      }
+
+      // The hand-off is only worth advertising under the pointer; the row is
+      // quiet otherwise.
+      Text {
+        visible: connectivityLabelMouse.containsMouse
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.verticalCenter: parent.verticalCenter
+        text: "󰅂"
+        color: root.overlay
+        font.family: root.fontFamily
+        font.pixelSize: 12
+      }
+
+      ModuleDragArea {
+        id: connectivityLabelMouse
+        module: connectivityRow.module
+        onActivated: connectivityRow.opened()
+      }
+    }
+  }
+
+  // A Control Center module tile. The glyph is a component slot because AirPods
+  // are drawn by `AirpodsIcon` while every other module has a font glyph.
+  component ControlTile: Rectangle {
+    id: controlTile
+
+    property Component glyph: null
+    property string label: ""
+    property string detail: ""
+    property string module: ""
+    property bool active: false
+    property bool compact: false
+    signal activated()
+
+    radius: root.radius
+    opacity: controlTile.module !== "" && root.dragModule === controlTile.module ? 0.45 : 1
+    color: controlTileMouse.pressed ? root.pressColor : controlTile.active ? root.activeTint : controlTileMouse.containsMouse ? root.hoverColor : root.surface
+
+    Row {
+      anchors.fill: parent
+      anchors.leftMargin: controlTile.compact ? 8 : 10
+      anchors.rightMargin: controlTile.compact ? 8 : 10
+      spacing: controlTile.compact ? 5 : 9
+
+      Item {
+        width: controlTile.compact ? 18 : 22
+        height: parent.height
+        Loader { anchors.centerIn: parent; sourceComponent: controlTile.glyph }
+      }
+
+      Column {
+        anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - (controlTile.compact ? 23 : 31)
+        spacing: 2
+
+        Text { width: parent.width; text: controlTile.label; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: controlTile.compact ? 10 : 11; font.bold: true }
+        Text { visible: !controlTile.compact; width: parent.width; text: controlTile.detail; elide: Text.ElideRight; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+      }
+    }
+
+    ModuleDragArea {
+      id: controlTileMouse
+      module: controlTile.module
+      onActivated: controlTile.activated()
+    }
+  }
+
+  component ControlCenterGrid: Item {
+    id: controlGrid
+
+    property string screenName: ""
+    readonly property real gap: 8
+    readonly property real cellSize: (width - gap * 3) / 4
+
+    readonly property real mediaSize: cellSize * 2 + gap
+    readonly property real smallTileHeight: 55
+
+    height: mediaSize + gap + smallTileHeight
+
+    Rectangle {
+      width: controlGrid.mediaSize
+      height: controlGrid.mediaSize
+      radius: root.radius
+      color: root.surface
+
+      Column {
+        anchors.fill: parent
+        anchors.margins: 8
+        spacing: 4
+
+        ConnectivityRow {
+          width: parent.width
+          height: (parent.height - 8) / 3
+          module: "network"
+          icon: root.systemData.connection === "Disconnected" ? "󰖪" : root.systemData.connectionType.indexOf("wireless") >= 0 ? "󰖩" : "󰈀"
+          label: root.systemData.wifiAvailable ? "Wi-Fi" : "Network"
+          detail: root.systemData.wifiAvailable && !root.systemData.wifiEnabled ? "Off" : (root.systemData.connection || "Disconnected")
+          active: root.systemData.wifiAvailable ? root.systemData.wifiEnabled : root.systemData.connection !== "Disconnected"
+          toggleEnabled: root.systemData.wifiAvailable
+          busy: root.controlBusy("wifi", "toggle")
+          onToggled: if (root.runControl("wifi", "toggle")) root.patchSystemData({ wifiEnabled: !root.systemData.wifiEnabled })
+          onOpened: root.toggleControl("network", controlGrid.screenName)
+        }
+
+        ConnectivityRow {
+          width: parent.width
+          height: (parent.height - 8) / 3
+          module: "bluetooth"
+          icon: root.systemData.bluetoothPowered ? "󰂯" : "󰂲"
+          label: "Bluetooth"
+          detail: !root.systemData.bluetoothAvailable ? "Unavailable"
+            : !root.systemData.bluetoothPowered ? "Off"
+            : root.systemData.bluetoothConnected + " connected"
+          active: root.systemData.bluetoothPowered
+          toggleEnabled: root.systemData.bluetoothAvailable
+          busy: bluetoothProcess.running && root.bluetoothAction === "toggle"
+          onToggled: root.toggleBluetoothPower()
+          onOpened: root.toggleControl("bluetooth", controlGrid.screenName)
+        }
+
+        ConnectivityRow {
+          width: parent.width
+          height: (parent.height - 8) / 3
+          module: "vpn"
+          icon: "󰒃"
+          label: "VPN"
+          detail: root.privateNetworkDetail()
+          active: root.privateNetworkActive()
+          toggleEnabled: root.privateNetworkTarget() !== ""
+          busy: root.privateNetworkBusy()
+          onToggled: root.togglePrivateNetwork()
+          onOpened: root.toggleControl("vpn", controlGrid.screenName)
+        }
+      }
+    }
+
+    Rectangle {
+      id: controlCenterMedia
+
+      readonly property var player: root.nowPlayingPlayer()
+      x: controlGrid.mediaSize + controlGrid.gap
+      width: controlGrid.mediaSize
+      height: width
+      radius: root.radius
+      color: root.surface
+      opacity: root.dragModule === "media" ? 0.45 : 1
+
+      ModuleDragArea {
+        module: "media"
+        cursorShape: Qt.ArrowCursor
+        onActivated: root.toggleMedia(controlCenterMedia.player, controlGrid.screenName)
+      }
+
+      Item {
+        id: controlCenterMediaArtFrame
+
+        anchors.top: parent.top
+        anchors.topMargin: 12
+        anchors.left: parent.left
+        anchors.leftMargin: 12
+        width: 48
+        height: 48
+
+        Image {
+          id: controlCenterMediaArt
+
+          anchors.fill: parent
+          visible: false
+          source: controlCenterMedia.player ? String(controlCenterMedia.player.trackArtUrl || "") : ""
+          fillMode: Image.PreserveAspectCrop
+          sourceSize.width: width * 3
+          sourceSize.height: height * 3
+          smooth: true
+          mipmap: true
+          asynchronous: true
+          cache: true
+        }
+
+        RoundedSource {
+          anchors.fill: parent
+          source: controlCenterMediaArt
+          radius: root.radiusSmall
+          visible: controlCenterMediaArt.status === Image.Ready
+        }
+
+        Rectangle {
+          anchors.fill: parent
+          visible: controlCenterMediaArt.status !== Image.Ready
+          radius: root.radiusSmall
+          color: root.mantle
+          Text {
+            anchors.centerIn: parent
+            text: "󰎆"
+            color: controlCenterMedia.player ? root.accent : root.overlay
+            font.family: root.fontFamily
+            font.pixelSize: 22
+          }
+        }
+      }
+
+      Text {
+        id: controlCenterMediaTitle
+
+        anchors.top: controlCenterMediaArtFrame.bottom
+        anchors.topMargin: 12
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        text: controlCenterMedia.player ? (root.mediaTitle(controlCenterMedia.player) || "Unknown track") : "Not Playing"
+        elide: Text.ElideRight
+        color: root.text
+        font.family: root.fontFamily
+        font.pixelSize: 11
+        font.bold: true
+      }
+
+      Text {
+        id: controlCenterMediaSubtitle
+
+        visible: text !== ""
+        anchors.top: controlCenterMediaTitle.bottom
+        anchors.topMargin: 2
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        text: controlCenterMedia.player ? root.mediaSubtitle(controlCenterMedia.player) : ""
+        elide: Text.ElideRight
+        color: root.subtext
+        font.family: root.fontFamily
+        font.pixelSize: 8
+      }
+
+      Row {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 10
+        spacing: 4
+
+        MediaButton {
+          flat: true
+          icon: "󰒮"
+          enabled: !!controlCenterMedia.player && controlCenterMedia.player.canGoPrevious
+          onActivated: controlCenterMedia.player.previous()
+        }
+        MediaButton {
+          flat: true
+          icon: controlCenterMedia.player && controlCenterMedia.player.isPlaying ? "󰏤" : "󰐊"
+          primary: true
+          enabled: !!controlCenterMedia.player
+          onActivated: controlCenterMedia.player.togglePlaying()
+        }
+        MediaButton {
+          flat: true
+          icon: "󰒭"
+          enabled: !!controlCenterMedia.player && controlCenterMedia.player.canGoNext
+          onActivated: controlCenterMedia.player.next()
+        }
+      }
+    }
+
+    ControlTile {
+      x: controlGrid.mediaSize + controlGrid.gap
+      y: controlGrid.mediaSize + controlGrid.gap
+      width: root.systemData.airpodsConnected ? controlGrid.cellSize : controlGrid.mediaSize
+      height: controlGrid.smallTileHeight
+      compact: root.systemData.airpodsConnected
+      module: "camera"
+      label: "Camera"
+      detail: root.cameraDetail()
+      active: root.systemData.cameraActive
+      glyph: Text {
+        text: root.systemData.cameraActive ? "󰄀" : "󰄁"
+        color: root.systemData.cameraActive ? root.red : root.accent
+        font.family: root.fontFamily
+        font.pixelSize: 16
+      }
+      onActivated: root.toggleControl("camera", controlGrid.screenName)
+    }
+
+    ControlTile {
+      visible: root.systemData.airpodsConnected
+      x: controlGrid.mediaSize + controlGrid.gap + controlGrid.cellSize + controlGrid.gap
+      y: controlGrid.mediaSize + controlGrid.gap
+      width: controlGrid.cellSize
+      height: controlGrid.smallTileHeight
+      compact: true
+      module: "airpods"
+      label: root.systemData.airpodsName || "AirPods"
+      detail: root.airpodsDetail()
+      active: true
+      glyph: AirpodsIcon { tint: root.accent }
+      onActivated: root.toggleControl("airpods", controlGrid.screenName)
+    }
+  }
+
+  component NotificationList: ListView {
+    id: notificationList
+
+    property bool history: false
+
+    spacing: 6
+    clip: true
+    model: notificationList.history
+      ? (root.systemData.notifications.history || [])
+      : (root.systemData.notifications.items || [])
+
+    delegate: Rectangle {
+      id: notificationEntry
+
+      required property var modelData
+      readonly property bool actionable: !notificationList.history && root.notificationActionable(modelData)
+      width: ListView.view.width
+      height: 60
+      radius: root.radius
+      color: notificationEntry.actionable && notificationOpenMouse.pressed ? root.pressColor
+        : notificationEntry.actionable && notificationOpenMouse.containsMouse ? root.hoverColor
+        : root.surface
+
+      MouseArea {
+        id: notificationOpenMouse
+        anchors.fill: parent
+        enabled: notificationEntry.actionable
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.activateNotification(notificationEntry.modelData.id)
+      }
+
+      Column {
+        anchors.fill: parent
+        anchors.margins: 9
+        spacing: 3
+        Row {
+          width: parent.width
+          Text { width: parent.width - 84; text: modelData.summary || modelData.app_name || "Notification"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+          Text { width: 58; text: root.agoText(modelData.time); color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
+          Rectangle {
+            readonly property bool busy: root.controlBusy("notifications", "dismiss", String(notificationEntry.modelData.id))
+            visible: !notificationList.history
+            width: visible ? 26 : 0
+            height: 20
+            radius: root.radiusSmall
+            color: notificationDismissMouse.pressed ? root.dangerPress : busy ? root.selectedColor : notificationDismissMouse.containsMouse ? root.dangerColor : "transparent"
+            Text { visible: !parent.busy; anchors.centerIn: parent; text: "󰅖"; color: notificationDismissMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
+            RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 14; height: 14; spinning: visible; font.pixelSize: 10 }
+            MouseArea {
+              id: notificationDismissMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.dismissNotification(notificationEntry.modelData.id)
+            }
+          }
+        }
+        Text { width: parent.width - (notificationEntry.actionable ? 16 : 0); text: modelData.body || modelData.app_name || ""; elide: Text.ElideRight; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+      }
+
+      Text {
+        visible: notificationEntry.actionable && notificationOpenMouse.containsMouse
+        anchors.right: parent.right
+        anchors.rightMargin: 9
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 8
+        text: "󰅂"
+        color: root.overlay
+        font.family: root.fontFamily
+        font.pixelSize: 12
+      }
+    }
+  }
+
+  component MediaButton: Rectangle {
+    id: mediaButton
+
+    property string icon: ""
+    property bool primary: false
+    property bool flat: false
+    signal activated()
+
+    width: mediaButton.flat ? (mediaButton.primary ? 38 : 34) : mediaButton.primary ? 34 : 28
+    height: mediaButton.flat ? 32 : 28
+    radius: root.radius
+    opacity: mediaButton.enabled ? 1 : 0.35
+    color: mediaButtonMouse.pressed ? root.pressColor : mediaButtonMouse.containsMouse ? root.hoverColor : mediaButton.flat ? "transparent" : mediaButton.primary ? root.alpha(root.accent, 0.22) : root.mantle
+
+    Text {
+      anchors.centerIn: parent
+      text: mediaButton.icon
+      color: root.text
+      font.family: root.fontFamily
+      font.pixelSize: mediaButton.flat ? (mediaButton.primary ? 22 : 18) : mediaButton.primary ? 15 : 13
+    }
+
+    MouseArea { id: mediaButtonMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: mediaButton.activated() }
+  }
+
+  component MediaTimeline: Column {
+    id: mediaTimeline
+
+    property var player: null
+    property real draggedPosition: -1
+    property int tick: 0
+    readonly property bool available: root.mediaTimelineAvailable(mediaTimeline.player)
+    readonly property real length: mediaTimeline.available ? Number(mediaTimeline.player.length) : 0
+    readonly property real reportedPosition: {
+      var refresh = mediaTimeline.tick
+      return mediaTimeline.player ? Number(mediaTimeline.player.position) : 0
+    }
+    readonly property real shownPosition: mediaTimeline.draggedPosition >= 0
+      ? mediaTimeline.draggedPosition
+      : Math.max(0, Math.min(mediaTimeline.length, mediaTimeline.reportedPosition))
+
+    visible: available
+    spacing: 3
+
+    Rectangle {
+      width: parent.width
+      height: 16
+      color: "transparent"
+
+      Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        height: 5
+        radius: height / 2
+        color: root.alpha(root.overlay, 0.4)
+
+        Rectangle {
+          width: parent.width * (mediaTimeline.length > 0 ? mediaTimeline.shownPosition / mediaTimeline.length : 0)
+          height: parent.height
+          radius: parent.radius
+          color: root.accent
+        }
+      }
+
+      Rectangle {
+        x: Math.max(0, Math.min(parent.width - width, parent.width * (mediaTimeline.length > 0 ? mediaTimeline.shownPosition / mediaTimeline.length : 0) - width / 2))
+        anchors.verticalCenter: parent.verticalCenter
+        width: 10
+        height: 10
+        radius: width / 2
+        color: timelineMouse.pressed ? root.text : root.accent
+      }
+
+      MouseArea {
+        id: timelineMouse
+
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        function positionAt(x) { return Math.max(0, Math.min(mediaTimeline.length, x / width * mediaTimeline.length)) }
+        onPressed: function(mouse) { mediaTimeline.draggedPosition = positionAt(mouse.x) }
+        onPositionChanged: function(mouse) {
+          if (pressed) mediaTimeline.draggedPosition = positionAt(mouse.x)
+        }
+        onReleased: function(mouse) {
+          var position = positionAt(mouse.x)
+          mediaTimeline.draggedPosition = -1
+          if (mediaTimeline.player) mediaTimeline.player.position = position
+          mediaTimeline.tick++
+        }
+        onCanceled: mediaTimeline.draggedPosition = -1
+      }
+    }
+
+    Row {
+      width: parent.width
+      Text { width: parent.width / 2; text: root.formatMediaTime(mediaTimeline.shownPosition); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+      Text { width: parent.width / 2; text: root.formatMediaTime(mediaTimeline.length); color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
+    }
+
+    Timer {
+      interval: 1000
+      repeat: true
+      running: mediaTimeline.visible && !!mediaTimeline.player && mediaTimeline.player.isPlaying && mediaTimeline.draggedPosition < 0
+      onTriggered: mediaTimeline.tick++
     }
   }
 
@@ -1726,711 +2804,790 @@ ShellRoot {
     model: Quickshell.screens
     PanelWindow {
       id: barWindow
+
+      // Like the Control Center panel, the bar keeps a surface larger than the
+      // strip it draws, so a module dragged off it stays inside the surface that
+      // was pressed and the gesture is not cut short. The reserved space stays
+      // pinned to the visible strip, and everything below it takes input only
+      // while a module is being pulled out.
+      readonly property bool dragging: root.dragKind === "remove" || root.barPressModule !== ""
+
       required property var modelData
       screen: modelData
       anchors { top: true; left: true; right: true }
-      implicitHeight: root.barHeight
-      color: root.alpha(root.mantle, 0.9)
+      implicitHeight: modelData.height
+      exclusionMode: ExclusionMode.Normal
+      exclusiveZone: root.barHeight
+      color: "transparent"
       WlrLayershell.layer: WlrLayer.Top
       WlrLayershell.namespace: "seele-shell-bar"
+      mask: Region {
+        width: barWindow.width
+        height: barWindow.dragging ? barWindow.height : root.barHeight
+      }
 
-      SurfaceWash {}
+      Rectangle {
+        id: barSurface
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        height: root.barHeight
+        color: root.alpha(root.mantle, 0.9)
 
-      Row {
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        spacing: 0
+        SurfaceWash {}
 
-        BarItem {
-          width: 30
-          hovered: menuMouse.containsMouse
-          Image {
-            anchors.centerIn: parent
-            width: 20
-            height: 20
-            source: "seele.svg"
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
-          }
-          MouseArea {
-            id: menuMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: root.toggleLauncher("apps")
-          }
-          HoverTip { mouse: menuMouse; text: "Applications" }
-        }
+        Row {
+          anchors.left: parent.left
+          anchors.top: parent.top
+          anchors.bottom: parent.bottom
+          spacing: 0
 
-        Repeater {
-          model: root.workspaceIds(barWindow.modelData)
-          Item {
-            required property int modelData
-            readonly property bool active: root.workspaceActive(modelData, barWindow.modelData)
-            readonly property bool occupied: root.workspaceOccupied(modelData)
-            width: active ? 44 : 22
-            height: parent.height
-
-            Behavior on width {
-              NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
-            }
-
-            Rectangle {
-              id: workspacePill
-              width: parent.active ? 42 : 20
-              height: root.barItemHeight
+          BarItem {
+            width: 30
+            hovered: menuMouse.containsMouse
+            Image {
               anchors.centerIn: parent
-              radius: root.radius
-              color: parent.active ? root.accent : workspaceMouse.containsMouse ? root.alpha(root.accent, 0.55) : parent.occupied ? root.alpha(root.subtext, 0.65) : root.alpha(root.subtext, 0.3)
+              width: 20
+              height: 20
+              source: "seele.svg"
+              fillMode: Image.PreserveAspectFit
+              smooth: true
+              mipmap: true
+            }
+            MouseArea {
+              id: menuMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              onClicked: root.toggleLauncher("apps")
+            }
+            HoverTip { mouse: menuMouse; text: "Applications" }
+          }
+
+          Repeater {
+            model: root.workspaceIds(barWindow.modelData)
+            Item {
+              required property int modelData
+              readonly property bool active: root.workspaceActive(modelData, barWindow.modelData)
+              readonly property bool occupied: root.workspaceOccupied(modelData)
+              width: active ? 44 : 22
+              height: parent.height
 
               Behavior on width {
                 NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
               }
 
-              Behavior on color {
-                ColorAnimation { duration: 140 }
-              }
-
-              Text {
+              Rectangle {
+                id: workspacePill
+                width: parent.active ? 42 : 20
+                height: root.barItemHeight
                 anchors.centerIn: parent
-                text: String(parent.parent.modelData)
-                color: root.base
-                font.family: root.fontFamily
-                font.pixelSize: 10
-                font.bold: parent.parent.active
+                radius: root.radius
+                color: parent.active ? root.accent : workspaceMouse.containsMouse ? root.alpha(root.accent, 0.55) : parent.occupied ? root.alpha(root.subtext, 0.65) : root.alpha(root.subtext, 0.3)
+
+                Behavior on width {
+                  NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                }
+
+                Behavior on color {
+                  ColorAnimation { duration: 140 }
+                }
+
+                Text {
+                  anchors.centerIn: parent
+                  text: String(parent.parent.modelData)
+                  color: root.base
+                  font.family: root.fontFamily
+                  font.pixelSize: 10
+                  font.bold: parent.parent.active
+                }
+              }
+
+              MouseArea {
+                id: workspaceMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.activateWorkspace(parent.modelData)
+              }
+              HoverTip { mouse: workspaceMouse; text: "Workspace " + modelData }
+            }
+          }
+
+          BarItem {
+            readonly property var window: root.activeWindow(barWindow.modelData)
+            visible: window !== null && root.windowLabel(window) !== ""
+            width: Math.min(230, activeWindowRow.implicitWidth + 14)
+            hovered: activeWindowMouse.containsMouse
+            Row {
+              id: activeWindowRow
+              anchors.centerIn: parent
+              height: parent.height
+              spacing: 6
+              IconImage {
+                visible: source !== ""
+                anchors.verticalCenter: parent.verticalCenter
+                implicitWidth: 15; implicitHeight: 15
+                source: root.windowIcon(parent.parent.window)
+              }
+              BarLabel {
+                anchors.verticalCenter: parent.verticalCenter
+                height: parent.height
+                maximumWidth: 190
+                color: root.subtext
+                text: root.windowLabel(parent.parent.window)
               }
             }
-
-            MouseArea {
-              id: workspaceMouse
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.activateWorkspace(parent.modelData)
-            }
-            HoverTip { mouse: workspaceMouse; text: "Workspace " + modelData }
+            MouseArea { id: activeWindowMouse; anchors.fill: parent; hoverEnabled: true }
+            HoverTip { mouse: activeWindowMouse; text: root.windowTitle(activeWindowMouse.parent.window) }
           }
-        }
 
-        BarItem {
-          readonly property var window: root.activeWindow(barWindow.modelData)
-          visible: window !== null && root.windowLabel(window) !== ""
-          width: Math.min(230, activeWindowRow.implicitWidth + 14)
-          hovered: activeWindowMouse.containsMouse
-          Row {
-            id: activeWindowRow
-            anchors.centerIn: parent
-            height: parent.height
-            spacing: 6
-            IconImage {
-              visible: source !== ""
-              anchors.verticalCenter: parent.verticalCenter
-              implicitWidth: 15; implicitHeight: 15
-              source: root.windowIcon(parent.parent.window)
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              width: Math.min(190, implicitWidth)
-              text: root.windowLabel(parent.parent.window)
-              elide: Text.ElideRight
-              color: root.subtext
-              font.family: root.fontFamily
-              font.pixelSize: 10
-            }
-          }
-          MouseArea { id: activeWindowMouse; anchors.fill: parent; hoverEnabled: true }
-          HoverTip { mouse: activeWindowMouse; text: root.windowTitle(activeWindowMouse.parent.window) }
-        }
-
-        BarItem {
-          width: 30
-          hovered: voxtypeMouse.containsMouse
-          Text {
-            anchors.centerIn: parent
-            text: root.systemData.voxtypeStatus === "recording" ? "󰍬" : root.systemData.voxtypeStatus === "transcribing" ? "󰔟" : "󰍭"
-            color: root.systemData.voxtypeStatus === "recording" ? root.red : root.systemData.voxtypeStatus === "transcribing" ? root.yellow : root.subtext
-            font.family: root.fontFamily
-            font.pixelSize: 14
-          }
-          MouseArea { id: voxtypeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl("voxtype") }
-          HoverTip { mouse: voxtypeMouse; text: "Voxtype: " + root.systemData.voxtypeStatus }
-        }
-      }
-
-      Row {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        spacing: 0
-
-        BarItem {
-          width: localClock.implicitWidth + 14
-          hovered: clockMouse.containsMouse
-          active: root.panelHere("clock", barWindow.modelData)
-          Text {
-            id: localClock
-            anchors.centerIn: parent
-            text: Qt.formatDateTime(root.now, "HH:mm")
-            color: root.text
-            font.family: root.fontFamily
-            font.pixelSize: 12
-            font.bold: true
-          }
-          MouseArea { id: clockMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: root.toggleControl("clock", barWindow.modelData.name) }
-          HoverTip { mouse: clockMouse; text: "Time zones" }
-        }
-
-        BarItem {
-          width: localDate.implicitWidth + 14
-          hovered: dateMouse.containsMouse
-          active: root.panelHere("calendar", barWindow.modelData)
-          Text {
-            id: localDate
-            anchors.centerIn: parent
-            text: Qt.formatDateTime(root.now, "yyyy-MM-dd")
-            color: root.subtext
-            font.family: root.fontFamily
-            font.pixelSize: 12
-          }
-          MouseArea { id: dateMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: root.toggleControl("calendar", barWindow.modelData.name) }
-          HoverTip { mouse: dateMouse; text: "Calendar" }
-        }
-
-        BarItem {
-          visible: root.systemData.microphoneMuted
-          width: 30
-          hovered: microphoneMutedIndicator.containsMouse
-          Rectangle {
-            anchors.centerIn: parent
-            width: 26; height: 18; radius: root.radiusSmall
-            color: root.alpha(root.overlay, 0.35)
+          BarItem {
+            width: 30
+            hovered: voxtypeMouse.containsMouse
             Text {
               anchors.centerIn: parent
-              text: "󰍭"
+              text: root.systemData.voxtypeStatus === "recording" ? "󰍬" : root.systemData.voxtypeStatus === "transcribing" ? "󰔟" : "󰍭"
+              color: root.systemData.voxtypeStatus === "recording" ? root.red : root.systemData.voxtypeStatus === "transcribing" ? root.yellow : root.subtext
+              font.family: root.fontFamily
+              font.pixelSize: 14
+            }
+            MouseArea { id: voxtypeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.runControl("voxtype") }
+            HoverTip { mouse: voxtypeMouse; text: "Voxtype: " + root.systemData.voxtypeStatus }
+          }
+        }
+
+        Row {
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.top: parent.top
+          anchors.bottom: parent.bottom
+          spacing: 0
+
+          BarItem {
+            width: localClock.implicitWidth + 14
+            hovered: clockMouse.containsMouse
+            active: root.panelHere("clock", barWindow.modelData)
+            Text {
+              id: localClock
+              anchors.centerIn: parent
+              text: Qt.formatDateTime(root.now, "HH:mm")
+              color: root.text
+              font.family: root.fontFamily
+              font.pixelSize: 12
+              font.bold: true
+            }
+            MouseArea { id: clockMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: root.toggleControl("clock", barWindow.modelData.name) }
+            HoverTip { mouse: clockMouse; text: "Time zones" }
+          }
+
+          BarItem {
+            width: localDate.implicitWidth + 14
+            hovered: dateMouse.containsMouse
+            active: root.panelHere("calendar", barWindow.modelData)
+            Text {
+              id: localDate
+              anchors.centerIn: parent
+              text: Qt.formatDateTime(root.now, "yyyy-MM-dd")
               color: root.subtext
               font.family: root.fontFamily
               font.pixelSize: 12
             }
+            MouseArea { id: dateMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: root.toggleControl("calendar", barWindow.modelData.name) }
+            HoverTip { mouse: dateMouse; text: "Calendar" }
           }
-          MouseArea {
-            id: microphoneMutedIndicator
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: {
-              root.patchSystemData({ microphoneMuted: false })
-              root.runControl("microphone", "mute")
-            }
-          }
-          HoverTip { mouse: microphoneMutedIndicator; text: "Microphone muted · click to unmute" }
-        }
 
-        BarItem {
-          visible: root.systemData.microphoneActive && !root.systemData.microphoneMuted
-          width: 20
-          hovered: microphoneActiveIndicator.containsMouse
-          Rectangle {
-            anchors.centerIn: parent
-            width: 9; height: 9; radius: 4.5
-            color: root.iosOrange
-          }
-          MouseArea {
-            id: microphoneActiveIndicator
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: {
-              root.patchSystemData({ microphoneMuted: true })
-              root.runControl("microphone", "mute")
-            }
-          }
-          HoverTip { mouse: microphoneActiveIndicator; text: "Microphone in use · click to mute" }
-        }
-
-        BarItem {
-          visible: root.systemData.cameraActive
-          width: 20
-          hovered: cameraActiveIndicator.containsMouse
-          Rectangle {
-            anchors.centerIn: parent
-            width: 9; height: 9; radius: 4.5
-            color: root.iosGreen
-          }
-          MouseArea { id: cameraActiveIndicator; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("camera", barWindow.modelData.name) }
-          HoverTip { mouse: cameraActiveIndicator; text: "Camera in use" }
-        }
-
-        BarItem {
-          visible: root.systemData.screenRecording
-          width: 20
-          hovered: screenRecordingIndicator.containsMouse
-          Rectangle {
-            anchors.centerIn: parent
-            width: 9; height: 9; radius: 4.5
-            color: root.iosRed
-          }
-          MouseArea { id: screenRecordingIndicator; anchors.fill: parent; hoverEnabled: true }
-          HoverTip { mouse: screenRecordingIndicator; text: "Screen is being recorded" }
-        }
-      }
-
-      Row {
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        spacing: 0
-
-        BarItem {
-          id: deviceMediaItem
-
-          readonly property var player: root.devicePlayer()
-          visible: player !== null
-          width: visible ? Math.min(210, deviceMediaRow.implicitWidth + 14) : 0
-          hovered: deviceMediaMouse.containsMouse
-          Row {
-            id: deviceMediaRow
-            anchors.centerIn: parent
-            height: parent.height
-            spacing: 5
-            Item {
-              anchors.verticalCenter: parent.verticalCenter
-              width: 16; height: 16
-              Image {
-                id: deviceMediaArt
-                anchors.fill: parent
-                visible: false
-                source: deviceMediaItem.player ? String(deviceMediaItem.player.trackArtUrl || "") : ""
-                fillMode: Image.PreserveAspectCrop
-                sourceSize.width: width * 4
-                sourceSize.height: height * 4
-                smooth: true
-                mipmap: true
-                asynchronous: true
-                cache: true
-              }
-              RoundedSource {
-                anchors.fill: parent
-                source: deviceMediaArt
-                radius: root.radiusSmall
-                visible: deviceMediaArt.status === Image.Ready
-              }
-              Text {
-                anchors.centerIn: parent
-                visible: deviceMediaArt.status !== Image.Ready
-                text: "󰎆"
-                color: root.accent
-                font.family: root.fontFamily
-                font.pixelSize: 13
-              }
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              width: Math.min(175, implicitWidth)
-              text: root.mediaLabel(parent.parent.player)
-              elide: Text.ElideRight
-              color: root.text
-              font.family: root.fontFamily
-              font.pixelSize: 10
-            }
-          }
-          MouseArea { id: deviceMediaMouse; anchors.fill: parent; hoverEnabled: true; onClicked: if (parent.player) parent.player.togglePlaying() }
-          HoverTip { mouse: deviceMediaMouse; text: root.mediaLabel(deviceMediaItem.player) }
-        }
-
-        BarItem {
-          id: spotifyMediaItem
-
-          readonly property var player: root.spotifyPlayer()
-          visible: player !== null
-          width: visible ? Math.min(210, spotifyMediaRow.implicitWidth + 14) : 0
-          hovered: spotifyMediaMouse.containsMouse
-          Row {
-            id: spotifyMediaRow
-            anchors.centerIn: parent
-            height: parent.height
-            spacing: 5
-            Item {
-              anchors.verticalCenter: parent.verticalCenter
-              width: 16; height: 16
-              Image {
-                id: spotifyMediaArt
-                anchors.fill: parent
-                visible: false
-                source: spotifyMediaItem.player ? String(spotifyMediaItem.player.trackArtUrl || "") : ""
-                fillMode: Image.PreserveAspectCrop
-                sourceSize.width: width * 4
-                sourceSize.height: height * 4
-                smooth: true
-                mipmap: true
-                asynchronous: true
-                cache: true
-              }
-              RoundedSource {
-                anchors.fill: parent
-                source: spotifyMediaArt
-                radius: root.radiusSmall
-                visible: spotifyMediaArt.status === Image.Ready
-              }
-              Text {
-                anchors.centerIn: parent
-                visible: spotifyMediaArt.status !== Image.Ready
-                text: "󰓇"
-                color: root.green
-                font.family: root.fontFamily
-                font.pixelSize: 13
-              }
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              width: Math.min(175, implicitWidth)
-              text: root.mediaLabel(parent.parent.player)
-              elide: Text.ElideRight
-              color: root.text
-              font.family: root.fontFamily
-              font.pixelSize: 10
-            }
-          }
-          MouseArea { id: spotifyMediaMouse; anchors.fill: parent; hoverEnabled: true; onClicked: if (parent.player) parent.player.togglePlaying() }
-          HoverTip { mouse: spotifyMediaMouse; text: root.mediaLabel(spotifyMediaItem.player) }
-        }
-
-        BarItem {
-          visible: root.trayHiddenCount() > 0
-          width: 22
-          hovered: trayExpandMouse.containsMouse
-          Text {
-            anchors.centerIn: parent
-            text: root.trayExpanded ? "󰅂" : "󰅁"
-            color: root.trayExpanded ? root.accent : root.overlay
-            font.family: root.fontFamily
-            font.pixelSize: 13
-          }
-          MouseArea { id: trayExpandMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.trayExpanded = !root.trayExpanded }
-          HoverTip { mouse: trayExpandMouse; text: root.trayHiddenCount() + " hidden tray icon" + (root.trayHiddenCount() === 1 ? "" : "s") }
-        }
-
-        Repeater {
-          model: root.trayItems()
           BarItem {
-            required property var modelData
+            visible: root.systemData.microphoneMuted
             width: 30
-            hovered: trayMouse.containsMouse
-            opacity: root.trayItemHidden(modelData) ? 0.45 : 1
-            IconImage {
+            hovered: microphoneMutedIndicator.containsMouse
+            Rectangle {
               anchors.centerIn: parent
-              implicitWidth: 16; implicitHeight: 16
-              source: parent.modelData.icon
+              width: 26; height: 18; radius: root.radiusSmall
+              color: root.alpha(root.overlay, 0.35)
+              Text {
+                anchors.centerIn: parent
+                text: "󰍭"
+                color: root.subtext
+                font.family: root.fontFamily
+                font.pixelSize: 12
+              }
             }
             MouseArea {
-              id: trayMouse
+              id: microphoneMutedIndicator
               anchors.fill: parent
               hoverEnabled: true
-              acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-              preventStealing: true
-              function openContextMenu() {
-                if (parent.modelData.menu) {
-                  var sameMenu = root.trayMenuOpen && root.activeTrayItem === parent.modelData
-                  root.closeOverlays()
-                  if (!sameMenu) {
-                    root.activeTrayItem = parent.modelData
-                    root.trayMenuOpen = true
-                    root.overlayScreen = barWindow.modelData.name
-                  }
-                } else {
-                  Quickshell.execDetached(["seele-control", "tray-menu", parent.modelData.id])
-                }
+              onClicked: {
+                root.patchSystemData({ microphoneMuted: false })
+                root.runControl("microphone", "mute")
               }
-              onClicked: function(mouse) {
-                if (mouse.button === Qt.MiddleButton) root.toggleTrayItemHidden(parent.modelData)
-                else if (parent.modelData.onlyMenu) openContextMenu()
-                else parent.modelData.activate()
+            }
+            HoverTip { mouse: microphoneMutedIndicator; text: "Microphone muted · click to unmute" }
+          }
+
+          BarItem {
+            visible: root.systemData.microphoneActive && !root.systemData.microphoneMuted
+            width: 20
+            hovered: microphoneActiveIndicator.containsMouse
+            Rectangle {
+              anchors.centerIn: parent
+              width: 9; height: 9; radius: 4.5
+              color: root.iosOrange
+            }
+            MouseArea {
+              id: microphoneActiveIndicator
+              anchors.fill: parent
+              hoverEnabled: true
+              onClicked: {
+                root.patchSystemData({ microphoneMuted: true })
+                root.runControl("microphone", "mute")
               }
-              onWheel: function(wheel) { parent.modelData.scroll(Math.round(wheel.angleDelta.y / 8), false) }
             }
-            TapHandler {
-              acceptedButtons: Qt.RightButton
-              gesturePolicy: TapHandler.WithinBounds
-              onTapped: trayMouse.openContextMenu()
+            HoverTip { mouse: microphoneActiveIndicator; text: "Microphone in use · click to mute" }
+          }
+
+          BarItem {
+            visible: root.systemData.cameraActive
+            width: 20
+            hovered: cameraActiveIndicator.containsMouse
+            Rectangle {
+              anchors.centerIn: parent
+              width: 9; height: 9; radius: 4.5
+              color: root.iosGreen
             }
-            HoverTip { mouse: trayMouse; text: modelData.title || modelData.id || "Tray item" }
+            MouseArea { id: cameraActiveIndicator; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("camera", barWindow.modelData.name) }
+            HoverTip { mouse: cameraActiveIndicator; text: "Camera in use" }
+          }
+
+          BarItem {
+            visible: root.systemData.screenRecording
+            width: 20
+            hovered: screenRecordingIndicator.containsMouse
+            Rectangle {
+              anchors.centerIn: parent
+              width: 9; height: 9; radius: 4.5
+              color: root.iosRed
+            }
+            MouseArea { id: screenRecordingIndicator; anchors.fill: parent; hoverEnabled: true }
+            HoverTip { mouse: screenRecordingIndicator; text: "Screen is being recorded" }
           }
         }
 
-        BarItem {
-          visible: root.systemData.cameraActive || (root.systemData.cameraDevices && root.systemData.cameraDevices.length > 0)
-          width: 30
-          hovered: cameraMouse.containsMouse
-          active: root.panelHere("camera", barWindow.modelData)
-          Text { anchors.centerIn: parent; text: root.systemData.cameraActive ? "󰄀" : "󰄁"; color: root.systemData.cameraActive ? root.red : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
-          MouseArea { id: cameraMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("camera", barWindow.modelData.name) }
-          HoverTip { mouse: cameraMouse; text: root.systemData.cameraActive ? "Camera in use" : "Camera" }
-        }
+        Row {
+          anchors.right: parent.right
+          anchors.top: parent.top
+          anchors.bottom: parent.bottom
+          spacing: 0
 
-        Repeater {
-          model: root.activeAgents()
           BarItem {
-            required property var modelData
-            id: agentBadgeItem
+            id: deviceMediaItem
 
-            readonly property color stateColor: root.agentColor(modelData.status)
-            width: 28
-            hovered: agentBadgeMouse.containsMouse
-            Column {
+            readonly property var player: root.devicePlayer()
+            module: "media"
+            visible: player !== null && root.barModulePinned("media")
+            width: visible ? Math.min(210, deviceMediaRow.implicitWidth + 14) : 0
+            hovered: deviceMediaMouse.containsMouse
+            active: root.panelHere("media", barWindow.modelData) && root.mediaPanelPlayer === player
+            Row {
+              id: deviceMediaRow
               anchors.centerIn: parent
-              spacing: 2
-              Image {
-                visible: modelData.id === "claude"
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 13
-                height: 13
-                source: "claude-code.svg"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-                mipmap: true
+              height: parent.height
+              spacing: 5
+              layoutDirection: Qt.RightToLeft
+              Item {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 16; height: 16
+                Image {
+                  id: deviceMediaArt
+                  anchors.fill: parent
+                  visible: false
+                  source: deviceMediaItem.player ? String(deviceMediaItem.player.trackArtUrl || "") : ""
+                  fillMode: Image.PreserveAspectCrop
+                  sourceSize.width: width * 4
+                  sourceSize.height: height * 4
+                  smooth: true
+                  mipmap: true
+                  asynchronous: true
+                  cache: true
+                }
+                RoundedSource {
+                  anchors.fill: parent
+                  source: deviceMediaArt
+                  radius: root.radiusSmall
+                  visible: deviceMediaArt.status === Image.Ready
+                }
+                Text {
+                  anchors.centerIn: parent
+                  visible: deviceMediaArt.status !== Image.Ready
+                  text: "󰎆"
+                  color: root.accent
+                  font.family: root.fontFamily
+                  font.pixelSize: 13
+                }
               }
+              BarLabel {
+                anchors.verticalCenter: parent.verticalCenter
+                height: parent.height
+                maximumWidth: 175
+                text: root.mediaLabel(parent.parent.player)
+              }
+            }
+            BarModuleArea { id: deviceMediaMouse; module: "media"; onActivated: root.toggleMedia(parent.player, barWindow.modelData.name) }
+            HoverTip { mouse: deviceMediaMouse; text: root.mediaLabel(deviceMediaItem.player) }
+          }
+
+          BarItem {
+            id: spotifyMediaItem
+
+            readonly property var player: root.spotifyPlayer()
+            module: "media"
+            visible: player !== null && root.barModulePinned("media")
+            width: visible ? Math.min(210, spotifyMediaRow.implicitWidth + 14) : 0
+            hovered: spotifyMediaMouse.containsMouse
+            active: root.panelHere("media", barWindow.modelData) && root.mediaPanelPlayer === player
+            Row {
+              id: spotifyMediaRow
+              anchors.centerIn: parent
+              height: parent.height
+              spacing: 5
+              layoutDirection: Qt.RightToLeft
+              Item {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 16; height: 16
+                Image {
+                  id: spotifyMediaArt
+                  anchors.fill: parent
+                  visible: false
+                  source: spotifyMediaItem.player ? String(spotifyMediaItem.player.trackArtUrl || "") : ""
+                  fillMode: Image.PreserveAspectCrop
+                  sourceSize.width: width * 4
+                  sourceSize.height: height * 4
+                  smooth: true
+                  mipmap: true
+                  asynchronous: true
+                  cache: true
+                }
+                RoundedSource {
+                  anchors.fill: parent
+                  source: spotifyMediaArt
+                  radius: root.radiusSmall
+                  visible: spotifyMediaArt.status === Image.Ready
+                }
+                Text {
+                  anchors.centerIn: parent
+                  visible: spotifyMediaArt.status !== Image.Ready
+                  text: "󰓇"
+                  color: root.green
+                  font.family: root.fontFamily
+                  font.pixelSize: 13
+                }
+              }
+              BarLabel {
+                anchors.verticalCenter: parent.verticalCenter
+                height: parent.height
+                maximumWidth: 175
+                text: root.mediaLabel(parent.parent.player)
+              }
+            }
+            BarModuleArea { id: spotifyMediaMouse; module: "media"; onActivated: root.toggleMedia(parent.player, barWindow.modelData.name) }
+            HoverTip { mouse: spotifyMediaMouse; text: root.mediaLabel(spotifyMediaItem.player) }
+          }
+
+          BarItem {
+            visible: root.trayHiddenCount() > 0
+            width: 22
+            hovered: trayExpandMouse.containsMouse
+            Text {
+              anchors.centerIn: parent
+              text: root.trayExpanded ? "󰅂" : "󰅁"
+              color: root.trayExpanded ? root.accent : root.overlay
+              font.family: root.fontFamily
+              font.pixelSize: 13
+            }
+            MouseArea { id: trayExpandMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.trayExpanded = !root.trayExpanded }
+            HoverTip { mouse: trayExpandMouse; text: root.trayHiddenCount() + " hidden tray icon" + (root.trayHiddenCount() === 1 ? "" : "s") }
+          }
+
+          Repeater {
+            model: root.trayItems()
+            BarItem {
+              required property var modelData
+              width: 30
+              hovered: trayMouse.containsMouse
+              opacity: root.trayItemHidden(modelData) ? 0.45 : 1
+              IconImage {
+                anchors.centerIn: parent
+                implicitWidth: 16; implicitHeight: 16
+                source: parent.modelData.icon
+              }
+              MouseArea {
+                id: trayMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                preventStealing: true
+                function openContextMenu() {
+                  if (parent.modelData.menu) {
+                    var sameMenu = root.trayMenuOpen && root.activeTrayItem === parent.modelData
+                    root.closeOverlays()
+                    if (!sameMenu) {
+                      root.activeTrayItem = parent.modelData
+                      root.trayMenuOpen = true
+                      root.overlayScreen = barWindow.modelData.name
+                    }
+                  } else {
+                    Quickshell.execDetached(["seele-control", "tray-menu", parent.modelData.id])
+                  }
+                }
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.MiddleButton) root.toggleTrayItemHidden(parent.modelData)
+                  else if (parent.modelData.onlyMenu) openContextMenu()
+                  else parent.modelData.activate()
+                }
+                onWheel: function(wheel) { parent.modelData.scroll(Math.round(wheel.angleDelta.y / 8), false) }
+              }
+              TapHandler {
+                acceptedButtons: Qt.RightButton
+                gesturePolicy: TapHandler.WithinBounds
+                onTapped: trayMouse.openContextMenu()
+              }
+              HoverTip { mouse: trayMouse; text: modelData.title || modelData.id || "Tray item" }
+            }
+          }
+
+          BarItem {
+            module: "camera"
+            visible: root.barModulePinned("camera") && (root.systemData.cameraActive || (root.systemData.cameraDevices && root.systemData.cameraDevices.length > 0))
+            width: 30
+            hovered: cameraMouse.containsMouse
+            active: root.panelHere("camera", barWindow.modelData)
+            Text { anchors.centerIn: parent; text: root.systemData.cameraActive ? "󰄀" : "󰄁"; color: root.systemData.cameraActive ? root.red : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
+            BarModuleArea { id: cameraMouse; module: "camera"; onActivated: root.toggleControl("camera", barWindow.modelData.name) }
+            HoverTip { mouse: cameraMouse; text: root.systemData.cameraActive ? "Camera in use" : "Camera" }
+          }
+
+          Repeater {
+            model: root.activeAgents()
+            BarItem {
+              required property var modelData
+              id: agentBadgeItem
+
+              readonly property color stateColor: root.agentColor(modelData.status)
+              width: 28
+              hovered: agentBadgeMouse.containsMouse
+              Column {
+                anchors.centerIn: parent
+                spacing: 2
+                Image {
+                  visible: modelData.id === "claude"
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  width: 13
+                  height: 13
+                  source: "claude-code.svg"
+                  fillMode: Image.PreserveAspectFit
+                  smooth: true
+                  mipmap: true
+                }
+                Text {
+                  visible: modelData.id !== "claude"
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: root.agentBadge(modelData.id)
+                  color: agentBadgeItem.stateColor
+                  font.family: root.fontFamily
+                  font.pixelSize: 10
+                  font.bold: true
+                }
+                Rectangle {
+                  id: agentStateBar
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  width: 14; height: 3; radius: 1.5
+                  color: agentBadgeItem.stateColor
+                  opacity: modelData.status === "running" ? 0.4 : 1
+
+                  SequentialAnimation on opacity {
+                    running: modelData.status === "working" || modelData.status === "input"
+                    loops: Animation.Infinite
+                    NumberAnimation { from: 1; to: 0.25; duration: modelData.status === "input" ? 600 : 900; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: 0.25; to: 1; duration: modelData.status === "input" ? 600 : 900; easing.type: Easing.InOutQuad }
+                  }
+                }
+              }
+              MouseArea { id: agentBadgeMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleAgents(barWindow.modelData.name) }
+              HoverTip { mouse: agentBadgeMouse; text: modelData.name + " · " + (modelData.status === "input" ? "needs input" : modelData.status) }
+            }
+          }
+
+
+          BarItem {
+            width: aiBarContent.implicitWidth + 14
+            hovered: aiMouse.containsMouse
+            active: root.agentsHere(barWindow.modelData)
+            visible: root.agentData.launchers && root.agentData.launchers.length > 0
+            Row {
+              id: aiBarContent
+              readonly property int codexCapacity: root.menuBarCapacity("codex")
+              readonly property int claudeCapacity: root.menuBarCapacity("claude")
+              anchors.centerIn: parent
+              height: parent.height
+              spacing: 5
+              Text { anchors.verticalCenter: parent.verticalCenter; text: "󱚣"; color: root.accent; font.family: root.fontFamily; font.pixelSize: 15 }
               Text {
-                visible: modelData.id !== "claude"
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: root.agentBadge(modelData.id)
-                color: agentBadgeItem.stateColor
+                visible: aiBarContent.codexCapacity >= 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Codex " + aiBarContent.codexCapacity + "%"
+                color: aiBarContent.codexCapacity <= 15 ? root.red : root.text
                 font.family: root.fontFamily
-                font.pixelSize: 10
+                font.pixelSize: 11
                 font.bold: true
               }
-              Rectangle {
-                id: agentStateBar
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 14; height: 3; radius: 1.5
-                color: agentBadgeItem.stateColor
-                opacity: modelData.status === "running" ? 0.4 : 1
+              Text {
+                visible: aiBarContent.codexCapacity >= 0 && aiBarContent.claudeCapacity >= 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: "·"
+                color: root.overlay
+                font.family: root.fontFamily
+                font.pixelSize: 11
+              }
+              Text {
+                visible: aiBarContent.claudeCapacity >= 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Claude " + aiBarContent.claudeCapacity + "%"
+                color: aiBarContent.claudeCapacity <= 15 ? root.red : root.text
+                font.family: root.fontFamily
+                font.pixelSize: 11
+                font.bold: true
+              }
+              Text {
+                visible: aiBarContent.codexCapacity < 0 && aiBarContent.claudeCapacity < 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: "AI"
+                color: root.text
+                font.family: root.fontFamily
+                font.pixelSize: 11
+                font.bold: true
+              }
+            }
+            MouseArea {
+              id: aiMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+              onPressed: function(mouse) {
+                if (mouse.button === Qt.RightButton) root.runAgent("pi", "")
+                else if (mouse.button === Qt.MiddleButton) root.refreshAgents()
+                else root.toggleAgents(barWindow.modelData.name)
+              }
+            }
+            HoverTip { mouse: aiMouse; text: "AI cockpit · middle-click to refresh · right-click to launch Pi" }
+          }
 
-                SequentialAnimation on opacity {
-                  running: modelData.status === "working" || modelData.status === "input"
-                  loops: Animation.Infinite
-                  NumberAnimation { from: 1; to: 0.25; duration: modelData.status === "input" ? 600 : 900; easing.type: Easing.InOutQuad }
-                  NumberAnimation { from: 0.25; to: 1; duration: modelData.status === "input" ? 600 : 900; easing.type: Easing.InOutQuad }
+          BarItem {
+            module: "airpods"
+            visible: root.systemData.airpodsConnected && root.barModulePinned("airpods")
+            width: 30
+            hovered: airpodsMouse.containsMouse
+            active: root.panelHere("airpods", barWindow.modelData)
+            AirpodsIcon { anchors.centerIn: parent; tint: root.accent }
+            BarModuleArea { id: airpodsMouse; module: "airpods"; onActivated: root.toggleControl("airpods", barWindow.modelData.name) }
+            HoverTip { mouse: airpodsMouse; text: root.systemData.airpodsName || "AirPods" }
+          }
+
+          BarItem {
+            module: "bluetooth"
+            visible: root.systemData.bluetoothAvailable && root.barModulePinned("bluetooth")
+            width: 30
+            hovered: bluetoothMouse.containsMouse
+            active: root.panelHere("bluetooth", barWindow.modelData)
+            Text {
+              anchors.centerIn: parent
+              text: root.systemData.bluetoothPowered ? "󰂯" : "󰂲"
+              color: root.systemData.bluetoothConnected > 0 ? root.accent : root.text
+              font.family: root.fontFamily
+              font.pixelSize: 14
+            }
+            BarModuleArea { id: bluetoothMouse; module: "bluetooth"; onActivated: root.toggleControl("bluetooth", barWindow.modelData.name) }
+            HoverTip { mouse: bluetoothMouse; text: "Bluetooth · " + (root.systemData.bluetoothPowered ? root.systemData.bluetoothConnected + " connected" : "off") }
+          }
+
+          BarItem {
+            module: "vpn"
+            visible: root.barModulePinned("vpn")
+            width: 30
+            hovered: vpnMouse.containsMouse
+            active: root.panelHere("vpn", barWindow.modelData)
+            Text {
+              anchors.centerIn: parent
+              text: "󰒃"
+              color: root.privateNetworkActive() ? root.accent : root.text
+              font.family: root.fontFamily
+              font.pixelSize: 14
+            }
+            BarModuleArea { id: vpnMouse; module: "vpn"; onActivated: root.toggleControl("vpn", barWindow.modelData.name) }
+            HoverTip { mouse: vpnMouse; text: "VPN · " + root.privateNetworkDetail() }
+          }
+
+          BarItem {
+            module: "network"
+            visible: root.barModulePinned("network")
+            width: 30
+            hovered: networkMouse.containsMouse
+            active: root.panelHere("network", barWindow.modelData)
+            Text {
+              anchors.centerIn: parent
+              text: root.systemData.connection === "Disconnected" ? "󰖪" : root.systemData.connectionType.indexOf("wireless") >= 0 ? "󰖩" : "󰈀"
+              color: root.privateNetworkActive() ? root.accent : root.systemData.connectivity === "full" ? root.text : root.yellow
+              font.family: root.fontFamily
+              font.pixelSize: 14
+            }
+            BarModuleArea { id: networkMouse; module: "network"; onActivated: root.toggleControl("network", barWindow.modelData.name) }
+            HoverTip {
+              mouse: networkMouse
+              text: "Network · " + (root.systemData.connection || "Disconnected")
+                + (root.systemData.tailscale && root.systemData.tailscale.connected ? " · Tailscale" : "")
+                + (root.systemData.protonVpn && root.systemData.protonVpn.connected ? " · Proton VPN" : "")
+            }
+          }
+
+
+          BarItem {
+            id: audioBarItem
+
+            readonly property int shownVolume: root.volumeDrag >= 0 ? root.volumeDrag : Number(root.systemData.volume)
+            module: "audio"
+            visible: root.barModulePinned("audio")
+            width: audioBarContent.implicitWidth + 14
+            hovered: audioMouse.containsMouse
+            active: root.panelHere("audio", barWindow.modelData)
+            Row {
+              id: audioBarContent
+              anchors.centerIn: parent
+              height: parent.height
+              spacing: 4
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.systemData.muted ? "󰝟" : audioBarItem.shownVolume > 55 ? "󰕾" : "󰖀"
+                color: root.systemData.muted ? root.red : root.text
+                font.family: root.fontFamily
+                font.pixelSize: 14
+              }
+              Text { anchors.verticalCenter: parent.verticalCenter; text: audioBarItem.shownVolume + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
+            }
+            BarModuleArea {
+              id: audioMouse
+              module: "audio"
+              acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+              onActivated: function(mouse) {
+                if (mouse.button === Qt.MiddleButton) {
+                  if (root.runControl("volume", "mute")) root.patchSystemData({ muted: !root.systemData.muted })
+                } else {
+                  root.toggleControl("audio", barWindow.modelData.name)
                 }
               }
+              onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, false) }
             }
-            MouseArea { id: agentBadgeMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleAgents(barWindow.modelData.name) }
-            HoverTip { mouse: agentBadgeMouse; text: modelData.name + " · " + (modelData.status === "input" ? "needs input" : modelData.status) }
+            HoverTip { mouse: audioMouse; text: "Volume · " + (root.systemData.muted ? "muted" : audioBarItem.shownVolume + "%") }
           }
-        }
 
+          BarItem {
+            width: 30
+            hovered: controlCenterMouse.containsMouse
+            active: root.panelHere("control-center", barWindow.modelData)
+            Text { anchors.centerIn: parent; text: "󰘮"; color: root.text; font.family: root.fontFamily; font.pixelSize: 14 }
+            MouseArea { id: controlCenterMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("control-center", barWindow.modelData.name) }
+            HoverTip { mouse: controlCenterMouse; text: "Control Center" }
+          }
 
-        BarItem {
-          width: aiBarContent.implicitWidth + 14
-          hovered: aiMouse.containsMouse
-          active: root.agentsHere(barWindow.modelData)
-          visible: root.agentData.launchers && root.agentData.launchers.length > 0
-          Row {
-            id: aiBarContent
-            readonly property int codexCapacity: root.menuBarCapacity("codex")
-            readonly property int claudeCapacity: root.menuBarCapacity("claude")
-            anchors.centerIn: parent
-            height: parent.height
-            spacing: 5
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "󱚣"; color: root.accent; font.family: root.fontFamily; font.pixelSize: 15 }
-            Text {
-              visible: aiBarContent.codexCapacity >= 0
-              anchors.verticalCenter: parent.verticalCenter
-              text: "Codex " + aiBarContent.codexCapacity + "%"
-              color: aiBarContent.codexCapacity <= 15 ? root.red : root.text
-              font.family: root.fontFamily
-              font.pixelSize: 11
-              font.bold: true
+          BarItem {
+            width: notificationBarContent.implicitWidth + 14
+            hovered: notificationMouse.containsMouse
+            active: root.panelHere("notifications", barWindow.modelData)
+            Row {
+              id: notificationBarContent
+              anchors.centerIn: parent
+              height: parent.height
+              spacing: 4
+              Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.dnd ? "󰂛" : "󰂚"; color: root.systemData.dnd ? root.yellow : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
+              Text { visible: Number(root.systemData.notifications.count || 0) > 0; anchors.verticalCenter: parent.verticalCenter; text: String(root.systemData.notifications.count); color: root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
             }
-            Text {
-              visible: aiBarContent.codexCapacity >= 0 && aiBarContent.claudeCapacity >= 0
-              anchors.verticalCenter: parent.verticalCenter
-              text: "·"
-              color: root.overlay
-              font.family: root.fontFamily
-              font.pixelSize: 11
-            }
-            Text {
-              visible: aiBarContent.claudeCapacity >= 0
-              anchors.verticalCenter: parent.verticalCenter
-              text: "Claude " + aiBarContent.claudeCapacity + "%"
-              color: aiBarContent.claudeCapacity <= 15 ? root.red : root.text
-              font.family: root.fontFamily
-              font.pixelSize: 11
-              font.bold: true
-            }
-            Text {
-              visible: aiBarContent.codexCapacity < 0 && aiBarContent.claudeCapacity < 0
-              anchors.verticalCenter: parent.verticalCenter
-              text: "AI"
-              color: root.text
-              font.family: root.fontFamily
-              font.pixelSize: 11
-              font.bold: true
-            }
+            MouseArea { id: notificationMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("notifications", barWindow.modelData.name) }
+            HoverTip { mouse: notificationMouse; text: "Notifications · " + (root.systemData.dnd ? "do not disturb" : root.systemData.notifications.count || 0) }
           }
-          MouseArea {
-            id: aiMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-            onPressed: function(mouse) {
-              if (mouse.button === Qt.RightButton) root.runAgent("pi", "")
-              else if (mouse.button === Qt.MiddleButton) root.refreshAgents()
-              else root.toggleAgents(barWindow.modelData.name)
-            }
-          }
-          HoverTip { mouse: aiMouse; text: "AI cockpit · middle-click to refresh · right-click to launch Pi" }
-        }
 
-        BarItem {
-          visible: root.systemData.airpodsConnected
-          width: 30
-          hovered: airpodsMouse.containsMouse
-          active: root.panelHere("airpods", barWindow.modelData)
-          AirpodsIcon { anchors.centerIn: parent; tint: root.accent }
-          MouseArea { id: airpodsMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("airpods", barWindow.modelData.name) }
-          HoverTip { mouse: airpodsMouse; text: root.systemData.airpodsName || "AirPods" }
-        }
+          BarItem {
+            id: batteryBarItem
 
-        BarItem {
-          visible: root.systemData.bluetoothAvailable
-          width: 30
-          hovered: bluetoothMouse.containsMouse
-          active: root.panelHere("bluetooth", barWindow.modelData)
-          Text {
-            anchors.centerIn: parent
-            text: root.systemData.bluetoothPowered ? "󰂯" : "󰂲"
-            color: root.systemData.bluetoothConnected > 0 ? root.accent : root.text
-            font.family: root.fontFamily
-            font.pixelSize: 14
-          }
-          MouseArea { id: bluetoothMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("bluetooth", barWindow.modelData.name) }
-          HoverTip { mouse: bluetoothMouse; text: "Bluetooth · " + (root.systemData.bluetoothPowered ? root.systemData.bluetoothConnected + " connected" : "off") }
-        }
-
-        BarItem {
-          width: 30
-          hovered: networkMouse.containsMouse
-          active: root.panelHere("network", barWindow.modelData)
-          Text {
-            anchors.centerIn: parent
-            text: root.systemData.connection === "Disconnected" ? "󰖪" : root.systemData.connectionType.indexOf("wireless") >= 0 ? "󰖩" : "󰈀"
-            color: root.privateNetworkActive() ? root.accent : root.systemData.connectivity === "full" ? root.text : root.yellow
-            font.family: root.fontFamily
-            font.pixelSize: 14
-          }
-          MouseArea { id: networkMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("network", barWindow.modelData.name) }
-          HoverTip {
-            mouse: networkMouse
-            text: "Network · " + (root.systemData.connection || "Disconnected")
-              + (root.systemData.tailscale && root.systemData.tailscale.connected ? " · Tailscale" : "")
-              + (root.systemData.protonVpn && root.systemData.protonVpn.connected ? " · Proton VPN" : "")
-          }
-        }
-
-
-        BarItem {
-          id: audioBarItem
-
-          readonly property int shownVolume: root.volumeDrag >= 0 ? root.volumeDrag : Number(root.systemData.volume)
-          width: audioBarContent.implicitWidth + 14
-          hovered: audioMouse.containsMouse
-          active: root.panelHere("audio", barWindow.modelData)
-          Row {
-            id: audioBarContent
-            anchors.centerIn: parent
-            height: parent.height
-            spacing: 4
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              text: root.systemData.muted ? "󰝟" : audioBarItem.shownVolume > 55 ? "󰕾" : "󰖀"
-              color: root.systemData.muted ? root.red : root.text
-              font.family: root.fontFamily
-              font.pixelSize: 14
-            }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: audioBarItem.shownVolume + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
-          }
-          MouseArea {
-            id: audioMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-            onPressed: function(mouse) {
-              if (mouse.button === Qt.MiddleButton) {
-                if (root.runControl("volume", "mute")) root.patchSystemData({ muted: !root.systemData.muted })
-              } else {
-                root.toggleControl("audio", barWindow.modelData.name)
+            readonly property var entry: root.batteryPrimary()
+            visible: root.batteryEntries().length > 0
+            width: batteryBarContent.implicitWidth + 14
+            hovered: batteryMouse.containsMouse
+            active: root.panelHere("battery", barWindow.modelData)
+            Row {
+              id: batteryBarContent
+              anchors.centerIn: parent
+              height: parent.height
+              spacing: 4
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.batteryIcon(batteryBarItem.entry)
+                color: root.batteryColor(batteryBarItem.entry)
+                font.family: root.fontFamily
+                font.pixelSize: 14
+              }
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: batteryBarItem.entry ? Number(batteryBarItem.entry.percent) + "%" : ""
+                color: root.text
+                font.family: root.fontFamily
+                font.pixelSize: 10
               }
             }
-            onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, false) }
+            MouseArea { id: batteryMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("battery", barWindow.modelData.name) }
+            HoverTip { mouse: batteryMouse; text: "Battery · " + (batteryBarItem.entry ? batteryBarItem.entry.name + " " + Number(batteryBarItem.entry.percent) + "%" : "unavailable") }
           }
-          HoverTip { mouse: audioMouse; text: "Volume · " + (root.systemData.muted ? "muted" : audioBarItem.shownVolume + "%") }
-        }
 
-        BarItem {
-          width: notificationBarContent.implicitWidth + 14
-          hovered: notificationMouse.containsMouse
-          active: root.panelHere("notifications", barWindow.modelData)
-          Row {
-            id: notificationBarContent
-            anchors.centerIn: parent
-            height: parent.height
-            spacing: 4
-            Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.dnd ? "󰂛" : "󰂚"; color: root.systemData.dnd ? root.yellow : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
-            Text { visible: Number(root.systemData.notifications.count || 0) > 0; anchors.verticalCenter: parent.verticalCenter; text: String(root.systemData.notifications.count); color: root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
-          }
-          MouseArea { id: notificationMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("notifications", barWindow.modelData.name) }
-          HoverTip { mouse: notificationMouse; text: "Notifications · " + (root.systemData.dnd ? "do not disturb" : root.systemData.notifications.count || 0) }
-        }
-
-        BarItem {
-          id: batteryBarItem
-
-          readonly property var entry: root.batteryPrimary()
-          visible: root.batteryEntries().length > 0
-          width: batteryBarContent.implicitWidth + 14
-          hovered: batteryMouse.containsMouse
-          active: root.panelHere("battery", barWindow.modelData)
-          Row {
-            id: batteryBarContent
-            anchors.centerIn: parent
-            height: parent.height
-            spacing: 4
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              text: root.batteryIcon(batteryBarItem.entry)
-              color: root.batteryColor(batteryBarItem.entry)
-              font.family: root.fontFamily
-              font.pixelSize: 14
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              text: batteryBarItem.entry ? Number(batteryBarItem.entry.percent) + "%" : ""
-              color: root.text
-              font.family: root.fontFamily
-              font.pixelSize: 10
+          // Where a module dragged out of the Control Center will land. Only the
+          // "add" direction needs it: an entry being pulled off the bar previews
+          // its own removal by disappearing.
+          BarItem {
+            visible: root.dragKind === "add" && root.dragOverBar
+            width: visible ? dragGhostRow.implicitWidth + 14 : 0
+            active: true
+            Row {
+              id: dragGhostRow
+              anchors.centerIn: parent
+              height: parent.height
+              spacing: 5
+              Text { anchors.verticalCenter: parent.verticalCenter; text: root.moduleGlyph(root.dragModule); color: root.accent; font.family: root.fontFamily; font.pixelSize: 14 }
+              Text { anchors.verticalCenter: parent.verticalCenter; text: root.moduleLabel(root.dragModule); color: root.accent; font.family: root.fontFamily; font.pixelSize: 10; font.bold: true }
             }
           }
-          MouseArea { id: batteryMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("battery", barWindow.modelData.name) }
-          HoverTip { mouse: batteryMouse; text: "Battery · " + (batteryBarItem.entry ? batteryBarItem.entry.name + " " + Number(batteryBarItem.entry.percent) + "%" : "unavailable") }
+
+          BarItem {
+            width: 30
+            hovered: sessionMouse.containsMouse
+            active: root.panelHere("system", barWindow.modelData)
+            Text { anchors.centerIn: parent; text: "󰐥"; color: root.windowsCountdown >= 0 ? root.yellow : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
+            MouseArea { id: sessionMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("system", barWindow.modelData.name) }
+            HoverTip { mouse: sessionMouse; text: "Power and session" }
+          }
         }
 
-        BarItem {
-          width: 30
-          hovered: sessionMouse.containsMouse
-          active: root.panelHere("system", barWindow.modelData)
-          Text { anchors.centerIn: parent; text: "󰐥"; color: root.windowsCountdown >= 0 ? root.yellow : root.text; font.family: root.fontFamily; font.pixelSize: 14 }
-          MouseArea { id: sessionMouse; anchors.fill: parent; hoverEnabled: true; onPressed: root.toggleControl("system", barWindow.modelData.name) }
-          HoverTip { mouse: sessionMouse; text: "Power and session" }
+        SurfaceGrain {}
+
+        // The bar is the drop target for a module drag, so it says so while one
+        // is in flight and brightens once the pointer is actually over it.
+        Rectangle {
+          visible: root.dragModule !== ""
+          anchors.fill: parent
+          z: 1
+          color: root.dragOverBar ? root.selectedColor : root.hoverColor
+
+          Behavior on color { ColorAnimation { duration: 110 } }
         }
-      }
 
-      SurfaceGrain {}
-
-      Rectangle {
-        anchors.bottom: parent.bottom
-        width: parent.width
-        height: 1
-        z: 1
-        color: root.alpha(root.accent, 0.2)
+        Rectangle {
+          anchors.bottom: parent.bottom
+          width: parent.width
+          height: root.dragModule !== "" ? 2 : 1
+          z: 1
+          color: root.dragModule !== "" ? root.accent : root.alpha(root.accent, 0.2)
+        }
       }
     }
   }
@@ -2445,7 +3602,10 @@ ShellRoot {
     PanelWindow {
       id: clickAwayWindow
       required property var modelData
-      readonly property bool active: root.controlPanel !== "" || root.agentsOpen || root.trayMenuOpen
+      // A held bar entry may be starting a drag straight down through this
+      // surface, so it stands aside until the pointer is released.
+      readonly property bool active: root.barPressModule === ""
+        && (root.controlPanel !== "" || root.agentsOpen || root.trayMenuOpen)
       screen: modelData
       visible: true
       anchors { top: true; bottom: true; left: true; right: true }
@@ -2636,7 +3796,7 @@ ShellRoot {
               Text { text: "World clock"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
               Text { text: "Select temporarily, or pin multiple zones to the top"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
             }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: Qt.formatDateTime(root.now, "HH:mm"); color: root.accent; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignRight }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: Qt.formatDateTime(root.now, "HH:mm:ss"); color: root.accent; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignRight }
           }
 
           Rectangle {
@@ -2728,7 +3888,7 @@ ShellRoot {
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 width: 76
-                Text { width: parent.width; text: modelData.time; color: root.accent; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignRight }
+                Text { width: parent.width; text: Time.offsetTime(root.now, modelData.offset, true) || modelData.time; color: root.accent; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignRight }
                 Text { width: parent.width; text: modelData.day; color: root.mutedText; font.family: root.fontFamily; font.pixelSize: 8; horizontalAlignment: Text.AlignRight }
               }
               MouseArea {
@@ -3210,6 +4370,222 @@ ShellRoot {
     }
   }
 
+  // Control Center ---------------------------------------------------------------
+  // Every module here also keeps its own menu bar entry and its own panel. This
+  // panel is the one place that carries all of them at once, so its modules stay
+  // laid out even when the thing behind one of them is absent, where the bar
+  // hides an entry it has nothing to say about.
+  Variants {
+    model: Quickshell.screens
+    PanelWindow {
+      id: controlCenterWindow
+
+      // A Wayland client only keeps receiving pointer motion while the pointer
+      // stays inside the surface that was pressed, so a drop target living on
+      // another layer surface loses the gesture halfway across. This surface
+      // therefore reaches up over the bar itself, and the strip above the panel
+      // takes input only while a drag is in flight so bar entries stay clickable
+      // the rest of the time. The geometry never changes mid-gesture, only the
+      // input region does.
+      readonly property int barReach: root.barHeight + root.panelGap
+      readonly property bool dragging: root.dragKind === "add"
+
+      required property var modelData
+      screen: modelData
+      visible: root.controlPanel === "control-center" && root.pinnedScreen(root.overlayScreen, modelData)
+      anchors { top: true; right: true }
+      margins { top: 0; right: root.panelGap }
+      implicitWidth: 400
+      implicitHeight: controlCenterContent.implicitHeight + root.panelMargin * 2 + controlCenterWindow.barReach
+      exclusionMode: ExclusionMode.Ignore
+      color: "transparent"
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.namespace: "seele-shell-control-center"
+      mask: Region {
+        y: controlCenterWindow.dragging ? 0 : controlCenterWindow.barReach
+        width: controlCenterWindow.width
+        height: controlCenterWindow.height - (controlCenterWindow.dragging ? 0 : controlCenterWindow.barReach)
+      }
+
+      Item {
+        anchors.fill: parent
+        anchors.topMargin: controlCenterWindow.barReach
+
+        PanelSurface {
+          Column {
+            id: controlCenterContent
+
+            anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
+
+            // The title sits a little lower in a slightly shorter row: it was
+            // crowding the panel's top edge while everything under it sat low.
+            Row {
+              width: parent.width
+              height: root.panelHeaderHeight - 3
+              PanelGlyph { text: "󰘮"; anchors.verticalCenterOffset: 4 }
+              Text { anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 4; text: "Control Center"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+            }
+
+            ControlCenterGrid {
+              width: parent.width
+              screenName: controlCenterWindow.modelData.name
+            }
+
+            AudioGroup {
+              width: parent.width
+              module: "audio"
+              onActivated: root.toggleControl("audio", controlCenterWindow.modelData.name)
+            }
+
+          }
+        }
+      }
+    }
+  }
+
+  // Media controls -------------------------------------------------------------
+  Variants {
+    model: Quickshell.screens
+    PanelWindow {
+      id: mediaWindow
+
+      required property var modelData
+      readonly property var player: root.mediaPanelPlayer || root.nowPlayingPlayer()
+      screen: modelData
+      visible: root.controlPanel === "media" && root.pinnedScreen(root.overlayScreen, modelData)
+      anchors { top: true; right: true }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
+      implicitWidth: 400
+      implicitHeight: mediaContent.implicitHeight + root.panelMargin * 2
+      exclusionMode: ExclusionMode.Ignore
+      color: "transparent"
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.namespace: "seele-shell-media"
+
+      PanelSurface {
+        Column {
+          id: mediaContent
+
+          anchors.fill: parent
+          anchors.margins: root.panelMargin
+          spacing: root.panelSpacing
+
+          Row {
+            width: parent.width
+            height: root.panelHeaderHeight
+            PanelGlyph { text: "󰎆" }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Now Playing"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          }
+
+          Row {
+            width: parent.width
+            height: 150
+            spacing: 14
+
+            Item {
+              width: 150
+              height: 150
+
+              Image {
+                id: mediaPanelArt
+
+                anchors.fill: parent
+                visible: false
+                source: mediaWindow.player ? String(mediaWindow.player.trackArtUrl || "") : ""
+                fillMode: Image.PreserveAspectCrop
+                sourceSize.width: width * 2
+                sourceSize.height: height * 2
+                smooth: true
+                mipmap: true
+                asynchronous: true
+                cache: true
+              }
+
+              RoundedSource {
+                anchors.fill: parent
+                source: mediaPanelArt
+                radius: root.radius
+                visible: mediaPanelArt.status === Image.Ready
+              }
+
+              Rectangle {
+                anchors.fill: parent
+                visible: mediaPanelArt.status !== Image.Ready
+                radius: root.radius
+                color: root.mantle
+                Text {
+                  anchors.centerIn: parent
+                  text: "󰎆"
+                  color: mediaWindow.player ? root.accent : root.overlay
+                  font.family: root.fontFamily
+                  font.pixelSize: 42
+                }
+              }
+            }
+
+            Item {
+              width: parent.width - 164
+              height: parent.height
+
+              Column {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                spacing: 4
+
+                Text {
+                  width: parent.width
+                  text: mediaWindow.player ? (root.mediaTitle(mediaWindow.player) || "Unknown track") : "Nothing playing"
+                  elide: Text.ElideRight
+                  color: mediaWindow.player ? root.text : root.subtext
+                  font.family: root.fontFamily
+                  font.pixelSize: 15
+                  font.bold: true
+                }
+                Text {
+                  width: parent.width
+                  text: mediaWindow.player ? root.mediaSubtitle(mediaWindow.player) : "Start a track to see it here"
+                  elide: Text.ElideRight
+                  color: root.subtext
+                  font.family: root.fontFamily
+                  font.pixelSize: 11
+                }
+              }
+
+              Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                spacing: 8
+
+                MediaButton {
+                  icon: "󰒮"
+                  enabled: !!mediaWindow.player && mediaWindow.player.canGoPrevious
+                  onActivated: mediaWindow.player.previous()
+                }
+                MediaButton {
+                  icon: mediaWindow.player && mediaWindow.player.isPlaying ? "󰏤" : "󰐊"
+                  primary: true
+                  enabled: !!mediaWindow.player
+                  onActivated: mediaWindow.player.togglePlaying()
+                }
+                MediaButton {
+                  icon: "󰒭"
+                  enabled: !!mediaWindow.player && mediaWindow.player.canGoNext
+                  onActivated: mediaWindow.player.next()
+                }
+              }
+            }
+          }
+
+          MediaTimeline {
+            width: parent.width
+            player: mediaWindow.player
+          }
+        }
+      }
+    }
+  }
+
   // Audio controls -------------------------------------------------------------
   Variants {
     model: Quickshell.screens
@@ -3241,164 +4617,8 @@ ShellRoot {
             PanelGlyph { text: "󰕾" }
             Text { anchors.verticalCenter: parent.verticalCenter; text: "Audio"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
           }
-          Row {
-            width: parent.width; spacing: 8
-            Rectangle {
-              id: outputSlider
-
-              readonly property int shown: root.volumeDrag >= 0 ? root.volumeDrag : Number(root.systemData.volume)
-              width: parent.width - 52; height: 44; radius: root.radius
-              color: root.surface
-              clip: true
-              Rectangle {
-                width: parent.width * Math.max(0, Math.min(1, parent.shown / 100))
-                radius: parent.radius
-                height: parent.height
-                color: root.systemData.muted ? root.fillDanger : root.fillColor
-              }
-              Row {
-                anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  width: parent.width - 46
-                  text: root.systemData.muted ? "󰝟  Output muted" : "󰕾  Output"
-                  color: root.text
-                  font.family: root.fontFamily
-                  font.pixelSize: 11
-                  font.bold: true
-                }
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  width: 46
-                  text: outputSlider.shown + "%"
-                  color: root.subtext
-                  font.family: root.fontFamily
-                  font.pixelSize: 11
-                  horizontalAlignment: Text.AlignRight
-                }
-              }
-              MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                function valueAt(x) { return Math.max(0, Math.min(100, Math.round(x / width * 100))) }
-                onPressed: function(mouse) {
-                  root.volumeDrag = valueAt(mouse.x)
-                  volumeDragTimer.restart()
-                }
-                onPositionChanged: function(mouse) {
-                  if (!pressed) return
-                  root.volumeDrag = valueAt(mouse.x)
-                  if (!volumeDragTimer.running) volumeDragTimer.restart()
-                }
-                onReleased: function(mouse) {
-                  root.volumeDrag = valueAt(mouse.x)
-                  volumeDragTimer.stop()
-                  root.runControl("volume", String(root.volumeDrag))
-                }
-                onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, false) }
-              }
-            }
-            Rectangle {
-              width: 44; height: 44; radius: root.radius
-              color: outputMuteMouse.pressed ? root.pressColor : root.systemData.muted ? root.dangerColor : outputMuteMouse.containsMouse ? root.hoverColor : root.surface
-              Text {
-                anchors.centerIn: parent
-                text: root.systemData.muted ? "󰝟" : "󰕾"
-                color: root.systemData.muted ? root.red : root.text
-                font.family: root.fontFamily
-                font.pixelSize: 15
-              }
-              MouseArea {
-                id: outputMuteMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                  if (root.runControl("volume", "mute")) root.patchSystemData({ muted: !root.systemData.muted })
-                }
-              }
-              HoverTip { mouse: outputMuteMouse; text: root.systemData.muted ? "Unmute output" : "Mute output" }
-            }
-          }
-          Row {
-            width: parent.width; spacing: 8
-            Rectangle {
-              id: microphoneSlider
-
-              readonly property int shown: root.microphoneDrag >= 0 ? root.microphoneDrag : Number(root.systemData.microphoneVolume)
-              width: parent.width - 52; height: 44; radius: root.radius
-              color: root.surface
-              clip: true
-              Rectangle {
-                width: parent.width * Math.max(0, Math.min(1, parent.shown / 100))
-                radius: parent.radius
-                height: parent.height
-                color: root.systemData.microphoneMuted ? root.fillDanger : root.fillColor
-              }
-              Row {
-                anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  width: parent.width - 46
-                  text: root.systemData.microphoneMuted ? "󰍭  Microphone muted" : root.systemData.microphoneActive ? "󰍬  Microphone in use" : "󰍬  Microphone"
-                  color: root.text
-                  font.family: root.fontFamily
-                  font.pixelSize: 11
-                  font.bold: true
-                }
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  width: 46
-                  text: microphoneSlider.shown + "%"
-                  color: root.subtext
-                  font.family: root.fontFamily
-                  font.pixelSize: 11
-                  horizontalAlignment: Text.AlignRight
-                }
-              }
-              MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                function valueAt(x) { return Math.max(0, Math.min(100, Math.round(x / width * 100))) }
-                onPressed: function(mouse) {
-                  root.microphoneDrag = valueAt(mouse.x)
-                  microphoneDragTimer.restart()
-                }
-                onPositionChanged: function(mouse) {
-                  if (!pressed) return
-                  root.microphoneDrag = valueAt(mouse.x)
-                  if (!microphoneDragTimer.running) microphoneDragTimer.restart()
-                }
-                onReleased: function(mouse) {
-                  root.microphoneDrag = valueAt(mouse.x)
-                  microphoneDragTimer.stop()
-                  root.runControl("microphone", String(root.microphoneDrag))
-                }
-                onWheel: function(wheel) { root.adjustAudioFromWheel(wheel, true) }
-              }
-            }
-            Rectangle {
-              width: 44; height: 44; radius: root.radius
-              color: microphoneMuteMouse.pressed ? root.pressColor : root.systemData.microphoneMuted ? root.dangerColor : microphoneMuteMouse.containsMouse ? root.hoverColor : root.surface
-              Text {
-                anchors.centerIn: parent
-                text: root.systemData.microphoneMuted ? "󰍭" : "󰍬"
-                color: root.systemData.microphoneMuted ? root.red : root.text
-                font.family: root.fontFamily
-                font.pixelSize: 15
-              }
-              MouseArea {
-                id: microphoneMuteMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                  if (root.runControl("microphone", "mute")) root.patchSystemData({ microphoneMuted: !root.systemData.microphoneMuted })
-                }
-              }
-              HoverTip { mouse: microphoneMuteMouse; text: root.systemData.microphoneMuted ? "Unmute microphone" : "Mute microphone" }
-            }
-          }
+          AudioLevelRow { width: parent.width }
+          AudioLevelRow { width: parent.width; microphone: true }
           Text { text: "OUTPUT DEVICE"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
           ListView {
             width: parent.width
@@ -3560,7 +4780,67 @@ ShellRoot {
             }
           }
 
-          Text { text: "PRIVATE NETWORKS"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
+          Row {
+            width: parent.width; spacing: 8
+            Repeater {
+              model: [
+                {label:"Copy IP", action:"copy-ip", value:""},
+                {label:"Settings", action:"network-settings", value:""}
+              ]
+              Rectangle {
+                required property var modelData
+                readonly property bool busy: root.controlBusy(modelData.action, modelData.value)
+                readonly property bool complete: root.controlCompleted(modelData.action, modelData.value)
+                readonly property bool failed: root.controlFailed(modelData.action, modelData.value)
+                width: (parent.width - 8) / 2; height: 38; radius: root.radius
+                color: networkActionMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : networkActionMouse.containsMouse ? root.hoverColor : root.surface
+                Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "× Failed" : parent.complete ? (modelData.action === "copy-ip" ? "✓ Copied" : "✓ Opened") : modelData.label; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
+                RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 18; height: 18; spinning: visible; font.pixelSize: 13 }
+                MouseArea {
+                  id: networkActionMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.runControl(parent.modelData.action, parent.modelData.value)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // VPN -------------------------------------------------------------------------
+  // The private networks own their own panel rather than sitting at the bottom
+  // of the network panel, so the module can carry its own menu bar entry.
+  Variants {
+    model: Quickshell.screens
+    PanelWindow {
+      required property var modelData
+      screen: modelData
+      visible: root.controlPanel === "vpn" && root.pinnedScreen(root.overlayScreen, modelData)
+      anchors { top: true; right: true }
+      margins { top: root.barHeight + root.panelGap; right: root.panelGap }
+      implicitWidth: 390
+      implicitHeight: vpnContent.implicitHeight + root.panelMargin * 2
+      exclusionMode: ExclusionMode.Ignore
+      color: "transparent"
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.namespace: "seele-shell-vpn"
+
+      PanelSurface {
+        Column {
+          id: vpnContent
+
+          anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
+
+          Row {
+            width: parent.width
+            height: root.panelHeaderHeight
+            PanelGlyph { text: "󰒃" }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "VPN"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+          }
 
           Rectangle {
             id: tailscaleCard
@@ -3622,33 +4902,6 @@ ShellRoot {
                 checked: !!protonVpnCard.state.connected
                 busy: protonVpnCard.busy
                 onToggled: root.runControl("proton-vpn", protonVpnCard.action)
-              }
-            }
-          }
-
-          Row {
-            width: parent.width; spacing: 8
-            Repeater {
-              model: [
-                {label:"Copy IP", action:"copy-ip", value:""},
-                {label:"Settings", action:"network-settings", value:""}
-              ]
-              Rectangle {
-                required property var modelData
-                readonly property bool busy: root.controlBusy(modelData.action, modelData.value)
-                readonly property bool complete: root.controlCompleted(modelData.action, modelData.value)
-                readonly property bool failed: root.controlFailed(modelData.action, modelData.value)
-                width: (parent.width - 8) / 2; height: 38; radius: root.radius
-                color: networkActionMouse.pressed ? root.pressColor : failed ? root.dangerColor : complete ? root.successColor : busy ? root.selectedColor : networkActionMouse.containsMouse ? root.hoverColor : root.surface
-                Text { visible: !parent.busy; anchors.centerIn: parent; text: parent.failed ? "× Failed" : parent.complete ? (modelData.action === "copy-ip" ? "✓ Copied" : "✓ Opened") : modelData.label; color: parent.failed ? root.red : parent.complete ? root.green : root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
-                RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 18; height: 18; spinning: visible; font.pixelSize: 13 }
-                MouseArea {
-                  id: networkActionMouse
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: root.runControl(parent.modelData.action, parent.modelData.value)
-                }
               }
             }
           }
@@ -3981,40 +5234,29 @@ ShellRoot {
       readonly property var entries: root.notificationHistoryOpen
         ? (root.systemData.notifications.history || [])
         : (root.systemData.notifications.items || [])
+      property int stableHeight: 162
       screen: modelData
       visible: root.controlPanel === "notifications" && root.pinnedScreen(root.overlayScreen, modelData)
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 400
-      implicitHeight: entries.length === 0 ? 162 : Math.min(520, 146 + entries.length * 66)
+      implicitHeight: stableHeight
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-notifications"
 
+      function suggestedHeight() {
+        var notifications = root.systemData.notifications || { items: [], history: [] }
+        var count = Math.max((notifications.items || []).length, (notifications.history || []).length)
+        return count === 0 ? 162 : Math.min(520, 146 + count * 66)
+      }
+
       function toggleHistory() {
-        if (notificationSwap.running) return
-        notificationSwap.fadeTarget = root.notificationHistoryOpen ? notificationSurface : notificationViewport
-        notificationSwap.start()
+        root.notificationHistoryOpen = !root.notificationHistoryOpen
       }
 
-      onVisibleChanged: {
-        if (visible) return
-        notificationSwap.stop()
-        notificationViewport.opacity = 1
-        notificationSurface.opacity = 1
-      }
-
-      SequentialAnimation {
-        id: notificationSwap
-
-        property Item fadeTarget: notificationViewport
-
-        NumberAnimation { target: notificationSwap.fadeTarget; property: "opacity"; to: 0; duration: 55; easing.type: Easing.OutQuad }
-        ScriptAction { script: root.notificationHistoryOpen = !root.notificationHistoryOpen }
-        PauseAnimation { duration: 16 }
-        NumberAnimation { target: notificationSwap.fadeTarget; property: "opacity"; to: 1; duration: 75; easing.type: Easing.InQuad }
-      }
+      onVisibleChanged: if (visible) stableHeight = suggestedHeight()
 
       PanelSurface {
         id: notificationSurface
@@ -4076,42 +5318,14 @@ ShellRoot {
             width: parent.width
             height: notificationWindow.entries.length > 0 ? parent.height - 78 : 46
             clip: true
-            ListView {
-              visible: notificationWindow.entries.length > 0
+            NotificationList {
+              visible: !root.notificationHistoryOpen && (root.systemData.notifications.items || []).length > 0
               anchors.fill: parent
-              spacing: 6
-              clip: true
-              model: notificationWindow.entries
-              delegate: Rectangle {
-                id: notificationEntry
-
-                required property var modelData
-                width: ListView.view.width; height: 60; radius: root.radius; color: root.surface
-                Column {
-                  anchors.fill: parent; anchors.margins: 9; spacing: 3
-                  Row {
-                    width: parent.width
-                    Text { width: parent.width - 84; text: modelData.summary || modelData.app_name || "Notification"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
-                    Text { width: 58; text: root.agoText(modelData.time); color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
-                    Rectangle {
-                      readonly property bool busy: root.controlBusy("notifications", "dismiss", String(notificationEntry.modelData.id))
-                      visible: !root.notificationHistoryOpen
-                      width: visible ? 26 : 0; height: 20; radius: root.radiusSmall
-                      color: notificationDismissMouse.pressed ? root.dangerPress : busy ? root.selectedColor : notificationDismissMouse.containsMouse ? root.dangerColor : "transparent"
-                      Text { visible: !parent.busy; anchors.centerIn: parent; text: "󰅖"; color: notificationDismissMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 10 }
-                      RefreshGlyph { visible: parent.busy; anchors.centerIn: parent; width: 14; height: 14; spinning: visible; font.pixelSize: 10 }
-                      MouseArea {
-                        id: notificationDismissMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.dismissNotification(notificationEntry.modelData.id)
-                      }
-                    }
-                  }
-                  Text { width: parent.width; text: modelData.body || modelData.app_name || ""; elide: Text.ElideRight; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
-                }
-              }
+            }
+            NotificationList {
+              history: true
+              visible: root.notificationHistoryOpen && (root.systemData.notifications.history || []).length > 0
+              anchors.fill: parent
             }
             Item {
               visible: notificationWindow.entries.length === 0
@@ -4155,7 +5369,7 @@ ShellRoot {
             width: parent.width
             height: root.panelHeaderHeight
             PanelGlyph { text: "󰄀" }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "Webcam"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Camera"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
           }
           Text { text: root.systemData.cameraActive ? "Camera is in use" : root.systemData.cameraDevices.length + " camera device" + (root.systemData.cameraDevices.length === 1 ? "" : "s"); color: root.systemData.cameraActive ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 11 }
           Text { width: parent.width; text: root.systemData.cameraDevices.length > 0 ? root.systemData.cameraDevices[0].name : "No camera detected"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 10 }
@@ -4253,7 +5467,7 @@ ShellRoot {
             rowSpacing: 8
             Repeater {
               model: [
-                {label:(root.windowsCountdown >= 0 ? "Windows · " + root.windowsCountdown + "s" : "Windows"), icon:"󰍲", action:"reboot-windows", variant:"outline"},
+                {label:(root.windowsCountdown >= 0 ? "Windows · " + root.windowsCountdown + "s" : "Windows"), icon:"󰍲", action:"reboot-windows", variant:"default"},
                 {label:"Lock", icon:"󰌾", action:"lock", variant:"default"},
                 {label:"Log out", icon:"󰍃", action:"logout", variant:"default"},
                 {label:"Suspend", icon:"󰒲", action:"lock-suspend", variant:"default"},
@@ -4264,8 +5478,6 @@ ShellRoot {
                 required property var modelData
                 width: (parent.width - 16) / 3; height: 72; radius: root.radius
                 color: modelData.variant === "destructive" ? (sessionActionMouse.pressed ? root.dangerPress : sessionActionMouse.containsMouse ? root.dangerColor : root.dangerTint) : sessionActionMouse.pressed ? root.pressColor : sessionActionMouse.containsMouse ? root.hoverColor : root.surface
-                border.width: modelData.variant === "outline" ? 1 : 0
-                border.color: root.windowsCountdown >= 0 && modelData.action === "reboot-windows" ? root.yellow : root.accent
                 Column {
                   anchors.centerIn: parent
                   spacing: 4

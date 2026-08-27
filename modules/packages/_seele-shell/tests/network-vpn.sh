@@ -48,6 +48,13 @@ case "${1:-}" in
   *) exit 2 ;;
 esac
 SH
+cat >"$work/bin/v4l2-ctl" <<'SH'
+#!/usr/bin/env bash
+cat <<'OUT'
+Fixture Camera (usb-0000:00:14.0-7):
+        /dev/video0
+OUT
+SH
 for mock in "$work/bin/"*; do
   sed -i "1c#!$BASH" "$mock"
 done
@@ -94,6 +101,7 @@ jq -e '
   .connection == "Disconnected"
   and .audioDevices != null
   and .volume != null
+  and .cameraDevices == [{name:"Fixture Camera",device:"/dev/video0"}]
 ' <<<"$state" >/dev/null
 
 SEELE_CONTROL_NO_STATUS=1 bash "$control" tailscale down

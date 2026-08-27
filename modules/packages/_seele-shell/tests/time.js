@@ -29,3 +29,8 @@ assert(time.filterZones(zones, "London")[0].flag === "🇬🇧", "city entries m
 const ordered = time.orderZones(zones, ["Europe/London", "PST"], "");
 assert(ordered[0].id === "Europe/London" && ordered[1].id === "PST", "multiple pinned zones must lead the list in pin order");
 assert(ordered.length === zones.length, "ordering pinned zones must not inject a local-time entry");
+
+const instant = new Date("2026-08-23T21:30:07Z");
+assert(time.offsetTime(instant, "+0530", true) === "03:00:07", "expanded clocks must include seconds across a day boundary");
+assert(time.offsetTime(instant, "-0700", false) === "14:30", "compact offset times must omit seconds");
+assert(time.offsetTime(instant, "invalid", true) === "", "invalid UTC offsets must not produce a clock");

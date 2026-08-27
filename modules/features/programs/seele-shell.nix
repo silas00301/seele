@@ -130,6 +130,9 @@ let
             text-color = colors.text.hex;
             width = 380;
             "body~=\"^<html\"".format = "<b>%s</b>";
+            # A notification carrying an action is worth acting on, so it waits
+            # for the user instead of expiring into the history view.
+            "actionable=true".default-timeout = 0;
             "mode=do-not-disturb".invisible = true;
           };
         };
@@ -196,6 +199,7 @@ let
         hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl menu apps"))
         hl.bind("SUPER + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agents"))
         hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agent pi"))
+        hl.bind("SUPER + C", hl.dsp.exec_cmd("${package}/bin/seele-shellctl center"))
         hl.bind("SUPER + ESCAPE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl controls"))
         hl.bind("SUPER + K", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae cmd launch @seele/seele-shell:keybindings"))
       '';

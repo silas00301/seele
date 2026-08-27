@@ -53,6 +53,18 @@ function filterZones(zones, query) {
   return result
 }
 
+function offsetTime(now, offset, includeSeconds) {
+  var match = String(offset || "").match(/^([+-])(\d{2})(\d{2})$/)
+  if (!match) return ""
+  var minutes = Number(match[2]) * 60 + Number(match[3])
+  if (match[1] === "-") minutes = -minutes
+  var shifted = new Date(now.getTime() + minutes * 60000)
+  var hours = String(shifted.getUTCHours()).padStart(2, "0")
+  var clockMinutes = String(shifted.getUTCMinutes()).padStart(2, "0")
+  var seconds = String(shifted.getUTCSeconds()).padStart(2, "0")
+  return hours + ":" + clockMinutes + (includeSeconds ? ":" + seconds : "")
+}
+
 function orderZones(zones, pinned, query) {
   var filtered = filterZones(zones, query)
   var ordered = []

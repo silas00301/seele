@@ -3,6 +3,7 @@ set -euo pipefail
 
 seele_config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/seele-shell
 tray_config=$seele_config_dir/tray.json
+bar_config=$seele_config_dir/bar.json
 librepods_config=${XDG_CONFIG_HOME:-$HOME/.config}/AirPodsTrayApp/AirPodsTrayApp.conf
 bluetooth_scan_pidfile=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-scan.pid
 bluetooth_scan_timeout=30
@@ -432,6 +433,25 @@ tray_set_hidden() {
   mv "$tray_config.new" "$tray_config"
 }
 
+# Menu bar module placement. Only explicit choices are stored; the shell owns
+# the default for a module nobody has moved yet.
+bar_modules() {
+  if [[ -r $bar_config ]]; then
+    jq -c '(.modules // {}) | with_entries(select(.value | type == "boolean"))' "$bar_config" 2>/dev/null || printf '{}'
+  else
+    printf '{}'
+  fi
+}
+
+bar_set_module() {
+  local id=$1 action=$2 modules
+  modules=$(bar_modules)
+  mkdir -p "$seele_config_dir"
+  jq -nc --argjson modules "$modules" --arg id "$id" --argjson shown "$([[ $action == show ]] && printf true || printf false)" '
+    { modules: ($modules + { ($id): $shown }) }' >"$bar_config.new"
+  mv "$bar_config.new" "$bar_config"
+}
+
 upower_batteries() {
   local paths path properties entries=()
   paths=$(busctl --json=short call org.freedesktop.UPower /org/freedesktop/UPower \
@@ -606,12 +626,18 @@ status() {
   batteries=$(jq -sc "add | unique_by(.name)" <(upower_batteries) <(system_batteries) <(airpods_batteries))
   ear_detection=$(airpods_ear_detection)
   tray_hidden=$(tray_hidden)
+  bar_modules=$(bar_modules)
 
   voxtype_status=$(voxtype status 2>/dev/null | head -1 || printf 'unavailable')
   [[ -n $voxtype_status ]] || voxtype_status=unavailable
 
   camera_devices=$((v4l2-ctl --list-devices 2>/dev/null || true) |
-    awk '/^[^[:space:]]/ {name=$0; sub(/:$/, "", name)} /^[[:space:]]*\/dev\/video/ {print name "\t" $1}' |
+    awk '/^[^[:space:]]/ {
+      name=$0
+      sub(/:$/, "", name)
+      sub(/[[:space:]]*\(usb-[^)]*\)$/, "", name)
+    }
+    /^[[:space:]]*\/dev\/video/ {print name "\t" $1}' |
     jq -Rsc 'split("\n") | map(select(length > 0) | split("\t") | {name:.[0],device:.[1]})')
   camera_device=$(jq -r '.[0].device // ""' <<<"$camera_devices")
   pw_dump=$(pw-dump 2>/dev/null || printf '[]')
@@ -650,6 +676,7 @@ status() {
     --argjson batteries "$batteries" \
     --argjson earDetection "$ear_detection" \
     --argjson trayHidden "$tray_hidden" \
+    --argjson barModules "$bar_modules" \
     --arg voxtypeStatus "$voxtype_status" \
     --argjson cameraDevices "$camera_devices" \
     --arg cameraDevice "$camera_device" \
@@ -683,6 +710,7 @@ status() {
       airpodsName:$bluetooth.airpodsName,
       airpodsEarDetection:$earDetection,
       trayHidden:$trayHidden,
+      barModules:$barModules,
       batteries:(
         $batteries
         + [$bluetooth.devices[] | select(.connected and .battery != null) | {kind:"device",name:.name,percent:.battery,status:"",icon:.icon}]
@@ -823,6 +851,13 @@ case "${1:-status}" in
     esac
     status
     ;;
+  bar)
+    case "${2:-}" in
+      show|hide) bar_set_module "${3:?module id required}" "${2}" ;;
+      *) printf 'Usage: seele-control bar <show|hide> <module>\n' >&2; exit 2 ;;
+    esac
+    status
+    ;;
   tray)
     case "${2:-}" in
       hide|show|toggle) tray_set_hidden "${3:?tray item id required}" "${2}" ;;
@@ -847,6 +882,11 @@ case "${1:-status}" in
         notification_id=${3:?notification id required}
         [[ $notification_id =~ ^[0-9]+$ ]] || exit 2
         makoctl dismiss -n "$notification_id" >/dev/null 2>&1 || true
+        ;;
+      invoke)
+        notification_id=${3:?notification id required}
+        [[ $notification_id =~ ^[0-9]+$ ]] || exit 2
+        makoctl invoke -n "$notification_id" >/dev/null 2>&1 || true
         ;;
       clear)
         makoctl dismiss --all --no-history >/dev/null 2>&1 || true

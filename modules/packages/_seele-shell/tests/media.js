@@ -84,4 +84,32 @@ assert(media.spotifyPlayer([device, spotify]) === spotify, "Spotify selection mu
 assert(media.devicePlayer([spotify, device]) === device, "device selection must ignore Spotify");
 assert(media.isSpotify({ dbusName: "org.mpris.MediaPlayer2.spotify.instance" }), "Spotify detection must fall back to its D-Bus name");
 
+const paused = {
+  isPlaying: false,
+  identity: "Fixture paused",
+  desktopEntry: "fixture-paused",
+  dbusName: "org.mpris.MediaPlayer2.paused",
+  trackTitle: "Paused title",
+  trackArtist: "Paused artist",
+  length: 0,
+  metadata: {},
+};
+
+assert(media.activePlayer([paused, spotify]) === spotify, "the Control Center must show the playing player first");
+assert(media.activePlayer([paused]) === paused, "the Control Center must fall back to a paused player with a track");
+assert(media.activePlayer([{ trackTitle: "", trackArtist: "", metadata: {} }]) === null, "a player without a track must not fill the now playing module");
+assert(media.activePlayer([]) === null, "no players must leave the now playing module empty");
+assert(
+  media.timelineAvailable({ canSeek: true, positionSupported: true, lengthSupported: true, length: 180, metadata: {} }),
+  "a seekable player with position and length support must expose the timeline",
+);
+assert(
+  !media.timelineAvailable({ canSeek: false, positionSupported: true, lengthSupported: true, length: 180, metadata: {} }),
+  "a player that cannot seek must not expose an inert timeline",
+);
+assert(
+  !media.timelineAvailable({ canSeek: true, positionSupported: true, lengthSupported: true, length: 0, metadata: {} }),
+  "a player without a duration must not expose a timeline",
+);
+
 console.log("media normalization checks passed");

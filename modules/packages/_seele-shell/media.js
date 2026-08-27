@@ -65,6 +65,11 @@ function lengthSeconds(player) {
   return isFinite(raw) && raw > 0 ? raw / 1000000 : 0
 }
 
+function timelineAvailable(player) {
+  return !!player && !!player.canSeek && !!player.positionSupported
+    && !!player.lengthSupported && lengthSeconds(player) > 0
+}
+
 // Chromium-embedded players append " • <album>" to the title, so compare the leading segment only.
 function titleKey(player) {
   return title(player).split(/\s+[•·—–|]\s+/)[0].trim().toLowerCase().replace(/\s+/g, " ")
@@ -100,6 +105,19 @@ function devicePlayer(players) {
     if (!players[i].isPlaying || isSpotify(players[i])) continue
     if (spotify && sameTrack(players[i], spotify)) continue
     return players[i]
+  }
+  return null
+}
+
+// The Control Center carries a single now-playing module where the bar keeps
+// Spotify and the device player apart, so it falls back to whichever player
+// still has a track to resume once nothing is playing.
+function activePlayer(players) {
+  players = players || []
+  var playing = spotifyPlayer(players) || devicePlayer(players)
+  if (playing) return playing
+  for (var i = 0; i < players.length; i++) {
+    if (title(players[i]) !== "" || subtitle(players[i]) !== "") return players[i]
   }
   return null
 }

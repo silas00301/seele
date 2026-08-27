@@ -11,8 +11,9 @@ Usage: seele-shellctl [-q] <command> [arguments]
 Commands:
   menu [apps|commands]      Toggle the launcher
   agents                    Toggle the AI dashboard
+  center                    Toggle the Control Center
   controls                  Toggle session controls
-  control <panel>           Toggle audio, network, Bluetooth, AirPods, battery, notifications, camera, or session
+  control <panel>           Toggle control-center, audio, network, vpn, Bluetooth, AirPods, battery, notifications, camera, or session
   agent <name> [prompt...]  Launch pi, opencode, codex, or claude
   refresh-agents            Refresh AI usage data
   volume <up|down|mute>     Change volume and show its OSD
@@ -41,6 +42,7 @@ shift || true
 case "$command" in
   menu) ipc toggleLauncher "${1:-apps}" ;;
   agents) ipc toggleAgents ;;
+  center) ipc toggleControl control-center ;;
   controls) ipc toggleControls ;;
   control) ipc toggleControl "${1:-system}" ;;
   agent)
