@@ -8,7 +8,10 @@ let
       services.tailscale = {
         enable = true;
         disableUpstreamLogging = true;
-        extraSetFlags = [ "--operator=${config.username}" ];
+        extraSetFlags = [
+          "--operator=${config.username}"
+          "--ssh=false"
+        ];
         openFirewall = true;
         useRoutingFeatures = "client";
       };

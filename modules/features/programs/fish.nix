@@ -27,6 +27,16 @@ let
             position = "anywhere";
             function = "last_history_item";
           };
+          # sudo runs its PAM conversation on the terminal and cannot be given a
+          # graphical agent, so escalation that should reach the Seele Polkit
+          # dialog has to go through run0, which authorizes via polkit instead.
+          # An abbreviation rather than an alias because it expands in place:
+          # run0 is not argument-compatible with sudo, so the rewrite has to be
+          # visible and editable before it runs rather than silently applied.
+          sudo = {
+            position = "command";
+            expansion = "run0";
+          };
         };
         shellInit = ''
           set fish_greeting

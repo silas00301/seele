@@ -2,6 +2,7 @@
 let
   module =
     {
+      lib,
       pkgs,
       selfPackages,
       ...
@@ -10,6 +11,10 @@ let
       nixpkgs.config.allowUnfree = true;
 
       environment.systemPackages = with pkgs; [
+        (lib.hiPrio (uutils-coreutils.override { prefix = null; }))
+        (lib.hiPrio uutils-findutils)
+        (lib.hiPrio uutils-diffutils)
+        (lib.hiPrio uutils-sed)
         selfPackages.codexbar
         wget
         unzip
