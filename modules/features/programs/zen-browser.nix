@@ -52,6 +52,7 @@ let
               ];
             };
             Preferences = mkLockedAttrs {
+              "browser.taskbarTabs.enabled" = true;
               "devtools.theme" = "dark";
               "zen.view.compact.hide-toolbar" = true;
               "zen.view.compact.enable-at-startup" = true;
@@ -78,6 +79,7 @@ let
           };
           profiles."default" = {
             settings = {
+              "browser.taskbarTabs.enabled" = true;
               "zen.view.compact.hide-toolbar" = true;
               "zen.view.compact.enable-at-startup" = true;
               "zen.view.use-single-toolbar" = false;
