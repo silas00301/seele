@@ -111,5 +111,15 @@ assert(
   !media.timelineAvailable({ canSeek: true, positionSupported: true, lengthSupported: true, length: 0, metadata: {} }),
   "a player without a duration must not expose a timeline",
 );
+const liveStream = {
+  canSeek: true,
+  positionSupported: true,
+  lengthSupported: true,
+  length: 9223372036854,
+  metadata: { "mpris:length": 9223372036854000000 },
+};
+assert(media.liveStream(liveStream), "the Firefox signed 64-bit duration sentinel must identify a live stream");
+assert(media.timelineAvailable(liveStream), "a live stream must expose its non-interactive live bar");
+assert(!media.liveStream({ length: 86400, metadata: {} }), "ordinary long-form media must keep a seekable timeline");
 
 console.log("media normalization checks passed");

@@ -65,9 +65,16 @@ function lengthSeconds(player) {
   return isFinite(raw) && raw > 0 ? raw / 1000000 : 0
 }
 
+// Firefox exposes a live Twitch stream with the signed 64-bit duration sentinel.
+// A one-year floor is well beyond ordinary media while remaining below that value.
+function liveStream(player) {
+  return lengthSeconds(player) >= 365 * 24 * 60 * 60
+}
+
 function timelineAvailable(player) {
-  return !!player && !!player.canSeek && !!player.positionSupported
-    && !!player.lengthSupported && lengthSeconds(player) > 0
+  if (!player || lengthSeconds(player) <= 0) return false
+  if (liveStream(player)) return true
+  return !!player.canSeek && !!player.positionSupported && !!player.lengthSupported
 }
 
 // Chromium-embedded players append " • <album>" to the title, so compare the leading segment only.

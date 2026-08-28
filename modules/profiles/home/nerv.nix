@@ -4,6 +4,7 @@
     config.flake.modules.homeManager.opencode
     config.flake.modules.homeManager.claude-code
     config.flake.modules.homeManager.proton-vpn
+    config.flake.modules.homeManager.openlogi
     config.flake.modules.homeManager.seele-shell
     config.flake.modules.homeManager.t3code
   ];

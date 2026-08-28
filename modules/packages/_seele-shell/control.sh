@@ -8,6 +8,7 @@ librepods_config=${XDG_CONFIG_HOME:-$HOME/.config}/AirPodsTrayApp/AirPodsTrayApp
 bluetooth_scan_pidfile=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-scan.pid
 bluetooth_scan_timeout=30
 agent_state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell/agents
+openlogi_battery_cache=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/openlogi-batteries.json
 
 timestamp() {
   date -u +%Y-%m-%dT%H:%M:%SZ
@@ -18,20 +19,47 @@ percent_for() {
 }
 
 audio_devices() {
+  # A card whose profile is `Off` has no sink node at all, so listing sinks
+  # alone hides every output that is merely not switched on -- onboard analog
+  # and HDMI, typically. Those are offered as profile entries instead, but only
+  # where the card has no sink already and the profile reports `available: yes`,
+  # which keeps unplugged jacks and the Pro Audio variants out of the list.
   jq -c '
-    [.[] | select(.type == "PipeWire:Interface:Metadata" and .props["metadata.name"] == "default") | .metadata[]?] as $meta
+    . as $all
+    | [$all[] | select(.type == "PipeWire:Interface:Metadata" and .props["metadata.name"] == "default") | .metadata[]?] as $meta
     | (($meta | map(select(.key == "default.audio.sink")) | first).value.name // "") as $sink
     | (($meta | map(select(.key == "default.audio.source")) | first).value.name // "") as $source
-    | [ .[]
+    | [ $all[]
         | select(.info.props["media.class"] == "Audio/Sink" or .info.props["media.class"] == "Audio/Source")
         | {
             id: .id,
             kind: (if .info.props["media.class"] == "Audio/Sink" then "output" else "input" end),
             name: (.info.props["node.description"] // .info.props["node.nick"] // .info.props["node.name"] // ""),
-            node: (.info.props["node.name"] // "")
+            node: (.info.props["node.name"] // ""),
+            profile: null
           }
-      ]
-    | map(. + { default: (if .kind == "output" then .node == $sink else .node == $source end) })
+      ] as $nodes
+    | [ $all[]
+        | select(.type == "PipeWire:Interface:Node" and .info.props["media.class"] == "Audio/Sink")
+        | .info.props["device.id"]
+      ] as $sinkDevices
+    | [ $all[]
+        | select(.type == "PipeWire:Interface:Device" and .info.props["media.class"] == "Audio/Device")
+        | select(([.id] | inside($sinkDevices)) | not)
+        | . as $device
+        | (.info.params.EnumProfile // [])
+        | map(select(.available == "yes" and ((.classes // []) | tostring | contains("Audio/Sink"))))
+        | .[]
+        | {
+            id: $device.id,
+            kind: "output",
+            name: (($device.info.props["device.description"] // $device.info.props["device.name"] // "") + " · " + .description),
+            node: "",
+            profile: .index
+          }
+      ] as $profiles
+    | ($nodes + $profiles)
+    | map(. + { default: (if .profile != null then false elif .kind == "output" then .node == $sink else .node == $source end) })
     | sort_by([.kind, (.name | ascii_downcase)])
   ' <<<"$1"
 }
@@ -502,6 +530,54 @@ airpods_batteries() {
   ]' <<<"$state" 2>/dev/null || printf '[]'
 }
 
+openlogi_batteries() {
+  local now modified output batteries temp
+  if ! command -v openlogi >/dev/null 2>&1; then
+    printf '[]'
+    return
+  fi
+
+  now=$(date +%s)
+  modified=$(stat -c %Y "$openlogi_battery_cache" 2>/dev/null || printf 0)
+  if ((now - modified < 30)) && jq -e 'type == "array"' "$openlogi_battery_cache" >/dev/null 2>&1; then
+    cat "$openlogi_battery_cache"
+    return
+  fi
+
+  output=$(timeout 5 openlogi list 2>/dev/null || true)
+  batteries=$(jq -Rsc '
+    [
+      split("\n")[]
+      | try capture("slot [0-9]+ +● +(?<name>.+?) \\((?<deviceKind>[^,]+),[^\n]*battery=(?<percent>[0-9]+)% [^ ]+ \\((?<status>[^)]+)\\)")
+      | {
+          kind: "logitech",
+          name: .name,
+          percent: (.percent | tonumber),
+          status: (
+            if (.status | startswith("charging")) then "Charging"
+            elif .status == "discharging" then "Discharging"
+            elif .status == "full" then "Full"
+            else .status
+            end
+          ),
+          icon: (
+            if .deviceKind == "mouse" then "input-mouse"
+            elif .deviceKind == "keyboard" then "input-keyboard"
+            else "input-gaming"
+            end
+          )
+        }
+    ]
+    | unique_by(.name)
+  ' <<<"$output")
+
+  mkdir -p "${openlogi_battery_cache%/*}"
+  temp=$(mktemp "${openlogi_battery_cache}.XXXXXX")
+  printf '%s\n' "$batteries" >"$temp"
+  mv "$temp" "$openlogi_battery_cache"
+  printf '%s' "$batteries"
+}
+
 system_batteries() {
   local supply type capacity status name entries=()
   shopt -s nullglob
@@ -590,6 +666,55 @@ proton_vpn_state() {
     '{available:true,connected:$connected,connection:$connection}'
 }
 
+ssh_server_state() {
+  local load_state running=false
+  load_state=$(systemctl show --property=LoadState --value sshd.service 2>/dev/null || true)
+  if [[ $load_state != loaded ]]; then
+    jq -nc '{available:false,running:false}'
+    return
+  fi
+  systemctl is-active --quiet sshd.service 2>/dev/null && running=true
+  jq -nc --argjson running "$running" '{available:true,running:$running}'
+}
+
+openlogi_camera_settings() {
+  local device=$1 properties vendor product serial key config_dir config_file selected temp
+  properties=$(udevadm info --query=property --name "$device" 2>/dev/null) || return 1
+  vendor=$(awk -F= '$1 == "ID_VENDOR_ID" { print tolower($2); exit }' <<<"$properties")
+  product=$(awk -F= '$1 == "ID_MODEL_ID" { print tolower($2); exit }' <<<"$properties")
+  serial=$(awk -F= '$1 == "ID_SERIAL_SHORT" { print tolower($2); exit }' <<<"$properties")
+  [[ $vendor == 046d && -n $product ]] || return 1
+
+  key="camera:${vendor}:${product}"
+  [[ -z $serial || $serial == 0 ]] || key+=":serial:${serial}"
+  selected="selected_device = $(jq -Rn --arg value "$key" '$value')"
+  config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/openlogi
+  config_file=$config_dir/config.toml
+  mkdir -p "$config_dir"
+  temp=$(mktemp "$config_file.XXXXXX")
+  if [[ -r $config_file ]]; then
+    awk -v selected="$selected" '
+      !written && /^selected_device[[:space:]]*=/ { print selected; written = 1; next }
+      !written && /^\[/ { print selected; print ""; written = 1 }
+      { print }
+      END { if (!written) print selected }
+    ' "$config_file" >"$temp"
+  else
+    printf 'schema_version = 2\n%s\n' "$selected" >"$temp"
+  fi
+  mv "$temp" "$config_file"
+
+  if pgrep -x openlogi-gui >/dev/null 2>&1; then
+    pkill -TERM -x openlogi-gui
+    for _ in {1..20}; do
+      pgrep -x openlogi-gui >/dev/null 2>&1 || break
+      sleep 0.05
+    done
+  fi
+  pgrep -x openlogi-gui >/dev/null 2>&1 && return 1
+  setsid -f openlogi-gui >/dev/null 2>&1
+}
+
 status() {
   [[ ${SEELE_CONTROL_NO_STATUS:-0} != 1 ]] || return 0
 
@@ -617,13 +742,14 @@ status() {
   connectivity=$(nmcli networking connectivity 2>/dev/null || printf 'unknown')
   tailscale=$(tailscale_state)
   proton_vpn=$(proton_vpn_state)
+  ssh_server=$(ssh_server_state)
 
   route=$(ip -json route get 1.1.1.1 2>/dev/null || printf '[]')
   ip_address=$(jq -r '.[0].prefsrc // ""' <<<"$route")
   gateway=$(jq -r '.[0].gateway // ""' <<<"$route")
 
   bluetooth=$(bluetooth_state)
-  batteries=$(jq -sc "add | unique_by(.name)" <(upower_batteries) <(system_batteries) <(airpods_batteries))
+  batteries=$(jq -sc "add | unique_by(.name)" <(upower_batteries) <(system_batteries) <(airpods_batteries) <(openlogi_batteries))
   ear_detection=$(airpods_ear_detection)
   tray_hidden=$(tray_hidden)
   bar_modules=$(bar_modules)
@@ -672,6 +798,7 @@ status() {
     --arg gateway "$gateway" \
     --argjson tailscale "$tailscale" \
     --argjson protonVpn "$proton_vpn" \
+    --argjson sshServer "$ssh_server" \
     --argjson bluetooth "$bluetooth" \
     --argjson batteries "$batteries" \
     --argjson earDetection "$ear_detection" \
@@ -701,6 +828,7 @@ status() {
       gateway:$gateway,
       tailscale:$tailscale,
       protonVpn:$protonVpn,
+      sshServer:$sshServer,
       bluetoothAvailable:$bluetooth.available,
       bluetoothPowered:$bluetooth.powered,
       bluetoothScanning:$bluetooth.scanning,
@@ -746,7 +874,26 @@ case "${1:-status}" in
   audio-device)
     device=${2:?device id required}
     [[ $device =~ ^[0-9]+$ ]] || exit 2
-    wpctl set-default "$device"
+    profile=${3:-}
+    if [[ -n $profile ]]; then
+      [[ $profile =~ ^[0-9]+$ ]] || exit 2
+      # A profile entry names a card that is switched off, so there is no sink
+      # node to make default yet. Switch the profile, then wait for the node
+      # PipeWire creates for that device; without the second step the click
+      # would only half-apply and leave the previous output selected.
+      wpctl set-profile "$device" "$profile"
+      for _ in {1..20}; do
+        node=$(pw-dump 2>/dev/null | jq -r --argjson device "$device" \
+          'first(.[] | select(.type == "PipeWire:Interface:Node" and .info.props["media.class"] == "Audio/Sink" and .info.props["device.id"] == $device) | .id) // empty')
+        if [[ -n $node ]]; then
+          wpctl set-default "$node"
+          break
+        fi
+        sleep 0.1
+      done
+    else
+      wpctl set-default "$device"
+    fi
     status
     ;;
   microphone)
@@ -866,7 +1013,9 @@ case "${1:-status}" in
     status
     ;;
   camera-settings)
-    setsid -f cameractrlsgtk4 >/dev/null 2>&1
+    device=${2:-$(v4l2-ctl --list-devices 2>/dev/null | awk '/^[[:space:]]*\/dev\/video/ {print $1; exit}')}
+    [[ -n $device ]]
+    openlogi_camera_settings "$device"
     status
     ;;
   camera-preview)
@@ -918,6 +1067,17 @@ case "${1:-status}" in
     esac
     status
     ;;
+  ssh-server)
+    action=${2:-toggle}
+    if [[ $action == toggle ]]; then
+      systemctl is-active --quiet sshd.service 2>/dev/null && action=stop || action=start
+    fi
+    case "$action" in
+      start|stop) systemctl "$action" sshd.service ;;
+      *) exit 2 ;;
+    esac
+    status
+    ;;
   copy-ip)
     ip -json route get 1.1.1.1 2>/dev/null | jq -r '.[0].prefsrc // empty' | wl-copy
     status
@@ -944,10 +1104,9 @@ case "${1:-status}" in
     done < <(busctl --user --json=short get-property org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.kde.StatusNotifierWatcher RegisteredStatusNotifierItems | jq -r '.data[]')
     exit 1
     ;;
-  lock) hyprlock ;;
+  lock) "${SEELE_LOCK:-seele-lock}" ;;
   lock-suspend)
-    hyprlock --immediate &
-    sleep 1
+    "${SEELE_LOCK:-seele-lock}"
     systemctl suspend
     ;;
   logout) hyprctl dispatch exit ;;

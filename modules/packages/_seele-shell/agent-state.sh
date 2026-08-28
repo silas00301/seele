@@ -14,9 +14,12 @@ trap 'rm -rf "$work_dir"; rm -f "$output_file"' EXIT
 # selector the user asked for; "both" covers Codex and Claude in a single call.
 collect() {
   local command=$1 provider index=0 file
+  local -a args
   for provider in $providers; do
     file=$work_dir/$command.$index
-    timeout 40s "$codexbar" "$command" --provider "$provider" --json >"$file" 2>/dev/null ||
+    args=("$command" --provider "$provider" --json)
+    [[ $command == cost ]] && args+=(--days 365)
+    timeout 40s "$codexbar" "${args[@]}" >"$file" 2>/dev/null ||
       printf '[]\n' >"$file"
     index=$((index + 1))
   done
@@ -66,7 +69,7 @@ jq -n \
   --arg opencode "${SEELE_SHELL_OPENCODE:-opencode}" \
   --arg codex "${SEELE_SHELL_CODEX:-codex}" \
   --arg claude "${SEELE_SHELL_CLAUDE:-claude}" \
-  --arg today "$(date +%F)" '
+  --arg today "${SEELE_SHELL_TODAY:-$(date +%F)}" '
   def displayName($id):
     {
       codex: "Codex",
@@ -94,8 +97,20 @@ jq -n \
       })
     | sort_by(-.tokens)
     | .[0:5];
+  def period($days):
+    {
+      totalTokens: ([$days[]?.totalTokens // 0] | add // 0),
+      totalCost: ([$days[]?.totalCost // 0] | add // 0),
+      models: modelRows($days)
+    };
 
   ([$cost[].daily[]?] | map(select(.date != null))) as $days
+  | ($today + "T00:00:00Z" | fromdateiso8601) as $todayEpoch
+  | (($todayEpoch - 6 * 86400) | strftime("%Y-%m-%d")) as $weekStart
+  | (($todayEpoch - 29 * 86400) | strftime("%Y-%m-%d")) as $monthStart
+  | ($days | map(select(.date == $today))) as $dayDays
+  | ($days | map(select(.date >= $weekStart and .date <= $today))) as $weekDays
+  | ($days | map(select(.date >= $monthStart and .date <= $today))) as $monthDays
   | ($days
      | group_by(.date)
      | map({
@@ -125,6 +140,12 @@ jq -n \
       local: {
         today: ($daily | map(select(.date == $today)) | first // {}),
         daily: ($daily | .[-7:]),
+        periods: {
+          day: period($dayDays),
+          week: period($weekDays),
+          month: period($monthDays),
+          all: period($days)
+        },
         models: modelRows($days),
         totalTokens: ([$cost[] | .last30DaysTokens // .totals.totalTokens // 0] | add // 0),
         totalCost: ([$cost[] | .last30DaysCostUSD // .totals.totalCost // 0] | add // 0),

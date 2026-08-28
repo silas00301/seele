@@ -17,7 +17,6 @@
               pkgs.ghostty
               pkgs.git
               pkgs.hyprland
-              pkgs.hyprlock
               pkgs.iproute2
               pkgs.jq
               pkgs.jujutsu
@@ -26,8 +25,10 @@
               pkgs.networkmanager
               pkgs.networkmanagerapplet
               pkgs.ookla-speedtest
+              pkgs.openlogi
               pkgs.pipewire
               pkgs.playerctl
+              pkgs.procps
               pkgs.proton-vpn
               pkgs.proton-vpn-cli
               pkgs.socat
@@ -48,11 +49,13 @@
             version = "1.0.0";
 
             dontUnpack = true;
+            dontWrapQtApps = true;
             nativeBuildInputs = [
               pkgs.esbuild
               pkgs.jq
               pkgs.makeWrapper
               pkgs.nodejs
+              pkgs.qt6.qtdeclarative
             ];
 
             installPhase = ''
@@ -137,6 +140,8 @@
               test -f "$out/share/vicinae/extensions/seele-shell/package.json"
               test -f "$out/share/vicinae/extensions/seele-shell/seele.js"
               test -f "$out/share/vicinae/extensions/seele-shell/keybindings.js"
+              ${quickshell}/bin/quickshell --private-check-compat
+              qmllint -I ${quickshell}/lib/qt-6/qml "$out/share/seele-shell/shell.qml"
               for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-os-session seele-shellctl seele-clock seele-yubikey-watch; do
                 test -x "$out/bin/$command"
               done
