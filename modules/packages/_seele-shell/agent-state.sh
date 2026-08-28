@@ -6,8 +6,8 @@ providers=${SEELE_SHELL_CODEXBAR_PROVIDERS:-both}
 state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell
 cache=$state_dir/agents.json
 work_dir=$(mktemp -d)
-output_file=$(mktemp "$state_dir/.agents.XXXXXX")
 mkdir -p "$state_dir"
+output_file=$(mktemp "$state_dir/.agents.XXXXXX")
 trap 'rm -rf "$work_dir"; rm -f "$output_file"' EXIT
 
 # CodexBar reports one record per configured subscription. Query every provider
@@ -24,6 +24,19 @@ collect() {
     printf '[]'
 }
 
+cost_incomplete() {
+  jq -e '
+    any(.[];
+      ((.provider // .source // "") | ascii_downcase) == "claude"
+      and (.last30DaysTokens // .totals.totalTokens // ([.daily[]?.totalTokens // 0] | add) // 0) > 0
+      and (
+        (.last30DaysCostUSD // .totals.totalCost // ([.daily[]?.totalCost // 0] | add) // 0) <= 0
+        or any(.daily[]?.modelBreakdowns[]?; (.totalTokens // 0) > 0 and (.cost // 0) <= 0)
+      )
+    )
+  ' "$1" >/dev/null
+}
+
 # Usage and cost are independent network-backed queries. Run them together so
 # an explicit cockpit refresh waits for the slower query, not both in series.
 collect usage >"$work_dir/usage.json" &
@@ -32,6 +45,17 @@ collect cost >"$work_dir/cost.json" &
 cost_pid=$!
 wait "$usage_pid"
 wait "$cost_pid"
+
+# CodexBar occasionally returns Claude token totals with every cost set to zero.
+# A direct retry immediately resolves the pricing data, so reject that partial
+# response instead of replacing a valid cockpit estimate with it.
+for attempt in 1 2; do
+  cost_incomplete "$work_dir/cost.json" || break
+  rm "$work_dir/cost.json"
+  collect cost >"$work_dir/retry.json"
+  mv "$work_dir/retry.json" "$work_dir/cost.json"
+done
+
 usage=$(<"$work_dir/usage.json")
 cost=$(<"$work_dir/cost.json")
 

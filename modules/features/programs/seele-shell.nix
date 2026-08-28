@@ -124,6 +124,7 @@ let
             default-timeout = 6000;
             font = "Maple Mono NF CN 11";
             icons = true;
+            icon-border-radius = 14;
             layer = "overlay";
             margin = "38,10,0";
             padding = 14;

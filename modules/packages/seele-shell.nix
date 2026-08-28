@@ -142,6 +142,7 @@
               done
               bash -n "$out/libexec/seele-shell/"*
               "$out/bin/seele-shellctl" --help >/dev/null
+              bash ${./_seele-shell/tests/agent-state.sh} "$out/libexec/seele-shell/agent-state"
               bash ${./_seele-shell/tests/harness-status.sh} \
                 "$out/share/seele-shell/pi-status.ts" \
                 "$out/share/seele-shell/opencode-status.ts" \

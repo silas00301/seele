@@ -97,7 +97,6 @@ ShellRoot {
   property bool agentUsageOpen: false
   property bool agentModelsOpen: false
   property bool notificationHistoryOpen: false
-  property string temporaryTimezone: ""
   property var clockData: ({ pinned: [], zones: [] })
   property var activeTrayItem: null
   property bool osdOpen: false
@@ -1185,10 +1184,6 @@ ShellRoot {
     var zones = root.clockData.zones || []
     for (var i = 0; i < zones.length; i++) if (zones[i].id === id) return zones[i]
     return null
-  }
-
-  function shownTimezone() {
-    return root.clockZone(root.temporaryTimezone)
   }
 
   function timezonePinned(id) {
@@ -3089,7 +3084,6 @@ ShellRoot {
               anchors.centerIn: parent
               height: parent.height
               spacing: 5
-              layoutDirection: Qt.RightToLeft
               Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 16; height: 16
@@ -3146,7 +3140,6 @@ ShellRoot {
               anchors.centerIn: parent
               height: parent.height
               spacing: 5
-              layoutDirection: Qt.RightToLeft
               Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 16; height: 16
@@ -3792,48 +3785,11 @@ ShellRoot {
             height: 42
             PanelGlyph { text: "󰥔"; font.pixelSize: 24 }
             Column {
-              width: parent.width - 104
+              width: parent.width - 140
               Text { text: "World clock"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
-              Text { text: "Select temporarily, or pin multiple zones to the top"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+              Text { text: "Pin zones to the top"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
             }
             Text { anchors.verticalCenter: parent.verticalCenter; text: Qt.formatDateTime(root.now, "HH:mm:ss"); color: root.accent; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignRight }
-          }
-
-          Rectangle {
-            id: selectedTimezoneCard
-            readonly property var zone: root.shownTimezone()
-            visible: zone !== null
-            width: parent.width
-            height: visible ? 58 : 0
-            radius: root.radius
-            color: root.alpha(root.surface, 0.72)
-            Row {
-              anchors.fill: parent
-              anchors.leftMargin: 12
-              anchors.rightMargin: 8
-              spacing: 8
-              Text { visible: selectedTimezoneCard.zone && selectedTimezoneCard.zone.flag !== ""; anchors.verticalCenter: parent.verticalCenter; text: selectedTimezoneCard.zone ? selectedTimezoneCard.zone.flag : ""; font.pixelSize: 19 }
-              Column {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - clearTimezoneButton.width - (selectedTimezoneCard.zone && selectedTimezoneCard.zone.flag !== "" ? 55 : 28)
-                Text { width: parent.width; text: selectedTimezoneCard.zone ? selectedTimezoneCard.zone.label : ""; color: root.text; font.family: root.fontFamily; font.pixelSize: 12; font.bold: true; elide: Text.ElideRight }
-                Text { text: selectedTimezoneCard.zone ? selectedTimezoneCard.zone.id + " · " + selectedTimezoneCard.zone.day + " · " + selectedTimezoneCard.zone.abbreviation : ""; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
-              }
-              Rectangle {
-                id: clearTimezoneButton
-                width: 66; height: 32; radius: root.radius
-                anchors.verticalCenter: parent.verticalCenter
-                color: clearTimezoneMouse.pressed ? root.pressColor : clearTimezoneMouse.containsMouse ? root.hoverColor : root.mantle
-                Text { anchors.centerIn: parent; text: "Clear"; color: root.text; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
-                MouseArea {
-                  id: clearTimezoneMouse
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: root.temporaryTimezone = ""
-                }
-              }
-            }
           }
 
           TextField {
@@ -3850,16 +3806,12 @@ ShellRoot {
             leftPadding: 12
             rightPadding: 12
             background: Rectangle { radius: root.radius; color: root.surface; border.color: timezoneSearch.activeFocus ? root.accent : "transparent"; border.width: 1 }
-            onAccepted: {
-              var matches = root.filteredTimezones(text)
-              if (matches.length > 0) root.temporaryTimezone = matches[0].id
-            }
           }
 
           ListView {
             id: timezoneList
             width: parent.width
-            height: parent.height - (selectedTimezoneCard.visible ? 168 : 100)
+            height: parent.height - 100
             model: root.filteredTimezones(timezoneSearch.text)
             spacing: 4
             clip: true
@@ -3867,12 +3819,11 @@ ShellRoot {
             delegate: Rectangle {
               id: timezoneRow
               required property var modelData
-              readonly property bool selected: root.temporaryTimezone === modelData.id
               readonly property bool pinned: root.timezonePinned(modelData.id)
               width: ListView.view.width
               height: 54
               radius: root.radius
-              color: timezoneRowMouse.pressed ? root.pressColor : selected ? root.hoverColor : timezoneRowMouse.containsMouse ? root.surface : root.alpha(root.surface, 0.45)
+              color: timezoneRowMouse.containsMouse ? root.surface : root.alpha(root.surface, 0.45)
 
               Text { visible: modelData.kind === "city"; anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter; width: 25; text: modelData.flag; font.pixelSize: 16; horizontalAlignment: Text.AlignHCenter }
               Column {
@@ -3888,15 +3839,14 @@ ShellRoot {
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 width: 76
-                Text { width: parent.width; text: Time.offsetTime(root.now, modelData.offset, true) || modelData.time; color: root.accent; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignRight }
+                Text { width: parent.width; text: Time.offsetTime(root.now, modelData.offset, false) || modelData.time; color: root.accent; font.family: root.fontFamily; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignRight }
                 Text { width: parent.width; text: modelData.day; color: root.mutedText; font.family: root.fontFamily; font.pixelSize: 8; horizontalAlignment: Text.AlignRight }
               }
               MouseArea {
                 id: timezoneRowMouse
                 anchors.left: parent.left; anchors.right: pinTimezoneButton.left; anchors.top: parent.top; anchors.bottom: parent.bottom
                 hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.temporaryTimezone = timezoneRow.modelData.id
+                acceptedButtons: Qt.NoButton
               }
               Rectangle {
                 id: pinTimezoneButton
