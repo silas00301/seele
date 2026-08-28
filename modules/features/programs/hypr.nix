@@ -10,9 +10,26 @@ let
     }:
     let
       seeleShell = selfPackages.seele-shell;
+      seeleLock = selfPackages.seele-lock;
+      screenshot = pkgs.writeShellApplication {
+        name = "seele-screenshot";
+        runtimeInputs = [
+          (pkgs.uutils-coreutils.override { prefix = null; })
+          pkgs.grim
+          pkgs.hyprland
+          pkgs.hyprpicker
+          pkgs.jq
+          pkgs.satty
+          pkgs.slurp
+          pkgs.wl-clipboard
+        ];
+        text = builtins.readFile ./_hypr/screenshot.sh;
+      };
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
+      home.packages = [ screenshot ];
+
       wayland.windowManager.hyprland = {
         enable = true;
         configType = "lua";
@@ -176,7 +193,9 @@ let
           hl.bind(mod .. " + W", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
           hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
           hl.bind(mod .. " + B", hl.dsp.exec_cmd("${lib.getExe config.programs.zen-browser.package}"))
-          hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl lock"))
+          hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"))
+          hl.bind(mod .. " + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot capture"))
+          hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot annotate"))
           hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }))
 
           hl.bind(mod .. " + F", hl.dsp.window.fullscreen({
@@ -194,7 +213,7 @@ let
             hl.dsp.exec_cmd("${pkgs.hyprshutdown}/bin/hyprshutdown")
           )
 
-          hl.bind("SUPER + CTRL + F12", hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl lock"))
+          hl.bind("SUPER + CTRL + F12", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"))
 
           local workspace_keys = {
             { keys = "1", workspace = 1 },
@@ -463,26 +482,12 @@ let
           -- corners would otherwise sit on a squared-off pane of glass.
           hl.layer_rule({
             match = {
-              namespace = "^seele-shell-(bar|osd|agents|tray-menu|calendar|clock|control-center|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session)$",
+              namespace = "^seele-shell-(bar|osd|agents|tray-menu|calendar|clock|control-center|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session|polkit)$",
             },
             blur = true,
             ignore_alpha = 0.4,
           })
         '';
-      };
-
-      programs.hyprlock = {
-        enable = false;
-
-        settings = {
-          background = [
-            {
-              path = wallpaper;
-              blur_passes = 3;
-              blur_size = 3;
-            }
-          ];
-        };
       };
 
       services.hyprpaper = {
@@ -506,7 +511,7 @@ let
 
         settings = {
           general = {
-            lock_cmd = "pidof hyprlock || hyprlock";
+            lock_cmd = "${seeleLock}/bin/seele-lock";
             before_sleep_cmd = "loginctl lock-session";
             after_sleep_cmd = "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'";
           };

@@ -21,7 +21,6 @@ let
         autoEnable = catppuccin.autoEnable;
 
         limine.enable = true;
-        sddm.enable = true;
         tty.enable = true;
         plymouth.enable = true;
       };

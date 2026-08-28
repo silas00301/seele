@@ -11,16 +11,18 @@ let
     }:
     let
       package = selfPackages.seele-shell;
+      lockPackage = selfPackages.seele-lock;
+      polkitPackage = selfPackages.seele-polkit;
       librepodsPackage = package.librepods;
       palette = builtins.fromJSON (builtins.readFile "${config.catppuccin.sources.palette}/palette.json");
       colors = palette.${catppuccin.flavor}.colors;
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
-      catppuccin.hyprlock.enable = lib.mkForce false;
-
       home.packages = [
         package
+        lockPackage
+        polkitPackage
         librepodsPackage
       ];
       home.file = {
@@ -65,52 +67,6 @@ let
         '';
       };
 
-      programs.hyprlock = {
-        enable = lib.mkForce true;
-        settings = {
-          general = {
-            hide_cursor = true;
-            grace = 2;
-          };
-          input-field = [
-            {
-              size = "300, 52";
-              position = "0, -40";
-              monitor = "";
-              fade_on_empty = false;
-              placeholder_text = "Password";
-              fail_text = "Authentication failed";
-              outline_thickness = 2;
-              outer_color = "rgb(${builtins.substring 1 6 colors.${catppuccin.accent}.hex})";
-              inner_color = "rgba(${builtins.substring 1 6 colors.base.hex}dd)";
-              font_color = "rgb(${builtins.substring 1 6 colors.text.hex})";
-              check_color = "rgb(${builtins.substring 1 6 colors.green.hex})";
-              fail_color = "rgb(${builtins.substring 1 6 colors.red.hex})";
-              rounding = 14;
-            }
-          ];
-          label = [
-            {
-              text = "$TIME";
-              position = "0, 100";
-              font_family = "Maple Mono NF CN";
-              font_size = 54;
-              color = "rgb(${builtins.substring 1 6 colors.text.hex})";
-              halign = "center";
-              valign = "center";
-            }
-            {
-              text = "cmd[update:60000] date '+%Y-%m-%d'";
-              position = "0, 48";
-              font_family = "Maple Mono NF CN";
-              font_size = 14;
-              color = "rgb(${builtins.substring 1 6 colors.subtext0.hex})";
-              halign = "center";
-              valign = "center";
-            }
-          ];
-        };
-      };
       services = {
         hypridle.enable = lib.mkForce true;
         mako = {
@@ -121,19 +77,20 @@ let
             border-color = colors.${catppuccin.accent}.hex;
             border-radius = 14;
             border-size = 2;
-            default-timeout = 6000;
+            default-timeout = 10000;
             font = "Maple Mono NF CN 11";
             icons = true;
             icon-border-radius = 14;
+            ignore-timeout = true;
             layer = "overlay";
             margin = "38,10,0";
             padding = 14;
             text-color = colors.text.hex;
             width = 380;
             "body~=\"^<html\"".format = "<b>%s</b>";
-            # A notification carrying an action is worth acting on, so it waits
-            # for the user instead of expiring into the history view.
-            "actionable=true".default-timeout = 0;
+            # Mako retains current notifications and their history, while Seele
+            # Shell draws the popup so it can provide a real close button.
+            "mode=default".invisible = true;
             "mode=do-not-disturb".invisible = true;
           };
         };
@@ -157,6 +114,7 @@ let
               "SEELE_SHELL_CLAUDE=${lib.getExe pkgs.claude-code}"
               "SEELE_SHELL_GHOSTTY=${lib.getExe pkgs.ghostty}"
               "SEELE_SHELL_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
+              "SEELE_LOCK=${lib.getExe lockPackage}"
               "SEELE_SHELL_NH=${lib.getExe config.programs.nh.package}"
               "SEELE_SHELL_REPO=${config.programs.nh.flake}"
             ];
@@ -181,15 +139,37 @@ let
           Install.WantedBy = [ "hyprland-session.target" ];
         };
 
-        hyprpolkitagent = {
+        tailscale-systray = {
           Unit = {
-            Description = "Hyprland PolicyKit authentication agent";
+            Description = "Tailscale system tray";
+            PartOf = [ "hyprland-session.target" ];
+            After = [ "seele-shell.service" ];
+          };
+          Service = {
+            ExecStart = "${pkgs.tailscale}/bin/tailscale systray";
+            Restart = "on-failure";
+            RestartSec = 2;
+          };
+          Install.WantedBy = [ "hyprland-session.target" ];
+        };
+
+        # Replaces hyprpolkitagent, which drew polkit's prompt but dropped the
+        # one message that matters here: its `showInfo` handler only printed to
+        # stdout, so pam_u2f's touch request never reached the dialog and the
+        # `polkit-1` stack's `u2f sufficient` looked like it did nothing.
+        # Quickshell's PolkitAgent surfaces the same text as
+        # `supplementaryMessage`, so the password field and the token are both
+        # visible routes through one PAM conversation.
+        seele-polkit = {
+          Unit = {
+            Description = "Seele PolicyKit authentication agent";
             PartOf = [ "hyprland-session.target" ];
             After = [ "hyprland-session.target" ];
           };
           Service = {
-            ExecStart = "${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent";
+            ExecStart = lib.getExe polkitPackage;
             Restart = "on-failure";
+            RestartSec = 1;
           };
           Install.WantedBy = [ "hyprland-session.target" ];
         };
