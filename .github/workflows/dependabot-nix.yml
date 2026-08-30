@@ -1,0 +1,102 @@
+name: Dependabot Nix
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+    paths:
+      - flake.nix
+      - flake.lock
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dependabot-nix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the Dependabot branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v21
+
+      - name: Restore the Nix store cache
+        uses: DeterminateSystems/magic-nix-cache-action@v13
+
+      - name: Build the updated configuration
+        id: initial-build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          {
+            nix flake check --no-write-lock-file
+            nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
+              --no-link \
+              --no-write-lock-file
+          } 2>&1 | tee /tmp/dependabot-nix-build.log
+
+      - name: Install GitHub Copilot CLI
+        if: steps.initial-build.outcome == 'failure'
+        run: npm install --global @github/copilot
+
+      - name: Ask GitHub Copilot to repair the flake
+        if: steps.initial-build.outcome == 'failure'
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          copilot --allow-all-tools --prompt "$(cat <<'EOF'
+            A Dependabot update broke this Nix flake. Read
+            /tmp/dependabot-nix-build.log, inspect the repository, and repair the
+            build by editing the normal *.nix source files. Do not change
+            flake.lock, do not commit, and do not activate either host.
+
+            Keep the fix as narrow as possible. Follow AGENTS.md and the Seele
+            skill, run nix fmt, and use the repository's prescribed flake checks
+            and native Linux build to verify the repair.
+          EOF
+          )"
+
+      - name: Verify the repaired configuration
+        if: steps.initial-build.outcome == 'failure'
+        run: |
+          nix flake check --no-write-lock-file
+          nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
+            --no-link \
+            --no-write-lock-file
+          git diff --exit-code -- flake.lock || {
+            echo 'Copilot changed flake.lock; refusing to commit it.' >&2
+            exit 1
+          }
+          ! git diff --quiet -- '*.nix' || {
+            echo 'Copilot did not produce a flake repair to commit.' >&2
+            exit 1
+          }
+          unexpected="$(git diff --name-only | grep -Ev '\.nix$' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo 'Copilot changed files outside the Nix source tree:' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+
+      - name: Commit the repaired flake files
+        if: steps.initial-build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '*.nix'
+          git commit -m 'fix(nix): repair dependency update'
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:${HEAD_REF}"
