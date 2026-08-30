@@ -1,7 +1,10 @@
 { config, ... }:
 let
   module = {
-    imports = [ config.flake.modules.nixos.catppuccin ];
+    imports = [
+      config.flake.modules.nixos.catppuccin
+      config.flake.modules.nixos.stylix
+    ];
   };
 in
 {

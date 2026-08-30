@@ -8,7 +8,10 @@ let
         flavor = catppuccin.flavor;
         accent = catppuccin.accent;
         autoEnable = catppuccin.autoEnable;
+        chromium.enable = false;
+        kvantum.enable = false;
         mako.enable = false;
+        qt5ct.enable = false;
       };
     };
   nixosModule =

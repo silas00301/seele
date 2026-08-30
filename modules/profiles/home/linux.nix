@@ -26,6 +26,7 @@ let
       modules.voxtype
       modules.pi
       modules.spicetify
+      modules.stylix-linux
       modules.vicinae
       base
     ];

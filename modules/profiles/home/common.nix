@@ -18,6 +18,7 @@ let
   profile = {
     imports = [
       modules.catppuccin
+      modules.stylix
       modules.atuin
       modules.bash
       modules.bat

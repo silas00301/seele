@@ -4,7 +4,6 @@ let
     {
       pkgs,
       spicetify-nix,
-      catppuccin,
       ...
     }:
     let
@@ -14,8 +13,6 @@ let
       programs.spicetify = {
         enable = true;
 
-        theme = spicePkgs.themes.catppuccin;
-        colorScheme = catppuccin.flavor;
         experimentalFeatures = true;
         windowManagerPatch = true;
 

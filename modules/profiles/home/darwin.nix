@@ -11,7 +11,6 @@ let
       modules.bitwarden-darwin
       modules.fish-darwin
       modules.aerospace
-      modules.janky-borders
       base
     ];
   };

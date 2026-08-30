@@ -5,9 +5,11 @@ let
     { config, pkgs, ... }:
     {
       imports = [
+        modules.stylix
         modules.dock
         modules.finder
         modules.ghostty
+        modules.janky-borders
         modules.elgato-stream-deck
         modules.raycast
         modules.logi-options

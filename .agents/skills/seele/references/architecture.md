@@ -43,11 +43,13 @@ Named modules are available through the flake's `modules` output but remain dorm
 `modules/hosts/nerv.nix` constructs `nixosConfigurations.nerv` from:
 
 1. NixOS `common`, `linux`, and `nerv` deferred modules
-2. Noctalia's dormant NixOS option module and Catppuccin's NixOS module
+2. Noctalia's dormant NixOS option module plus Catppuccin's and Stylix's NixOS modules
 3. Home Manager's NixOS integration
 4. Home Manager `common`, `linux`, and `nerv` profiles plus external input modules
 
 Machine configuration and generated hardware settings contribute independently to the NixOS `nerv` profile from `modules/hosts/nerv/`. The host uses NixOS' native Limine module with Secure Boot and the shared Catppuccin theme. Its system profile installs uutils implementations of coreutils, findutils, diffutils, and sed at high priority, so uutils owns overlapping command names while NixOS dependencies and commands absent from uutils retain their GNU implementations.
+
+`modules/features/themes/stylix.nix` supplies the Catppuccin Base16 scheme, the shared Lavender accent, Noto and Maple fonts, and explicit target lists for NixOS, nix-darwin, and Home Manager. Automatic target selection is disabled. Catppuccin keeps the application ports it supports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, Hyprland, Plasma, Zen Browser, Spicetify, X resources, fonts, and nix-darwin's JankyBorders service. Catppuccin's Kvantum and qt5ct modules stay disabled so Qt widgets have one owner, while Stylix's qt5ct and qt6ct settings point to Catppuccin's Papirus icons. Custom Seele Shell, greeter, lock, and polkit components continue to consume the Catppuccin palette directly because neither theming framework has targets for them.
 
 Login is greetd running Seele Greeter, from `modules/features/programs/seele-greeter.nix` (`flake.modules.nixos.seele-greeter`) by way of `modules/hosts/nerv/greetd.nix`. A minimal greeter-only Hyprland instance replaces Cage so Quickshell can use layer shell. The package's `Variants` creates one full-screen `PanelWindow` for every `Quickshell.screen`, while password, PAM message, power-menu, and clock state stay on the shared root. Each output therefore gets the same login state but crops the wallpaper to its own geometry and scale. The wrapper exits the temporary compositor as soon as Quickshell exits, freeing the seat for the authenticated Hyprland session that greetd starts through UWSM.
 
@@ -90,10 +92,10 @@ The global `security.pam.u2f.enable` stays off — it would attach the module to
 `modules/hosts/asuka.nix` constructs `darwinConfigurations.asuka` from:
 
 1. Darwin `common`, `darwin`, and `asuka` deferred modules
-2. Home Manager's nix-darwin integration
+2. Stylix's nix-darwin module and Home Manager's nix-darwin integration
 3. Home Manager `common`, `darwin`, and `asuka` profiles plus external input modules
 
-Machine system settings live in `modules/hosts/asuka/system.nix`. The same constructor exports `darwinPackages`.
+Machine system settings live in `modules/hosts/asuka/system.nix`. JankyBorders is a nix-darwin service so Stylix can supply its active and inactive colors. The same constructor exports `darwinPackages`.
 
 ## Arguments and package sets
 

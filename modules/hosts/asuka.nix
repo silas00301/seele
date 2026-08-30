@@ -33,6 +33,7 @@ in
         modules.darwin.darwin
         modules.darwin.common
         modules.darwin.asuka
+        inputs.stylix.darwinModules.stylix
         inputs.home-manager.darwinModules.home-manager
         {
           home-manager = {
