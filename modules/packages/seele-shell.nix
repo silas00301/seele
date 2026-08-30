@@ -14,6 +14,7 @@
               ps.pygobject3
             ]);
             runtimePath = lib.makeBinPath [
+              pkgs.alsa-utils
               pkgs.bash
               pkgs.bluez
               pkgs.cameractrls-gtk4
@@ -96,6 +97,9 @@
               substitute ${./_seele-shell/bt-agent.py} bt-agent \
                 --replace-fail '#!/usr/bin/env python3' '#!${agentPython}/bin/python3'
               install -m755 bt-agent "$out/libexec/seele-shell/bt-agent"
+              substitute ${./_seele-shell/mic-sync.py} mic-sync \
+                --replace-fail '#!/usr/bin/env python3' '#!${agentPython}/bin/python3'
+              install -m755 mic-sync "$out/libexec/seele-shell/mic-sync"
               install -m755 ${./_seele-shell/os-session.sh} "$out/libexec/seele-shell/os-session"
               install -m755 ${./_seele-shell/ctl.sh} "$out/libexec/seele-shell/ctl"
               install -m755 ${./_seele-shell/clock.sh} "$out/libexec/seele-shell/clock"
@@ -118,6 +122,8 @@
               makeWrapper "$out/libexec/seele-shell/control" "$out/bin/seele-control" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/bt-receiver" "$out/bin/seele-bt-receiver" \
+                --prefix PATH : "$out/bin:${runtimePath}"
+              makeWrapper "$out/libexec/seele-shell/mic-sync" "$out/bin/seele-mic-sync" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/bt-agent" "$out/bin/seele-bt-agent" \
                 --prefix GI_TYPELIB_PATH : "${pkgs.glib}/lib/girepository-1.0" \
@@ -157,12 +163,12 @@
               test -f "$out/share/vicinae/extensions/seele-shell/keybindings.js"
               ${quickshell}/bin/quickshell --private-check-compat
               qmllint -I ${quickshell}/lib/qt-6/qml "$out/share/seele-shell/shell.qml"
-              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-bt-receiver seele-bt-agent seele-os-session seele-shellctl seele-clock seele-yubikey-watch; do
+              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-bt-receiver seele-bt-agent seele-mic-sync seele-os-session seele-shellctl seele-clock seele-yubikey-watch; do
                 test -x "$out/bin/$command"
               done
               for script in "$out/libexec/seele-shell/"*; do
                 case "$script" in
-                  *bt-agent) ${agentPython}/bin/python3 -m py_compile "$script" ;;
+                  *bt-agent | *mic-sync) ${agentPython}/bin/python3 -m py_compile "$script" ;;
                   *) bash -n "$script" ;;
                 esac
               done
@@ -181,6 +187,7 @@
                 "$out/libexec/seele-shell/control" \
                 "$out/libexec/seele-shell/bt-receiver" \
                 "$out/libexec/seele-shell/bt-agent"
+              bash ${./_seele-shell/tests/mic-sync.sh} "$out/libexec/seele-shell/mic-sync"
 
               runHook postInstallCheck
             '';

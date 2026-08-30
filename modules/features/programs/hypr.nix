@@ -304,6 +304,12 @@ let
           )
 
           hl.bind(
+            "XF86AudioMicMute",
+            hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl microphone mute"),
+            { locked = true }
+          )
+
+          hl.bind(
             "XF86AudioPlay",
             hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"),
             { locked = true }

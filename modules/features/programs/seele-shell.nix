@@ -14,6 +14,9 @@ let
       lockPackage = selfPackages.seele-lock;
       polkitPackage = selfPackages.seele-polkit;
       librepodsPackage = package.librepods;
+      # The Shure MV7+, which gates its own capsule when its touch panel is
+      # tapped and publishes that as an ordinary ALSA capture switch.
+      microphone = "14ed:1019";
       palette = builtins.fromJSON (builtins.readFile "${config.catppuccin.sources.palette}/palette.json");
       colors = palette.${catppuccin.flavor}.colors;
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
@@ -132,6 +135,28 @@ let
             ExecStart = lib.getExe package;
             Restart = "on-failure";
             RestartSec = 1;
+          };
+          Install.WantedBy = [ "hyprland-session.target" ];
+        };
+
+        # PipeWire's mute is a software gate inside the graph and never
+        # reaches the microphone's own, so the panel and the desktop each held
+        # half of one state: a tap silenced a call the desktop still showed as
+        # live, and unmuting here could not bring a panel-muted microphone back.
+        # This makes the two one state in both directions, LED included.
+        seele-mic-sync = {
+          Unit = {
+            Description = "Microphone mute sync";
+            PartOf = [ "hyprland-session.target" ];
+            After = [
+              "hyprland-session.target"
+              "pipewire.service"
+            ];
+          };
+          Service = {
+            ExecStart = "${package}/bin/seele-mic-sync ${microphone}";
+            Restart = "on-failure";
+            RestartSec = 2;
           };
           Install.WantedBy = [ "hyprland-session.target" ];
         };

@@ -1746,6 +1746,7 @@ ShellRoot {
     function updateStatus(json: string): void { root.parseSystemData(json) }
     function refreshStatus(): void { root.refreshStatus() }
     function showVolume(): void { root.showTimedOsd("volume") }
+    function showMicrophone(): void { root.showTimedOsd("microphone") }
     function bluetoothPairingRequest(request: string): void { root.setBluetoothPairing(request) }
     function bluetoothPairingDismiss(): void { root.clearBluetoothPairing() }
     function close(): void { root.closeOverlays() }
@@ -6340,15 +6341,24 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-osd"
       PanelSurface {
+        // Output and microphone share one level strip: they differ only in the
+        // glyph and in which level they read. A mute nobody pressed on the
+        // keyboard still deserves the acknowledgement the volume keys get.
         Row {
-          visible: root.osdKind === "volume"
+          id: levelOsd
+          readonly property bool microphone: root.osdKind === "microphone"
+          readonly property bool muted: microphone ? !!root.systemData.microphoneMuted : !!root.systemData.muted
+          readonly property int level: microphone
+            ? Number(root.microphoneDrag >= 0 ? root.microphoneDrag : root.systemData.microphoneVolume)
+            : Number(root.volumeDrag >= 0 ? root.volumeDrag : root.systemData.volume)
+          visible: microphone || root.osdKind === "volume"
           anchors.fill: parent; anchors.margins: 14; spacing: 12
-          Text { anchors.verticalCenter: parent.verticalCenter; text: root.systemData.muted ? "󰝟" : "󰕾"; color: root.systemData.muted ? root.red : root.accent; font.family: root.fontFamily; font.pixelSize: 20 }
+          Text { anchors.verticalCenter: parent.verticalCenter; text: levelOsd.microphone ? (levelOsd.muted ? "󰍭" : "󰍬") : (levelOsd.muted ? "󰝟" : "󰕾"); color: levelOsd.muted ? root.red : root.accent; font.family: root.fontFamily; font.pixelSize: 20 }
           Rectangle {
             width: 205; height: 8; anchors.verticalCenter: parent.verticalCenter; radius: 4; color: root.surface
-            Rectangle { width: parent.width * Math.max(0, Math.min(1, Number(root.volumeDrag >= 0 ? root.volumeDrag : root.systemData.volume) / 100)); height: parent.height; radius: 4; color: root.accent }
+            Rectangle { width: parent.width * Math.max(0, Math.min(1, levelOsd.level / 100)); height: parent.height; radius: 4; color: root.accent }
           }
-          Text { anchors.verticalCenter: parent.verticalCenter; text: (root.volumeDrag >= 0 ? root.volumeDrag : root.systemData.volume) + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 11 }
+          Text { anchors.verticalCenter: parent.verticalCenter; text: levelOsd.level + "%"; color: root.text; font.family: root.fontFamily; font.pixelSize: 11 }
         }
         Row {
           visible: root.osdKind === "airpods"
