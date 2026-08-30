@@ -6,7 +6,17 @@ tray_config=$seele_config_dir/tray.json
 bar_config=$seele_config_dir/bar.json
 librepods_config=${XDG_CONFIG_HOME:-$HOME/.config}/AirPodsTrayApp/AirPodsTrayApp.conf
 bluetooth_scan_pidfile=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-scan.pid
-bluetooth_scan_timeout=30
+# One window for both directions of discovery, the way a phone's Bluetooth
+# screen behaves: while it is open the machine is looking and answering at
+# once, so the scan, the adapter's discoverability, and the pairing agent all
+# share this lifetime and expire together.
+bluetooth_discovery_timeout=120
+bluetooth_receiver_pidfile=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-receiver.pid
+bluetooth_agent_pidfile=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-agent.pid
+bluetooth_pairing_request=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-pairing.json
+bluetooth_pairing_answer=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-pairing.answer
+bluetooth_agent_log=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/bluetooth-agent.log
+bluetooth_discoverable_timeout=180
 agent_state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/seele-shell/agents
 openlogi_battery_cache=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/openlogi-batteries.json
 
@@ -356,20 +366,26 @@ bluetooth_scan_active() {
 }
 
 bluetooth_state() {
-  local objects scanning=false
+  local objects scanning=false receiver=false
   if bluetooth_scan_active; then scanning=true; fi
+  if bluetooth_receiver_active; then receiver=true; fi
   objects=$(busctl --json=short call org.bluez / org.freedesktop.DBus.ObjectManager GetManagedObjects 2>/dev/null) || objects=""
   if [[ -z $objects ]]; then
-    printf '{"available":false,"powered":false,"scanning":false,"connected":0,"devices":[],"airpodsConnected":false,"airpodsName":""}'
+    printf '{"available":false,"powered":false,"scanning":false,"receiver":false,"discoverable":false,"connected":0,"devices":[],"airpodsConnected":false,"airpodsName":""}'
     return
   fi
-  jq -c --argjson scanning "$scanning" '
+  jq -c --argjson scanning "$scanning" --argjson receiver "$receiver" '
     (.data[0] // {}) as $objects
     | [$objects[]["org.bluez.Adapter1"] // empty] as $adapters
     | ([$objects[]
-        | select(.["org.bluez.Device1"])
-        | . as $interfaces
-        | .["org.bluez.Device1"] as $device
+        | .["org.bluez.MediaTransport1"] // empty
+        | { device: (.Device.data // ""), state: (.State.data // "") }
+      ]) as $transports
+    | ([$objects | to_entries[]
+        | select(.value["org.bluez.Device1"])
+        | .key as $path
+        | .value as $interfaces
+        | $interfaces["org.bluez.Device1"] as $device
         | {
             address: ($device.Address.data // ""),
             name: ($device.Alias.data // $device.Name.data // $device.Address.data // ""),
@@ -378,16 +394,27 @@ bluetooth_state() {
             trusted: ($device.Trusted.data // false),
             connected: ($device.Connected.data // false),
             rssi: ($device.RSSI.data // null),
+            # A phone plays into this machine through the A2DP Audio Source
+            # role, which is what separates a device the receiver can carry
+            # from a headset that only ever receives.
+            source: (($device.UUIDs.data // []) | any(ascii_downcase | startswith("0000110a"))),
+            streaming: (any($transports[]; .device == $path and .state == "active")),
             battery: ($interfaces["org.bluez.Battery1"].Percentage.data // null)
           }
         | select(.address != "" and .name != "")
         | select(.paired or .connected or (.name | ascii_downcase) != (.address | ascii_downcase | gsub(":"; "-")))
-      ] | sort_by([(if .connected then 0 else 1 end), (if .paired then 0 else 1 end), (.name | ascii_downcase)])) as $devices
+      # Deliberately not sorted on connection state. That changes on its own --
+      # a headset reconnecting, a phone dropping -- and would pull rows out from
+      # under whichever one is being aimed at. Pairing changes only when the
+      # user asks for it, so it is safe to order on.
+      ] | sort_by([(if .paired then 0 else 1 end), (.name | ascii_downcase), .address])) as $devices
     | ([$devices[] | select(.connected and (.name | test("airpods|beats"; "i")))] | first) as $airpods
     | {
         available: ($adapters | length > 0),
         powered: ([$adapters[] | select(.Powered.data == true)] | length > 0),
         scanning: $scanning,
+        receiver: $receiver,
+        discoverable: ([$adapters[] | select(.Discoverable.data == true)] | length > 0),
         connected: ([$devices[] | select(.connected)] | length),
         devices: $devices,
         airpodsConnected: ($airpods != null),
@@ -413,30 +440,151 @@ bluetooth_scan_start() {
   bluetoothctl power on >/dev/null 2>&1 || true
   mkdir -p "${bluetooth_scan_pidfile%/*}"
   setsid bash -c 'echo $$ >"$1"; shift; exec "$@"' seele-bluetooth-scan "$bluetooth_scan_pidfile" \
-    bluetoothctl --timeout "$bluetooth_scan_timeout" scan on >/dev/null 2>&1 &
+    bluetoothctl --timeout "$bluetooth_discovery_timeout" scan on >/dev/null 2>&1 &
   for _ in $(seq 1 20); do
     if bluetooth_scan_active; then break; fi
     sleep 0.05
   done
 }
 
+bluetooth_receiver_active() {
+  local pid
+  [[ -r $bluetooth_receiver_pidfile ]] || return 1
+  pid=$(<"$bluetooth_receiver_pidfile")
+  [[ -n $pid && -r /proc/$pid/cmdline ]] || return 1
+  grep -qa bt-receiver "/proc/$pid/cmdline"
+}
+
+bluetooth_receiver_stop() {
+  local pid=""
+  if [[ -r $bluetooth_receiver_pidfile ]]; then
+    pid=$(<"$bluetooth_receiver_pidfile")
+    rm -f "$bluetooth_receiver_pidfile"
+  fi
+  # `setsid` made the supervisor its own process group leader, so signalling the
+  # group retires every loopback it started without waiting for its next poll.
+  if [[ -n $pid && -r /proc/$pid/cmdline ]] && grep -qa bt-receiver "/proc/$pid/cmdline"; then
+    kill -TERM -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+  fi
+}
+
+bluetooth_receiver_start() {
+  bluetooth_receiver_stop
+  # Receiver mode deliberately leaves discoverability alone. A device this
+  # machine has already paired reaches it over ordinary page scan, so nothing
+  # here needs the adapter to answer inquiries from strangers.
+  bluetoothctl power on >/dev/null 2>&1 || true
+  mkdir -p "${bluetooth_receiver_pidfile%/*}"
+  setsid bash -c 'echo $$ >"$1"; shift; exec "$@"' seele-bluetooth-receiver "$bluetooth_receiver_pidfile" \
+    seele-bt-receiver >/dev/null 2>&1 &
+  for _ in $(seq 1 20); do
+    if bluetooth_receiver_active; then break; fi
+    sleep 0.05
+  done
+}
+
+bluetooth_agent_active() {
+  local pid
+  [[ -r $bluetooth_agent_pidfile ]] || return 1
+  pid=$(<"$bluetooth_agent_pidfile")
+  [[ -n $pid && -r /proc/$pid/cmdline ]] || return 1
+  grep -qa bt-agent "/proc/$pid/cmdline"
+}
+
+bluetooth_agent_stop() {
+  local pid=""
+  if [[ -r $bluetooth_agent_pidfile ]]; then
+    pid=$(<"$bluetooth_agent_pidfile")
+    rm -f "$bluetooth_agent_pidfile"
+  fi
+  if [[ -n $pid && -r /proc/$pid/cmdline ]] && grep -qa bt-agent "/proc/$pid/cmdline"; then
+    kill -TERM -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+  fi
+  rm -f "$bluetooth_pairing_request" "$bluetooth_pairing_answer"
+  seele-shellctl -q bluetooth-pairing-dismiss >/dev/null 2>&1 || true
+}
+
+bluetooth_agent_start() {
+  bluetooth_agent_stop
+  mkdir -p "${bluetooth_agent_pidfile%/*}"
+  # Keep the agent's own account of what BlueZ asked it. Which association
+  # model a remote picks is the first thing worth knowing when a pairing fails,
+  # and it is invisible from anywhere else.
+  SEELE_BLUETOOTH_PAIRING_WINDOW=$bluetooth_discovery_timeout \
+  SEELE_BLUETOOTH_DISCOVERABLE_TIMEOUT=$bluetooth_discoverable_timeout \
+  setsid bash -c 'echo $$ >"$1"; shift; exec "$@"' seele-bluetooth-agent "$bluetooth_agent_pidfile" \
+    seele-bt-agent >"$bluetooth_agent_log" 2>&1 &
+  for _ in $(seq 1 20); do
+    if bluetooth_agent_active; then break; fi
+    sleep 0.05
+  done
+}
+
+bluetooth_agent_ensure() {
+  bluetooth_agent_active || bluetooth_agent_start
+}
+
+bluetooth_pairing_close() {
+  bluetooth_agent_stop
+  bluetoothctl discoverable off >/dev/null 2>&1 || true
+  bluetoothctl pairable off >/dev/null 2>&1 || true
+  bluetoothctl discoverable-timeout "$bluetooth_discoverable_timeout" >/dev/null 2>&1 || true
+}
+
+bluetooth_pairing_open() {
+  bluetoothctl power on >/dev/null 2>&1 || true
+  # The agent has to be listening before the adapter answers anyone, because
+  # BlueZ rejects a pairing request outright when none is registered.
+  bluetooth_agent_start
+  # BlueZ retires discoverability itself when the timeout expires, so the
+  # window closes on its own even if nothing else closes it.
+  bluetoothctl discoverable-timeout "$bluetooth_discovery_timeout" >/dev/null 2>&1 || true
+  bluetoothctl pairable on >/dev/null 2>&1 || true
+  bluetoothctl discoverable on >/dev/null 2>&1 || true
+}
+
+# Discovery is symmetric. Searching without answering finds a speaker but
+# leaves a phone unable to reach this machine at all, and the two halves must
+# expire together or the spinner stops while the adapter is still open.
+bluetooth_discovery_start() {
+  bluetooth_scan_start
+  bluetooth_pairing_open
+}
+
+bluetooth_discovery_stop() {
+  bluetooth_scan_stop
+  bluetooth_pairing_close
+}
+
+bluetooth_pairing_answer() {
+  local token=$1 verdict=$2 value=${3:-}
+  case $verdict in
+    accept|reject) ;;
+    *) return 2 ;;
+  esac
+  mkdir -p "${bluetooth_pairing_answer%/*}"
+  printf '%s %s %s\n' "$token" "$verdict" "$value" >"$bluetooth_pairing_answer.new"
+  mv "$bluetooth_pairing_answer.new" "$bluetooth_pairing_answer"
+}
+
 bluetooth_paired() {
   jq -r --arg address "$1" 'any(.devices[]; .address == $address and .paired)' <<<"$(bluetooth_state)"
 }
 
-bluetooth_pair_terminal() {
-  local address=$1 script=${XDG_RUNTIME_DIR:-/tmp}/seele-shell/pair.bt
+# Pairing this machine started is the same exchange as pairing it answered, so
+# it runs through the same agent and the same prompt. A terminal is the
+# fallback for a step the shell cannot draw, and it can draw this one.
+bluetooth_pair_device() {
+  local address=$1
   bluetooth_scan_stop
-  mkdir -p "${script%/*}"
-  printf 'agent KeyboardDisplay\ndefault-agent\npair %s\n' "$address" >"$script"
-  setsid -f ghostty --title="Bluetooth pairing" -e bash -c '
-    printf "Pairing %s\n\nAnswer any passkey or confirmation prompt, then type: quit\n\n" "$2"
-    bluetoothctl --init-script "$1" || true
-    bluetoothctl trust "$2" >/dev/null 2>&1 || true
-    bluetoothctl connect "$2" || true
-    printf "\nPress enter to close this window.\n"
-    read -r _
-  ' seele-bluetooth-pair "$script" "$address" >/dev/null 2>&1
+  bluetooth_agent_ensure
+  # Detached, because the exchange waits on a person: holding control.sh open
+  # for it would block every other action in the panel behind it.
+  setsid -f bash -c '
+    timeout 90 bluetoothctl pair "$1" >/dev/null 2>&1 || true
+    timeout 10 bluetoothctl trust "$1" >/dev/null 2>&1 || true
+    timeout 20 bluetoothctl connect "$1" >/dev/null 2>&1 || true
+  ' seele-bluetooth-pair "$address" >/dev/null 2>&1
 }
 
 tray_hidden() {
@@ -769,7 +917,12 @@ status() {
   pw_dump=$(pw-dump 2>/dev/null || printf '[]')
   audio_devices=$(audio_devices "$pw_dump")
   microphone_active=false
-  if jq -e 'any(.[]; .info.props["media.class"] == "Stream/Input/Audio" and .info.state == "running")' <<<"$pw_dump" >/dev/null 2>&1; then
+  # The receiver's own loopback captures the phone, not a microphone, so it
+  # must not raise the recording indicator.
+  if jq -e 'any(.[];
+      .info.props["media.class"] == "Stream/Input/Audio"
+      and .info.state == "running"
+      and (.info.props["seele.role"] // "") != "bluetooth-receiver")' <<<"$pw_dump" >/dev/null 2>&1; then
     microphone_active=true
   fi
   screen_recording=$(screen_recording "$pw_dump")
@@ -832,6 +985,8 @@ status() {
       bluetoothAvailable:$bluetooth.available,
       bluetoothPowered:$bluetooth.powered,
       bluetoothScanning:$bluetooth.scanning,
+      bluetoothReceiver:$bluetooth.receiver,
+      bluetoothDiscoverable:$bluetooth.discoverable,
       bluetoothConnected:$bluetooth.connected,
       bluetoothDevices:$bluetooth.devices,
       airpodsConnected:$bluetooth.airpodsConnected,
@@ -861,6 +1016,9 @@ case "${1:-status}" in
   speedtest) speedtest_result ;;
   launcher-toggle) launcher_toggle ;;
   bluetooth-status) bluetooth_state ;;
+  bluetooth-pairing-answer)
+    bluetooth_pairing_answer "${2:?request token required}" "${3:?accept or reject required}" "${4:-}"
+    ;;
   volume)
     case "${2:-}" in
       up) wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+ ;;
@@ -923,6 +1081,8 @@ case "${1:-status}" in
       toggle)
         if [[ $(jq -r '.powered' <<<"$(bluetooth_state)") == true ]]; then
           bluetooth_scan_stop
+          bluetooth_receiver_stop
+          bluetooth_pairing_close
           bluetoothctl power off >/dev/null
         else
           bluetoothctl power on >/dev/null
@@ -930,15 +1090,40 @@ case "${1:-status}" in
         ;;
       scan)
         case "${3:-toggle}" in
-          on) bluetooth_scan_start ;;
-          off) bluetooth_scan_stop ;;
+          on) bluetooth_discovery_start ;;
+          off) bluetooth_discovery_stop ;;
           toggle)
             if [[ $(jq -r '.scanning' <<<"$(bluetooth_state)") == true ]]; then
-              bluetooth_scan_stop
+              bluetooth_discovery_stop
             else
-              bluetooth_scan_start
+              bluetooth_discovery_start
             fi
             ;;
+          *) exit 2 ;;
+        esac
+        ;;
+      receiver)
+        case "${3:-toggle}" in
+          on) bluetooth_receiver_start ;;
+          off)
+            bluetooth_receiver_stop
+            bluetooth_pairing_close
+            ;;
+          toggle)
+            if bluetooth_receiver_active; then
+              bluetooth_receiver_stop
+              bluetooth_pairing_close
+            else
+              bluetooth_receiver_start
+            fi
+            ;;
+          *) exit 2 ;;
+        esac
+        ;;
+      pairing)
+        case "${3:-open}" in
+          open) bluetooth_pairing_open ;;
+          close) bluetooth_pairing_close ;;
           *) exit 2 ;;
         esac
         ;;
@@ -949,13 +1134,13 @@ case "${1:-status}" in
           bluetooth_scan_stop
           timeout 20 bluetoothctl connect "$address" >/dev/null 2>&1 || true
         else
-          bluetooth_pair_terminal "$address"
+          bluetooth_pair_device "$address"
         fi
         ;;
       pair)
         address=${3:?device address required}
         bluetoothctl power on >/dev/null 2>&1 || true
-        bluetooth_pair_terminal "$address"
+        bluetooth_pair_device "$address"
         ;;
       forget)
         address=${3:?device address required}

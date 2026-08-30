@@ -14,6 +14,8 @@ Commands:
   center                    Toggle the Control Center
   controls                  Toggle session controls
   control <panel>           Toggle control-center, audio, network, vpn, Bluetooth, AirPods, battery, notifications, camera, or session
+  bluetooth-pairing <json>  Show a Bluetooth pairing request
+  bluetooth-pairing-dismiss Withdraw the Bluetooth pairing request
   agent <name> [prompt...]  Launch pi, opencode, codex, or claude
   refresh-agents            Refresh AI usage data
   volume <up|down|mute>     Change volume and show its OSD
@@ -45,6 +47,8 @@ case "$command" in
   center) ipc toggleControl control-center ;;
   controls) ipc toggleControls ;;
   control) ipc toggleControl "${1:-system}" ;;
+  bluetooth-pairing) ipc bluetoothPairingRequest "${1:?request payload required}" ;;
+  bluetooth-pairing-dismiss) ipc bluetoothPairingDismiss ;;
   agent)
     agent=${1:-pi}
     shift || true

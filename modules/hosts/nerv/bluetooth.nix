@@ -15,6 +15,14 @@ let
           # Exposes the BlueZ battery interfaces the shell reads for the
           # battery menu.
           Experimental = true;
+          # Audio/Video major class, Loudspeaker minor class. iOS routes its
+          # output picker on the class a device advertises, and it never offers
+          # a Computer-class device as a speaker however complete that device's
+          # A2DP sink records are, so the shell's Bluetooth receiver is
+          # unreachable from an iPhone without this. BlueZ honours only the
+          # major and minor bits here and derives the service bits from the
+          # profiles PipeWire actually registers.
+          Class = "0x000414";
         };
         Policy.AutoEnable = true;
       };

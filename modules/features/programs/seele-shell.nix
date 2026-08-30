@@ -77,10 +77,21 @@ let
             border-color = colors.${catppuccin.accent}.hex;
             border-radius = 14;
             border-size = 2;
-            default-timeout = 10000;
+            # Nothing expires on its own. A notification stays current until it
+            # is dismissed, so the panel is an inbox rather than a view of the
+            # last ten seconds, and every entry in it is still actionable --
+            # mako can only invoke an action while a notification is current.
+            # The shell retires its own popup on a timer instead.
+            default-timeout = 0;
+            # History now receives only what was actually dismissed, and the
+            # panel offers a 24 hour view of it, which the default of five
+            # cannot fill.
+            max-history = 100;
             font = "Maple Mono NF CN 11";
             icons = true;
             icon-border-radius = 14;
+            # An app's own expiry would retire a notification behind the
+            # panel's back, so the timeout above is the only one that counts.
             ignore-timeout = true;
             layer = "overlay";
             margin = "38,10,0";

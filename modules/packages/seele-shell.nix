@@ -7,6 +7,12 @@
         seele-shell =
           let
             quickshell = inputs.quickshell.packages.${system}.default;
+            # BlueZ hands pairing decisions to a registered D-Bus agent, which
+            # needs a real object on the bus rather than a shell pipeline.
+            agentPython = pkgs.python3.withPackages (ps: [
+              ps.dbus-python
+              ps.pygobject3
+            ]);
             runtimePath = lib.makeBinPath [
               pkgs.bash
               pkgs.bluez
@@ -86,6 +92,10 @@
               install -m755 ${./_seele-shell/agent-launch.sh} "$out/libexec/seele-shell/agent-launch"
               install -m755 ${./_seele-shell/agent-run.sh} "$out/libexec/seele-shell/agent-run"
               install -m755 ${./_seele-shell/control.sh} "$out/libexec/seele-shell/control"
+              install -m755 ${./_seele-shell/bt-receiver.sh} "$out/libexec/seele-shell/bt-receiver"
+              substitute ${./_seele-shell/bt-agent.py} bt-agent \
+                --replace-fail '#!/usr/bin/env python3' '#!${agentPython}/bin/python3'
+              install -m755 bt-agent "$out/libexec/seele-shell/bt-agent"
               install -m755 ${./_seele-shell/os-session.sh} "$out/libexec/seele-shell/os-session"
               install -m755 ${./_seele-shell/ctl.sh} "$out/libexec/seele-shell/ctl"
               install -m755 ${./_seele-shell/clock.sh} "$out/libexec/seele-shell/clock"
@@ -106,6 +116,11 @@
               makeWrapper "$out/libexec/seele-shell/agent-hook" "$out/bin/seele-agent-hook" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/control" "$out/bin/seele-control" \
+                --prefix PATH : "$out/bin:${runtimePath}"
+              makeWrapper "$out/libexec/seele-shell/bt-receiver" "$out/bin/seele-bt-receiver" \
+                --prefix PATH : "$out/bin:${runtimePath}"
+              makeWrapper "$out/libexec/seele-shell/bt-agent" "$out/bin/seele-bt-agent" \
+                --prefix GI_TYPELIB_PATH : "${pkgs.glib}/lib/girepository-1.0" \
                 --prefix PATH : "$out/bin:${runtimePath}"
               makeWrapper "$out/libexec/seele-shell/os-session" "$out/bin/seele-os-session" \
                 --prefix PATH : "$out/bin:${runtimePath}"
@@ -142,10 +157,15 @@
               test -f "$out/share/vicinae/extensions/seele-shell/keybindings.js"
               ${quickshell}/bin/quickshell --private-check-compat
               qmllint -I ${quickshell}/lib/qt-6/qml "$out/share/seele-shell/shell.qml"
-              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-os-session seele-shellctl seele-clock seele-yubikey-watch; do
+              for command in seele-shell seele-agent-state seele-agent seele-agent-run seele-agent-hook seele-control seele-bt-receiver seele-bt-agent seele-os-session seele-shellctl seele-clock seele-yubikey-watch; do
                 test -x "$out/bin/$command"
               done
-              bash -n "$out/libexec/seele-shell/"*
+              for script in "$out/libexec/seele-shell/"*; do
+                case "$script" in
+                  *bt-agent) ${agentPython}/bin/python3 -m py_compile "$script" ;;
+                  *) bash -n "$script" ;;
+                esac
+              done
               "$out/bin/seele-shellctl" --help >/dev/null
               bash ${./_seele-shell/tests/agent-state.sh} "$out/libexec/seele-shell/agent-state"
               bash ${./_seele-shell/tests/harness-status.sh} \
@@ -157,6 +177,10 @@
               node ${./_seele-shell/tests/time.js} "$out/share/seele-shell/time.js"
               bash ${./_seele-shell/tests/clock.sh} "$out/bin/seele-clock"
               PATH="${runtimePath}:$PATH" bash ${./_seele-shell/tests/network-vpn.sh} "$out/libexec/seele-shell/control"
+              PATH="${runtimePath}:$PATH" bash ${./_seele-shell/tests/bluetooth-receiver.sh} \
+                "$out/libexec/seele-shell/control" \
+                "$out/libexec/seele-shell/bt-receiver" \
+                "$out/libexec/seele-shell/bt-agent"
 
               runHook postInstallCheck
             '';

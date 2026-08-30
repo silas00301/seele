@@ -45,6 +45,12 @@ ShellRoot {
   readonly property int barSpacing: 2
   readonly property int barPadding: 4
   readonly property int panelGap: 5
+  // One spring for every scrollable. Qt's default overshoot drifts long enough
+  // to read as lag rather than as feedback, so the flick decelerates hard and
+  // the rebound is short.
+  readonly property int scrollRebound: 130
+  readonly property int scrollDeceleration: 9000
+  readonly property int scrollFlickVelocity: 2200
   readonly property int osdGap: 16
   readonly property int panelMargin: 16
   readonly property int panelSpacing: 10
@@ -92,13 +98,27 @@ ShellRoot {
   // otherwise leave it — and lose the grab — before it applied.
   property string barPressModule: ""
   property bool trayMenuOpen: false
-  property bool trayExpanded: false
+  // Hovering the group reveals it; the click pins it so it survives the pointer
+  // leaving.
+  property bool trayPinned: false
+  property bool trayHovering: false
+  readonly property bool trayExpanded: trayPinned || trayHovering
   property int volumeDrag: -1
   property int microphoneDrag: -1
   property bool agentUsageOpen: false
   property bool agentModelsOpen: false
   property string agentMetricPeriod: "day"
   property bool notificationHistoryOpen: false
+  // Mako no longer expires anything, so the popup owns its own lifetime. The
+  // notification itself stays current in the panel either way: retiring a
+  // popup hides a toast, it does not dismiss what raised it.
+  readonly property int notificationPopupSeconds: 10
+  property double notificationNow: 0
+  property var notificationPopupRetired: ({})
+  // A toast is a place to notice something and the panel is a place to read it,
+  // so the panel shows a notification whole and only the toast keeps it to one
+  // line until asked.
+  property var notificationUnfolded: ({})
   property var clockData: ({ pinned: [], zones: [] })
   property var activeTrayItem: null
   property bool osdOpen: false
@@ -151,6 +171,8 @@ ShellRoot {
     bluetoothPowered: false,
     bluetoothConnected: 0,
     bluetoothScanning: false,
+    bluetoothReceiver: false,
+    bluetoothDiscoverable: false,
     bluetoothDevices: [],
     airpodsConnected: false,
     airpodsName: "",
@@ -174,7 +196,16 @@ ShellRoot {
   property int bluetoothScanIntent: -1
   property int bluetoothScanQueued: -1
   readonly property bool bluetoothScanActive: bluetoothScanIntent >= 0 ? bluetoothScanIntent === 1 : !!systemData.bluetoothScanning
+  // Starting the bridge takes about a second, and the shared status poll can
+  // land inside that window still reporting the old value. Holding the
+  // requested state until the reported one agrees keeps the switch from
+  // snapping back and forth on its own, the way the scan intent does.
+  property int bluetoothReceiverIntent: -1
+  readonly property bool bluetoothReceiverActive: bluetoothReceiverIntent >= 0 ? bluetoothReceiverIntent === 1 : !!systemData.bluetoothReceiver
   property string bluetoothForget: ""
+  property var pairingRequest: ({})
+  property string pairingScreen: ""
+  readonly property bool pairingPrompting: !!(pairingRequest && pairingRequest.token)
   property string agentError: ""
   property var speedtestData: ({ ping: -1, jitter: -1, download: -1, upload: -1, server: "" })
   property string speedtestError: ""
@@ -320,11 +351,16 @@ ShellRoot {
             break
           }
         }
+        // Stamped before the assignment below, so the popup bindings never see
+        // fresh items against a clock from the last tick.
+        root.notificationNow = Date.now() / 1000
         systemData = parsed
+        root.pruneNotificationPopups(parsed.notifications)
         root.statusInitialized = true
         if (root.volumeDrag >= 0 && Number(parsed.volume) === root.volumeDrag) root.volumeDrag = -1
         if (root.microphoneDrag >= 0 && Number(parsed.microphoneVolume) === root.microphoneDrag) root.microphoneDrag = -1
         root.reconcileBluetoothScanIntent(!!parsed.bluetoothScanning)
+        root.reconcileBluetoothReceiverIntent(!!parsed.bluetoothReceiver)
       }
     } catch (error) {
       console.warn("seele-shell/status", error)
@@ -339,12 +375,15 @@ ShellRoot {
         bluetoothAvailable: !!parsed.available,
         bluetoothPowered: !!parsed.powered,
         bluetoothScanning: !!parsed.scanning,
+        bluetoothReceiver: !!parsed.receiver,
+        bluetoothDiscoverable: !!parsed.discoverable,
         bluetoothConnected: Number(parsed.connected || 0),
         bluetoothDevices: parsed.devices || [],
         airpodsConnected: !!parsed.airpodsConnected,
         airpodsName: String(parsed.airpodsName || "")
       })
       root.reconcileBluetoothScanIntent(!!parsed.scanning)
+      root.reconcileBluetoothReceiverIntent(!!parsed.receiver)
     } catch (error) {
       console.warn("seele-shell/bluetooth-status", error)
     }
@@ -353,6 +392,10 @@ ShellRoot {
   function reconcileBluetoothScanIntent(scanning) {
     if (root.bluetoothScanIntent >= 0 && scanning === (root.bluetoothScanIntent === 1)) root.bluetoothScanIntent = -1
     if (!scanning) bluetoothScanTimer.stop()
+  }
+
+  function reconcileBluetoothReceiverIntent(receiver) {
+    if (root.bluetoothReceiverIntent >= 0 && receiver === (root.bluetoothReceiverIntent === 1)) root.bluetoothReceiverIntent = -1
   }
 
   function formatTokens(value) {
@@ -527,6 +570,24 @@ ShellRoot {
     return root.systemData.bluetoothPowered ? (root.systemData.bluetoothDevices || []) : []
   }
 
+  // Devices playing into this machine. They stay in the one device list with
+  // everything else and are only counted here, for what the receiver row says
+  // about itself.
+  function bluetoothSources() {
+    return root.bluetoothDevices().filter(function(device) { return device.source && device.connected })
+  }
+
+  function bluetoothReceiverDetail() {
+    // Discoverability belongs to the search row, which owns that window; this
+    // row only reports what is actually playing here.
+    var sources = root.bluetoothSources()
+    var streaming = sources.filter(function(device) { return device.streaming }).length
+    if (streaming > 0) return streaming + " device" + (streaming === 1 ? "" : "s") + " streaming"
+    if (sources.length > 0) return sources.length + " device" + (sources.length === 1 ? "" : "s") + " connected"
+    if (!root.bluetoothReceiverActive) return "Play a phone through this PC"
+    return "Waiting for a paired device"
+  }
+
   function bluetoothIcon(device) {
     var icon = String(device && device.icon || "")
     var name = String(device && device.name || "").toLowerCase()
@@ -552,6 +613,7 @@ ShellRoot {
       return device.connected ? "Disconnecting…" : device.paired ? "Connecting…" : "Pairing…"
     }
     var suffix = device.trusted ? " · auto" : ""
+    if (device.streaming) return "Streaming here" + suffix
     if (device.connected) return "Connected" + suffix
     if (device.paired) return "Paired" + suffix
     return "Available"
@@ -576,7 +638,7 @@ ShellRoot {
   function runBluetooth(command, value) {
     if (bluetoothProcess.running) return false
     root.bluetoothAction = String(command)
-    if (command !== "scan" && command !== "toggle") root.bluetoothBusy = String(value || "")
+    if (command !== "scan" && command !== "toggle" && command !== "receiver" && command !== "pairing") root.bluetoothBusy = String(value || "")
     bluetoothProcess.command = ["seele-control", "bluetooth", String(command), String(value || "")]
     bluetoothProcess.running = true
     return true
@@ -599,8 +661,52 @@ ShellRoot {
     root.patchSystemData({ bluetoothPowered: powered })
     if (!powered) {
       root.bluetoothScanIntent = 0
+      root.bluetoothReceiverIntent = 0
       bluetoothScanTimer.stop()
     }
+  }
+
+  function toggleBluetoothReceiver() {
+    var enabled = !root.bluetoothReceiverActive
+    if (!root.runBluetooth("receiver", "toggle")) return
+    root.bluetoothReceiverIntent = enabled ? 1 : 0
+  }
+
+  function setBluetoothPairing(payload) {
+    try {
+      var parsed = JSON.parse(String(payload || ""))
+      if (!parsed || !parsed.token) return
+      // Pin the prompt to the output that is focused when the request lands,
+      // the way every other surface here pins itself at open time.
+      root.pairingScreen = root.currentScreen()
+      root.pairingRequest = parsed
+    } catch (error) {
+      console.warn("seele-shell/bluetooth-pairing", error)
+    }
+  }
+
+  function clearBluetoothPairing() {
+    root.pairingRequest = ({})
+    root.pairingScreen = ""
+  }
+
+  function answerBluetoothPairing(verdict, value) {
+    var token = String((root.pairingRequest || {}).token || "")
+    if (token === "") return
+    Quickshell.execDetached(["seele-control", "bluetooth-pairing-answer", token, String(verdict), String(value || "")])
+    root.clearBluetoothPairing()
+  }
+
+  // The models that make this end type the code rather than compare one.
+  function pairingWantsCode() {
+    var kind = String((root.pairingRequest || {}).kind || "")
+    return kind === "passkey" || kind === "pincode"
+  }
+
+  function pairingCode() {
+    var code = String((root.pairingRequest || {}).passkey || "")
+    // Grouped the way a phone shows it, so the two are compared at a glance.
+    return code.length === 6 ? code.slice(0, 3) + " " + code.slice(3) : code
   }
 
   function forgetBluetoothDevice(device) {
@@ -731,6 +837,48 @@ ShellRoot {
     root.patchSystemData({ notifications: { count: items.length, items: items, history: notifications.history || [] } })
     root.closeOverlays()
   }
+  function notificationPopupEntries() {
+    var items = (root.systemData.notifications || {}).items || []
+    var live = []
+    for (var i = 0; i < items.length; i++) {
+      if (root.notificationPopupRetired[String(items[i].id)]) continue
+      if (root.notificationNow - Number(items[i].time || 0) >= root.notificationPopupSeconds) continue
+      live.push(items[i])
+    }
+    return live
+  }
+
+  function toggleNotificationUnfolded(id) {
+    var key = String(id)
+    var unfolded = {}
+    for (var other in root.notificationUnfolded) unfolded[other] = root.notificationUnfolded[other]
+    if (unfolded[key]) delete unfolded[key]
+    else unfolded[key] = true
+    root.notificationUnfolded = unfolded
+  }
+
+  function retireNotificationPopup(id) {
+    var retired = {}
+    for (var key in root.notificationPopupRetired) retired[key] = true
+    retired[String(id)] = true
+    root.notificationPopupRetired = retired
+  }
+
+  // Only ids that are still current need remembering; anything dismissed or
+  // invoked has left the panel and would otherwise accumulate here forever.
+  function pruneNotificationPopups(notifications) {
+    var items = (notifications || {}).items || []
+    var present = {}
+    for (var i = 0; i < items.length; i++) present[String(items[i].id)] = true
+    var retired = {}
+    var dropped = false
+    for (var key in root.notificationPopupRetired) {
+      if (present[key]) retired[key] = true
+      else dropped = true
+    }
+    if (dropped) root.notificationPopupRetired = retired
+  }
+
   function dismissNotification(id) {
     id = String(id)
     if (!root.runControl("notifications", "dismiss", id)) return
@@ -1491,6 +1639,16 @@ ShellRoot {
     }
   }
 
+  // `now` moves in half-minute steps, which cannot retire a ten second popup.
+  // This runs only while something is on screen to retire.
+  Timer {
+    interval: 500
+    repeat: true
+    running: root.notificationPopupEntries().length > 0
+    triggeredOnStart: true
+    onTriggered: root.notificationNow = Date.now() / 1000
+  }
+
   Timer {
     interval: 1000
     repeat: true
@@ -1532,14 +1690,18 @@ ShellRoot {
 
   Timer {
     id: bluetoothScanTimer
-    interval: 30000
+    interval: 120000
     onTriggered: root.setBluetoothScanning(false)
   }
 
+  // A search needs the fastest cadence, but the receiver row reports live state
+  // too — what is connected and whether it is actually streaming — and the
+  // shared five-second status poll is too slow to read as live.
   Timer {
-    interval: 500
+    interval: root.bluetoothScanActive ? 500 : 1500
     repeat: true
-    running: root.bluetoothScanActive && root.controlPanel === "bluetooth"
+    running: root.controlPanel === "bluetooth"
+      && (root.bluetoothScanActive || root.bluetoothReceiverActive || root.bluetoothSources().length > 0)
     triggeredOnStart: true
     onTriggered: root.refreshBluetoothStatus()
   }
@@ -1584,7 +1746,29 @@ ShellRoot {
     function updateStatus(json: string): void { root.parseSystemData(json) }
     function refreshStatus(): void { root.refreshStatus() }
     function showVolume(): void { root.showTimedOsd("volume") }
+    function bluetoothPairingRequest(request: string): void { root.setBluetoothPairing(request) }
+    function bluetoothPairingDismiss(): void { root.clearBluetoothPairing() }
     function close(): void { root.closeOverlays() }
+  }
+
+  // Scrollables differ in what they hold, never in how they move. Both carry
+  // the same spring, so a list and a free-form panel rebound identically.
+  component SeeleListView: ListView {
+    boundsBehavior: Flickable.DragAndOvershootBounds
+    flickDeceleration: root.scrollDeceleration
+    maximumFlickVelocity: root.scrollFlickVelocity
+    rebound: Transition {
+      NumberAnimation { properties: "x,y"; duration: root.scrollRebound; easing.type: Easing.OutCubic }
+    }
+  }
+
+  component SeeleFlickable: Flickable {
+    boundsBehavior: Flickable.DragAndOvershootBounds
+    flickDeceleration: root.scrollDeceleration
+    maximumFlickVelocity: root.scrollFlickVelocity
+    rebound: Transition {
+      NumberAnimation { properties: "x,y"; duration: root.scrollRebound; easing.type: Easing.OutCubic }
+    }
   }
 
   component RefreshGlyph: Item {
@@ -2830,15 +3014,19 @@ ShellRoot {
     }
   }
 
-  component NotificationList: ListView {
+  component NotificationList: SeeleListView {
     id: notificationList
 
     property bool history: false
+    property bool popup: false
+    // Everywhere except a toast, a notification is shown in full without being
+    // asked: the panel is where you go to read what you missed.
+    readonly property bool alwaysUnfolded: !notificationList.popup
 
     spacing: 6
     clip: true
-    model: notificationList.history
-      ? (root.systemData.notifications.history || [])
+    model: notificationList.history ? (root.systemData.notifications.history || [])
+      : notificationList.popup ? root.notificationPopupEntries()
       : (root.systemData.notifications.items || [])
 
     delegate: Rectangle {
@@ -2846,8 +3034,14 @@ ShellRoot {
 
       required property var modelData
       readonly property bool actionable: !notificationList.history && root.notificationActionable(modelData)
+      readonly property bool unfolded: notificationList.alwaysUnfolded || !!root.notificationUnfolded[String(modelData.id)]
+      // A single elided line reports its full width, which is the only way to
+      // know there is more to show without measuring the text twice.
+      readonly property bool truncated: notificationBody.implicitWidth > notificationBody.width
+      // Only a toast folds, and only when there is something folded away.
+      readonly property bool unfoldable: !notificationList.alwaysUnfolded && (truncated || unfolded)
       width: ListView.view.width
-      height: 60
+      height: Math.max(60, notificationText.implicitHeight + 18)
       radius: root.radius
       color: notificationEntry.actionable && notificationOpenMouse.pressed ? root.pressColor
         : notificationEntry.actionable && notificationOpenMouse.containsMouse ? root.hoverColor
@@ -2863,15 +3057,40 @@ ShellRoot {
       }
 
       Column {
-        anchors.fill: parent
+        id: notificationText
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.margins: 9
         spacing: 3
         Row {
           width: parent.width
-          Text { width: parent.width - 84; text: modelData.summary || modelData.app_name || "Notification"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+          Text { width: parent.width - (notificationEntry.unfoldable ? 110 : 84); text: modelData.summary || modelData.app_name || "Notification"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
           Text { width: 58; text: root.agoText(modelData.time); color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; horizontalAlignment: Text.AlignRight }
           Rectangle {
-            readonly property bool busy: root.controlBusy("notifications", "dismiss", String(notificationEntry.modelData.id))
+            visible: notificationEntry.unfoldable
+            width: visible ? 26 : 0
+            height: 20
+            radius: root.radiusSmall
+            color: notificationUnfoldMouse.pressed ? root.pressColor : notificationUnfoldMouse.containsMouse ? root.hoverColor : "transparent"
+            Text {
+              anchors.centerIn: parent
+              text: notificationEntry.unfolded ? "󰅃" : "󰅀"
+              color: notificationUnfoldMouse.containsMouse ? root.accent : root.subtext
+              font.family: root.fontFamily
+              font.pixelSize: 10
+            }
+            MouseArea {
+              id: notificationUnfoldMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.toggleNotificationUnfolded(notificationEntry.modelData.id)
+            }
+            HoverTip { mouse: notificationUnfoldMouse; text: notificationEntry.unfolded ? "Show less" : "Show the whole notification" }
+          }
+          Rectangle {
+            readonly property bool busy: !notificationList.popup && root.controlBusy("notifications", "dismiss", String(notificationEntry.modelData.id))
             visible: !notificationList.history
             width: visible ? 26 : 0
             height: 20
@@ -2884,24 +3103,30 @@ ShellRoot {
               anchors.fill: parent
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.dismissNotification(notificationEntry.modelData.id)
+              // On a popup this closes the toast and leaves the notification
+              // in the panel; in the panel it is the actual dismissal.
+              onClicked: notificationList.popup
+                ? root.retireNotificationPopup(notificationEntry.modelData.id)
+                : root.dismissNotification(notificationEntry.modelData.id)
             }
+            HoverTip { mouse: notificationDismissMouse; text: notificationList.popup ? "Hide · stays in notifications" : "Dismiss" }
           }
         }
-        Text { width: parent.width - (notificationEntry.actionable ? 16 : 0); text: modelData.body || modelData.app_name || ""; elide: Text.ElideRight; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 9 }
+        Text {
+          id: notificationBody
+          width: parent.width
+          text: modelData.body || modelData.app_name || ""
+          color: root.subtext
+          font.family: root.fontFamily
+          font.pixelSize: 9
+          wrapMode: notificationEntry.unfolded ? Text.WordWrap : Text.NoWrap
+          elide: notificationEntry.unfolded ? Text.ElideNone : Text.ElideRight
+          // Bounded, so one pathological notification cannot take the panel.
+          maximumLineCount: notificationEntry.unfolded ? 8 : 1
+        }
       }
 
-      Text {
-        visible: notificationEntry.actionable && notificationOpenMouse.containsMouse
-        anchors.right: parent.right
-        anchors.rightMargin: 9
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 8
-        text: "󰅂"
-        color: root.overlay
-        font.family: root.fontFamily
-        font.pixelSize: 12
-      }
+
     }
   }
 
@@ -2912,7 +3137,7 @@ ShellRoot {
       id: notificationPopupWindow
 
       required property var modelData
-      readonly property var entries: (root.systemData.notifications || {}).items || []
+      readonly property var entries: root.notificationPopupEntries()
       screen: modelData
       visible: !root.systemData.dnd
         && root.controlPanel !== "notifications"
@@ -2921,7 +3146,9 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 400
-      implicitHeight: Math.min(5, entries.length) * 66 + root.panelMargin * 2
+      // Rows size themselves to whatever is unfolded, so the surface follows
+      // the list's own content rather than a fixed row height.
+      implicitHeight: Math.min(430, Math.max(66, notificationPopupList.contentHeight)) + root.panelMargin * 2
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -2929,6 +3156,8 @@ ShellRoot {
 
       PanelSurface {
         NotificationList {
+          id: notificationPopupList
+          popup: true
           anchors.fill: parent
           anchors.margins: root.panelMargin
         }
@@ -3511,20 +3740,20 @@ ShellRoot {
             HoverTip { mouse: spotifyMediaMouse; text: root.mediaLabel(spotifyMediaItem.player) }
           }
 
-          BarItem {
-            visible: root.trayHiddenCount() > 0
-            width: 22
-            hovered: trayExpandMouse.containsMouse
-            Text {
-              anchors.centerIn: parent
-              text: root.trayExpanded ? "󰅂" : "󰅁"
-              color: root.trayExpanded ? root.accent : root.overlay
-              font.family: root.fontFamily
-              font.pixelSize: 13
-            }
-            MouseArea { id: trayExpandMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.trayExpanded = !root.trayExpanded }
-            HoverTip { mouse: trayExpandMouse; text: root.trayHiddenCount() + " hidden tray icon" + (root.trayHiddenCount() === 1 ? "" : "s") }
-          }
+          // The bar is anchored to its right edge, so the tray grows leftward
+          // and the expander has to be the group's rightmost item. Placed ahead
+          // of the icons it reveals, every click slid it out from under the
+          // pointer by exactly the width it had just added, and the next click
+          // landed on whichever icon had taken its place -- so the arrow opened
+          // the tray but could never close it again.
+          Row {
+            anchors.verticalCenter: parent.verticalCenter
+            height: root.barHeight
+            spacing: 0
+
+            // Revealing on hover costs nothing to undo, so the click is left to
+            // pin the tray open rather than being the only way to look at it.
+            HoverHandler { onHoveredChanged: root.trayHovering = hovered }
 
           Repeater {
             model: root.trayItems()
@@ -3560,6 +3789,26 @@ ShellRoot {
                 onTapped: trayMouse.openContextMenu()
               }
               HoverTip { mouse: trayMouse; text: modelData.title || modelData.id || "Tray item" }
+            }
+          }
+
+            BarItem {
+              visible: root.trayHiddenCount() > 0
+              width: 22
+              hovered: trayExpandMouse.containsMouse
+              Text {
+                anchors.centerIn: parent
+                text: root.trayExpanded ? "󰅂" : "󰅁"
+                color: root.trayExpanded ? root.accent : root.overlay
+                font.family: root.fontFamily
+                font.pixelSize: 13
+              }
+              MouseArea { id: trayExpandMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.trayPinned = !root.trayPinned }
+              HoverTip {
+                mouse: trayExpandMouse
+                text: root.trayPinned ? "Keep the tray open · click to unpin"
+                  : root.trayHiddenCount() + " hidden tray icon" + (root.trayHiddenCount() === 1 ? "" : "s")
+              }
             }
           }
 
@@ -3985,14 +4234,13 @@ ShellRoot {
             }
           }
 
-          ListView {
+          SeeleListView {
             id: calendarMonths
             width: parent.width
             height: parent.height - 52
             model: 121
             spacing: 8
             clip: true
-            boundsBehavior: Flickable.StopAtBounds
             delegate: Item {
               id: monthDelegate
               required property int modelData
@@ -4131,14 +4379,13 @@ ShellRoot {
             background: Rectangle { radius: root.radius; color: root.surface; border.color: timezoneSearch.activeFocus ? root.accent : "transparent"; border.width: 1 }
           }
 
-          ListView {
+          SeeleListView {
             id: timezoneList
             width: parent.width
             height: parent.height - 100
             model: root.filteredTimezones(timezoneSearch.text)
             spacing: 4
             clip: true
-            boundsBehavior: Flickable.StopAtBounds
             delegate: Rectangle {
               id: timezoneRow
               required property var modelData
@@ -4262,7 +4509,7 @@ ShellRoot {
             }
           }
 
-          ListView {
+          SeeleListView {
             id: trayMenuList
             width: parent.width
             height: parent.height - 36
@@ -4380,7 +4627,7 @@ ShellRoot {
 
         visible: agentsWindow.active
 
-        Flickable {
+        SeeleFlickable {
           id: agentsScroll
 
           anchors.fill: parent
@@ -4389,7 +4636,6 @@ ShellRoot {
           clip: true
           contentWidth: width
           contentHeight: agentsContent.implicitHeight
-          boundsBehavior: Flickable.StopAtBounds
 
           ScrollBar.vertical: SlimScrollBar { popupHovered: agentsSurface.hovered }
 
@@ -4937,7 +5183,7 @@ ShellRoot {
           AudioLevelRow { width: parent.width }
           AudioLevelRow { width: parent.width; microphone: true }
           Text { text: "OUTPUT DEVICE"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
-          ListView {
+          SeeleListView {
             width: parent.width
             height: audioControlsWindow.outputHeight
             spacing: 4
@@ -4960,7 +5206,7 @@ ShellRoot {
             }
           }
           Text { text: "INPUT DEVICE"; color: root.overlay; font.family: root.fontFamily; font.pixelSize: 9; font.bold: true }
-          ListView {
+          SeeleListView {
             width: parent.width
             height: audioControlsWindow.inputHeight
             spacing: 4
@@ -5280,13 +5526,17 @@ ShellRoot {
       anchors { top: true; right: true }
       margins { top: root.barHeight + root.panelGap; right: root.panelGap }
       implicitWidth: 360
-      implicitHeight: root.systemData.bluetoothPowered ? 124 + (devices.length === 0 ? 26 : listHeight) : 88
+      implicitHeight: root.systemData.bluetoothPowered
+        ? 124 + (devices.length === 0 ? 26 : listHeight) + 44
+        : 88
       exclusionMode: ExclusionMode.Ignore
       color: "transparent"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-bluetooth"
 
       PanelSurface {
+        id: bluetoothSurface
+
         Column {
           anchors.fill: parent; anchors.margins: root.panelMargin; spacing: root.panelSpacing
           Row {
@@ -5313,11 +5563,45 @@ ShellRoot {
           }
           Row {
             visible: root.systemData.bluetoothPowered
+            width: parent.width
+            height: 34
+            spacing: 8
+            Text {
+              anchors.verticalCenter: parent.verticalCenter
+              width: 18
+              text: "󰂰"
+              color: root.bluetoothReceiverActive ? root.accent : root.subtext
+              font.family: root.fontFamily
+              font.pixelSize: 15
+            }
+            Column {
+              anchors.verticalCenter: parent.verticalCenter
+              width: parent.width - 74
+              spacing: 1
+              Text { width: parent.width; text: "Receive audio"; elide: Text.ElideRight; color: root.text; font.family: root.fontFamily; font.pixelSize: 12 }
+              Text {
+                width: parent.width
+                text: root.bluetoothReceiverDetail()
+                elide: Text.ElideRight
+                color: root.bluetoothReceiverActive ? root.subtext : root.overlay
+                font.family: root.fontFamily
+                font.pixelSize: 9
+              }
+            }
+            ControlSwitch {
+              anchors.verticalCenter: parent.verticalCenter
+              checked: root.bluetoothReceiverActive
+              busy: bluetoothProcess.running && root.bluetoothAction === "receiver"
+              onToggled: root.toggleBluetoothReceiver()
+            }
+          }
+          Row {
+            visible: root.systemData.bluetoothPowered
             width: parent.width; spacing: 8
             Text {
               width: parent.width - 42
               anchors.verticalCenter: parent.verticalCenter
-              text: root.bluetoothScanActive ? "Searching for devices…" : "Search for new devices"
+              text: root.bluetoothScanActive ? "Discovering · this PC is visible" : "Find a device, or let one find this PC"
               color: root.bluetoothScanActive ? root.accent : root.subtext
               font.family: root.fontFamily
               font.pixelSize: 11
@@ -5333,16 +5617,17 @@ ShellRoot {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.setBluetoothScanning(!root.bluetoothScanActive)
               }
-              HoverTip { mouse: bluetoothScanMouse; text: root.bluetoothScanActive ? "Stop searching" : "Search for 30 seconds" }
+              HoverTip { mouse: bluetoothScanMouse; text: root.bluetoothScanActive ? "Stop discovering" : "Search and stay visible for two minutes" }
             }
           }
-          ListView {
+          SeeleListView {
             visible: root.systemData.bluetoothPowered && bluetoothWindow.devices.length > 0
             width: parent.width
             height: bluetoothWindow.listHeight
             spacing: 4
             clip: true
             model: bluetoothWindow.devices
+            ScrollBar.vertical: SlimScrollBar { popupHovered: bluetoothSurface.hovered }
             delegate: Rectangle {
               required property var modelData
               readonly property bool busy: root.bluetoothBusy === modelData.address
@@ -5414,6 +5699,158 @@ ShellRoot {
             color: root.overlay
             font.family: root.fontFamily
             font.pixelSize: 10
+          }
+        }
+      }
+    }
+  }
+
+  // Bluetooth pairing prompt ---------------------------------------------------
+  // The trust decision this carries is the whole point of the pairing window,
+  // so it gets the shell's own surface rather than a terminal: same card as the
+  // YubiKey prompt, centred on the output that was focused when BlueZ asked.
+  Variants {
+    model: Quickshell.screens
+    PanelWindow {
+      id: pairingWindow
+
+      required property var modelData
+      readonly property string kind: String((root.pairingRequest || {}).kind || "confirm")
+      readonly property string deviceName: String((root.pairingRequest || {}).name || "This device")
+      screen: modelData
+      visible: root.pairingPrompting && root.pinnedScreen(root.pairingScreen, modelData)
+      exclusionMode: ExclusionMode.Ignore
+      implicitWidth: 360
+      implicitHeight: pairingCard.implicitHeight + 44
+      color: "transparent"
+      WlrLayershell.layer: WlrLayer.Overlay
+      // Only the models that ask this end to type a code need the keyboard, so
+      // the prompt takes focus only then and gives it straight back.
+      WlrLayershell.keyboardFocus: visible && root.pairingWantsCode() ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+      WlrLayershell.namespace: "seele-shell-bluetooth-pairing"
+      onVisibleChanged: if (visible && root.pairingWantsCode()) Qt.callLater(function() {
+        pairingCodeField.forceActiveFocus()
+        pairingCodeField.selectAll()
+      })
+
+      PanelSurface {
+        Column {
+          id: pairingCard
+
+          anchors.centerIn: parent
+          width: parent.width - 44
+          spacing: 13
+
+          Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: "󰂰"
+            color: root.accent
+            font.family: root.fontFamily
+            font.pixelSize: 34
+          }
+
+          Text {
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+            text: pairingWindow.kind === "display" || root.pairingWantsCode()
+              ? "Pairing with " + pairingWindow.deviceName
+              : "Pair with " + pairingWindow.deviceName + "?"
+            color: root.text
+            font.family: root.fontFamily
+            font.pixelSize: 13
+            font.bold: true
+          }
+
+          Rectangle {
+            visible: root.pairingCode() !== "" && !root.pairingWantsCode()
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            height: 52
+            radius: root.radius
+            color: root.alpha(root.surface, 0.55)
+            Text {
+              anchors.centerIn: parent
+              text: root.pairingCode()
+              color: root.accent
+              font.family: root.fontFamily
+              font.pixelSize: 26
+              font.bold: true
+              font.letterSpacing: 4
+            }
+          }
+
+          TextField {
+            id: pairingCodeField
+            visible: root.pairingWantsCode()
+            width: parent.width
+            height: 52
+            horizontalAlignment: TextInput.AlignHCenter
+            placeholderText: pairingWindow.kind === "pincode" ? "PIN" : "000000"
+            inputMethodHints: pairingWindow.kind === "pincode" ? Qt.ImhNone : Qt.ImhDigitsOnly
+            maximumLength: pairingWindow.kind === "pincode" ? 16 : 6
+            color: root.accent
+            placeholderTextColor: root.overlay
+            selectionColor: root.accent
+            selectedTextColor: root.base
+            font.family: root.fontFamily
+            font.pixelSize: 26
+            font.bold: true
+            font.letterSpacing: 4
+            background: Rectangle {
+              radius: root.radius
+              color: root.alpha(root.surface, 0.55)
+              border.color: pairingCodeField.activeFocus ? root.accent : "transparent"
+              border.width: 1
+            }
+            onAccepted: root.answerBluetoothPairing("accept", pairingCodeField.text)
+            Keys.onEscapePressed: root.answerBluetoothPairing("reject", "")
+          }
+
+          Text {
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            text: pairingWindow.kind === "display" ? "Enter this code on the device."
+              : pairingWindow.kind === "authorize" ? "This device cannot show a code. Only accept it if you started this."
+              : root.pairingWantsCode() ? "Type the code the device is showing."
+              : "Accept only if the device shows the same code."
+            color: root.subtext
+            font.family: root.fontFamily
+            font.pixelSize: 10
+          }
+
+          Row {
+            visible: pairingWindow.kind !== "display"
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 8
+            Rectangle {
+              width: (pairingCard.width - 8) / 2
+              height: 30
+              radius: root.radius
+              color: pairingRejectMouse.pressed ? root.dangerPress : pairingRejectMouse.containsMouse ? root.dangerColor : root.alpha(root.surface, 0.95)
+              Text { anchors.centerIn: parent; text: "Reject"; color: pairingRejectMouse.containsMouse ? root.red : root.subtext; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+              MouseArea { id: pairingRejectMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.answerBluetoothPairing("reject", "") }
+            }
+            Rectangle {
+              width: (pairingCard.width - 8) / 2
+              height: 30
+              radius: root.radius
+              color: pairingAcceptMouse.pressed ? root.pressColor : pairingAcceptMouse.containsMouse ? root.hoverColor : root.selectedColor
+              Text { anchors.centerIn: parent; text: "Confirm"; color: root.accent; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+              MouseArea { id: pairingAcceptMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.answerBluetoothPairing("accept", pairingCodeField.text) }
+            }
+          }
+
+          Rectangle {
+            visible: pairingWindow.kind === "display"
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            height: 30
+            radius: root.radius
+            color: pairingDismissMouse.pressed ? root.pressColor : pairingDismissMouse.containsMouse ? root.hoverColor : root.alpha(root.surface, 0.95)
+            Text { anchors.centerIn: parent; text: "Dismiss"; color: root.subtext; font.family: root.fontFamily; font.pixelSize: 11; font.bold: true }
+            MouseArea { id: pairingDismissMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.clearBluetoothPairing() }
           }
         }
       }
@@ -5532,7 +5969,7 @@ ShellRoot {
             PanelGlyph { text: "󰁹" }
             Text { anchors.verticalCenter: parent.verticalCenter; text: "Batteries"; color: root.text; font.family: root.fontFamily; font.pixelSize: 18; font.bold: true }
           }
-          ListView {
+          SeeleListView {
             visible: batteryWindow.entries.length > 0
             width: parent.width
             height: Math.min(5, batteryWindow.entries.length) * 50
@@ -5602,17 +6039,33 @@ ShellRoot {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "seele-shell-notifications"
 
+      // Rows are as tall as the notification they hold, so the opening height
+      // comes from what the list actually measured rather than a row count.
       function suggestedHeight() {
         var notifications = root.systemData.notifications || { items: [], history: [] }
         var count = Math.max((notifications.items || []).length, (notifications.history || []).length)
-        return count === 0 ? 162 : Math.min(520, 146 + count * 66)
+        if (count === 0) return 162
+        var content = root.notificationHistoryOpen ? notificationHistoryList.contentHeight : notificationCurrentList.contentHeight
+        return Math.min(560, 146 + Math.max(66, content))
       }
 
       function toggleHistory() {
         root.notificationHistoryOpen = !root.notificationHistoryOpen
       }
 
-      onVisibleChanged: if (visible) stableHeight = suggestedHeight()
+      // Deferred, because the lists have not laid out their rows at the moment
+      // the surface becomes visible and would still measure zero.
+      onVisibleChanged: if (visible) Qt.callLater(function() { stableHeight = suggestedHeight() })
+      // `notificationHistoryOpen` belongs to root, so the change has to be
+      // taken from there rather than declared as a handler on this window.
+      Connections {
+        target: root
+        function onNotificationHistoryOpenChanged() {
+          if (notificationWindow.visible) Qt.callLater(function() {
+            notificationWindow.stableHeight = notificationWindow.suggestedHeight()
+          })
+        }
+      }
 
       PanelSurface {
         id: notificationSurface
@@ -5675,13 +6128,17 @@ ShellRoot {
             height: notificationWindow.entries.length > 0 ? parent.height - 78 : 46
             clip: true
             NotificationList {
+              id: notificationCurrentList
               visible: !root.notificationHistoryOpen && (root.systemData.notifications.items || []).length > 0
               anchors.fill: parent
+              ScrollBar.vertical: SlimScrollBar { popupHovered: notificationSurface.hovered }
             }
             NotificationList {
+              id: notificationHistoryList
               history: true
               visible: root.notificationHistoryOpen && (root.systemData.notifications.history || []).length > 0
               anchors.fill: parent
+              ScrollBar.vertical: SlimScrollBar { popupHovered: notificationSurface.hovered }
             }
             Item {
               visible: notificationWindow.entries.length === 0
