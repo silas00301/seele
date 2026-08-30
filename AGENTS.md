@@ -416,6 +416,18 @@ Parent security configuration findings, upstream evidence and remaining native-h
 
 After every repository change, review `AGENTS.md` and `.agents/skills/seele/` against the resulting codebase. When a change establishes or reverses a configuration preference, also review `.agents/skills/seele-taste/`. Update guidance when architecture, profiles, outputs, commands, validation, conventions, workflows, or preferences changed.
 
+## Dependency update CI
+
+Dependabot schedules weekly Nix flake updates. `.github/workflows/dependabot-nix.yml`
+checks out submodules and validates the native Linux closure for same-repository
+Dependabot PRs. Failed builds may invoke Copilot when `COPILOT_GITHUB_TOKEN` is
+configured; that credential is an external setup requirement, never a repository
+file. Repairs may change ordinary `.nix` sources only, with staged changes,
+lock changes and submodule changes rejected. Jujutsu owns the local repair;
+GitHub's `createCommitOnBranch` API publishes a signed commit with an expected-head
+guard. Never put a personal signing key on the runner. Darwin needs separate
+native validation.
+
 ## Validation
 
 Always format the entire repository:

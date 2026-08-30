@@ -570,3 +570,13 @@ shell updates still require a published gitlink refresh. No new flake input,
 root receiver, private content inbox or mobile client is involved. The shell
 submodule's `projects/transfers/README.md` owns the provider contract and focused
 Python/JavaScript validation, including the Linux Taildrop API limitations.
+
+## Dependency update automation
+
+`.github/dependabot.yml` schedules weekly Nix updates. The Dependabot-only workflow
+checks out submodules, evaluates and builds `nerv`, and can ask Copilot to repair a
+failed update. `COPILOT_GITHUB_TOKEN` must be configured separately. Repairs are
+limited to ordinary `.nix` files; lock, submodule, staged and unrelated changes
+fail validation. Jujutsu tracks the local change, then GitHub publishes a signed
+commit through `createCommitOnBranch`, refusing a branch whose head changed during
+the build. This does not replace native Darwin validation or activate either host.
