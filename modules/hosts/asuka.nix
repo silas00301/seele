@@ -61,5 +61,6 @@ in
     }
   );
 
+  flake.packages.aarch64-darwin.default = config.flake.darwinConfigurations.asuka.system;
   flake.darwinPackages = config.flake.darwinConfigurations.asuka.pkgs;
 }

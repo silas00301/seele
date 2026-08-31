@@ -34,6 +34,9 @@ export MOCK_SWITCH=$work/switch
 export MOCK_NODE=$work/node-mute
 export MOCK_OSD=$work/osd.log
 export SEELE_MIC_SYNC_SYSFS=$work/sysfs
+# Every acknowledgement this run sends goes to a shell that takes three seconds
+# to answer, so a sync that waited on one could not keep up with the panel.
+export MOCK_OSD_DELAY=3
 
 stub mock-write <<'SH'
 # Replace a state file whole and log the write, so a reader polling the pair
@@ -117,6 +120,8 @@ SH
 
 stub seele-shellctl <<'SH'
 printf '%s\n' "$*" >>"$MOCK_OSD"
+# Stand in for a shell that is slow to answer. The sync must not wait on it.
+sleep "${MOCK_OSD_DELAY:-0}"
 SH
 
 expect() {
@@ -140,10 +145,16 @@ expect "$MOCK_NODE" true "startup adopts the device's mute"
 # A tap on the panel unmutes the microphone in the device; the desktop follows.
 mock-write "$MOCK_SWITCH" on
 expect "$MOCK_NODE" false "the desktop follows the panel unmuting"
-expect "$MOCK_OSD" "-q microphone" "the panel raises the desktop's microphone OSD"
+expect "$MOCK_OSD" "-q microphone-state live" "the panel raises an OSD carrying the new state"
 
+started=$(date +%s%N)
 mock-write "$MOCK_SWITCH" off
 expect "$MOCK_NODE" true "the desktop follows the panel muting"
+elapsed=$((($(date +%s%N) - started) / 1000000))
+if ((elapsed > 1500)); then
+  echo "mic-sync: the sync waited on the previous OSD (${elapsed}ms)" >&2
+  exit 1
+fi
 
 # Unmuting in the desktop reaches the device, which is the direction that was
 # impossible before: nothing in the graph owned the mute gating the signal.
@@ -153,11 +164,13 @@ expect "$MOCK_SWITCH" on "the device follows the desktop unmuting"
 mock-write "$MOCK_NODE" true
 expect "$MOCK_SWITCH" off "the device follows the desktop muting"
 
-# One OSD per tap and none for the two changes the desktop made itself. An echo
-# answered as though it came from the other side would show up here as an extra.
+# One OSD per tap, each carrying the state that tap produced, and none for the
+# two changes the desktop made itself. An echo answered as though it came from
+# the other side would show up here as an extra.
 sleep 0.6
-if [[ $(wc -l <"$MOCK_OSD") -ne 2 ]]; then
-  echo "mic-sync: expected one OSD per panel tap" >&2
+if [[ $(cat "$MOCK_OSD") != "-q microphone-state live
+-q microphone-state muted" ]]; then
+  echo "mic-sync: expected one OSD per panel tap, each naming the new state" >&2
   cat "$MOCK_OSD" "$work/log" >&2
   exit 1
 fi

@@ -49,6 +49,7 @@
               qmllint -I ${quickshell}/lib/qt-6/qml "$out/share/seele-greeter/shell.qml"
               grep -q 'model: Quickshell.screens' "$out/share/seele-greeter/shell.qml"
               grep -q 'source: root.grain' "$out/share/seele-greeter/shell.qml"
+              grep -q 'onInputReadyChanged: if (inputReady) focusDelay.restart()' "$out/share/seele-greeter/shell.qml"
 
               runHook postInstallCheck
             '';

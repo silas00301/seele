@@ -1746,7 +1746,12 @@ ShellRoot {
     function updateStatus(json: string): void { root.parseSystemData(json) }
     function refreshStatus(): void { root.refreshStatus() }
     function showVolume(): void { root.showTimedOsd("volume") }
-    function showMicrophone(): void { root.showTimedOsd("microphone") }
+    function showMicrophone(muted: string): void {
+      // A caller that already knows the new mute passes it, so the OSD does
+      // not wait on a fresh reading of the whole system to say one thing.
+      if (muted !== "") root.patchSystemData({ microphoneMuted: muted === "muted" })
+      root.showTimedOsd("microphone")
+    }
     function bluetoothPairingRequest(request: string): void { root.setBluetoothPairing(request) }
     function bluetoothPairingDismiss(): void { root.clearBluetoothPairing() }
     function close(): void { root.closeOverlays() }

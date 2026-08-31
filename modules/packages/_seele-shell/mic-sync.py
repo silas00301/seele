@@ -121,11 +121,6 @@ def set_node_mute(node, muted):
     run(["wpctl", "set-mute", str(node), "1" if muted else "0"])
 
 
-def show_osd():
-    """The desktop's own microphone OSD, so a tap on the panel reads like every
-    other hardware key. Quiet, because the mute has already happened and a shell
-    that is not running must not turn that into a failure."""
-    run(["seele-shellctl", "-q", "microphone"])
 
 
 def json_values(buffer):
@@ -175,6 +170,10 @@ class Session:
         # the event that woke us, so a burst that collapses into one wake-up
         # still settles on what the two actually hold.
         self.applied = None
+        # Outstanding OSD notifications. They are never waited on: the mute has
+        # already happened, and a shell that is slow to answer -- or not running
+        # -- must not hold up the sync that is only telling it what changed.
+        self.notices = []
 
     def on_node_change(self):
         muted = node_muted(self.node)
@@ -208,7 +207,25 @@ class Session:
         self.applied = muted
         log(f"device mute={muted}, following on node {self.node}")
         set_node_mute(self.node, muted)
-        show_osd()
+        self.show_osd(muted)
+
+    def show_osd(self, muted):
+        """Acknowledge on the desktop what the user did on the device, the way
+        the volume keys acknowledge themselves. The new state travels with the
+        call, because the shell asking the system to rediscover it would put
+        several hundred milliseconds between the tap and its OSD."""
+        self.notices = [notice for notice in self.notices if notice.poll() is None]
+        try:
+            self.notices.append(
+                subprocess.Popen(
+                    ["seele-shellctl", "-q", "microphone-state", "muted" if muted else "live"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            )
+        except OSError:
+            pass
 
     def on_graph_object(self, obj):
         node = source_node(obj, self.card)

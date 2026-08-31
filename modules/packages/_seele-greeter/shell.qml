@@ -54,6 +54,8 @@ ShellRoot {
 
   signal focusPassword()
 
+  onInputReadyChanged: if (inputReady) focusDelay.restart()
+
   function alpha(color, opacity) {
     return Qt.rgba(color.r, color.g, color.b, opacity)
   }

@@ -19,7 +19,9 @@ Commands:
   agent <name> [prompt...]  Launch pi, opencode, codex, or claude
   refresh-agents            Refresh AI usage data
   volume <up|down|mute>     Change volume and show its OSD
-  microphone [up|down|mute] Change the microphone and show its OSD
+  microphone <up|down|mute> Change the microphone and show its OSD
+  microphone-state <muted|live>
+                            Show the OSD for a mute the device made itself
   voxtype                   Toggle voice dictation
   lock                      Lock the session
   ping                      Check shell IPC
@@ -62,16 +64,15 @@ case "$command" in
     ipc showVolume
     ;;
   microphone)
-    # The microphone's own panel changes the mute in the device, so a call with
-    # no argument is the shell catching up with a state that already changed
-    # rather than asking for a new one.
-    if (($#)); then
-      output=$(seele-control microphone "$1")
-    else
-      output=$(seele-control status)
-    fi
+    output=$(seele-control microphone "${1:?up, down, or mute required}")
     ipc updateStatus "$output"
-    ipc showMicrophone
+    ipc showMicrophone ""
+    ;;
+  microphone-state)
+    # The microphone changed its own mute, so the shell needs that one value.
+    # Re-reading the whole system to find it costs several hundred milliseconds,
+    # and every one of them would sit between the tap and its acknowledgement.
+    ipc showMicrophone "${1:?muted or live required}"
     ;;
   voxtype)
     output=$(seele-control voxtype)

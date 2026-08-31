@@ -69,9 +69,10 @@ nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath -
 nix eval --raw .#darwinConfigurations.asuka.system.drvPath --no-write-lock-file                   # Darwin
 ```
 
-For relevant build validation:
+For relevant build validation, plain `nix build` builds the current native host closure:
 
 ```sh
+nix build --no-link --no-write-lock-file
 system="$(nix eval --impure --raw --expr builtins.currentSystem)"
 nix build ".#packages.${system}.nixvim" --no-link --no-write-lock-file
 nix build .#nixosConfigurations.nerv.config.system.build.toplevel --no-link --no-write-lock-file # Linux

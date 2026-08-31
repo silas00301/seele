@@ -61,4 +61,7 @@ in
       ];
     }
   );
+
+  flake.packages.x86_64-linux.default =
+    config.flake.nixosConfigurations.nerv.config.system.build.toplevel;
 }
