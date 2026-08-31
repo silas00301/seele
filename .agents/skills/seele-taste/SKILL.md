@@ -92,6 +92,7 @@ When the request does not select a tool, preserve these active defaults:
 | Search and selection | ripgrep, fd, fzf, Television, Telescope |
 | Files and inspection | yazi, eza, bat, bottom, jq |
 | Nix operations | `nh` for intended user rebuild workflows; direct `nix` commands for agent validation |
+| Nix distribution | Determinate Nix on `nerv` through its NixOS module; stock Nix on `asuka`; this flake's own nixpkgs stays the `nixpkgs` registry pin |
 | Browser | Zen as the primary experience; Brave as a compatible secondary browser |
 | Logitech peripherals | OpenLogi on Linux; Logi Options+ on macOS |
 | App launchers | Seele's native unified menu with Vicinae on Linux and Raycast on macOS |
