@@ -27,9 +27,6 @@
     _1password-shell-plugins.url = "github:1Password/shell-plugins";
     _1password-shell-plugins.inputs.nixpkgs.follows = "nixpkgs";
 
-    noctalia.url = "github:noctalia-dev/noctalia";
-    noctalia.inputs.nixpkgs.follows = "nixpkgs";
-
     quickshell.url = "github:outfoxxed/quickshell";
     quickshell.inputs.nixpkgs.follows = "nixpkgs";
 

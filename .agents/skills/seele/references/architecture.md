@@ -14,7 +14,7 @@ The flake exposes:
 - `packages.<system>.{seele-greeter,seele-lock,seele-polkit}` on Linux, re-exported from the external shell repository
 - `packages.x86_64-linux.{codexbar,t3code-nightly}`, the packaged CodexBar CLI and T3 Code nightly AppImage
 - `formatter.<system>` backed by `nixfmt-tree`
-- `overlays.{noctalia,zjstatus}`
+- `overlays.zjstatus`
 - `modules.<class>.<name>` deferred modules from `flake.modules`
 - `darwinPackages`, the `asuka` package set convenience output
 
@@ -34,8 +34,6 @@ Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, 
 
 Named modules are available through the flake's `modules` output but remain dormant until a profile or host imports them. Home Manager profiles import user features; system and host aggregates import NixOS and Darwin features such as shells, themes, Homebrew applications, and host-only integrations. This replaces the old behavior where an unlisted file under `home/shared/programs/` was dormant.
 
-`modules/hosts/nerv/noctalia.nix` preserves the previous Noctalia settings as the named modules `homeManager.nerv-noctalia` and `nixos.nerv-noctalia`. They are intentionally dormant while Seele Shell is active. Home Manager provides the user-level Noctalia options, while the `nerv` constructor imports Noctalia's external NixOS module; `asuka` does not import Noctalia.
-
 `modules/features/` contains program, service, theme, and shared system concerns. `modules/profiles/home/` contains profile-wide Home Manager settings that do not belong to one feature. Raw Nix expressions cannot live directly in the recursive tree; place them below a path containing `/_`.
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and packages its private helpers from `_hypr/`. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it; plain captures are saved and copied directly, while the modifier binding hands the same capture to Satty.
@@ -45,7 +43,7 @@ Named modules are available through the flake's `modules` output but remain dorm
 `modules/hosts/nerv.nix` constructs `nixosConfigurations.nerv` from:
 
 1. NixOS `common`, `linux`, and `nerv` deferred modules
-2. Noctalia's dormant NixOS option module plus Catppuccin's and Stylix's NixOS modules
+2. Catppuccin's and Stylix's NixOS modules
 3. Home Manager's NixOS integration
 4. Home Manager `common`, `linux`, and `nerv` profiles plus external input modules
 
@@ -57,7 +55,7 @@ Login is greetd running Seele Greeter, from `modules/features/programs/seele-gre
 
 `modules/packages/seele-greeter.nix` wires the external seele-shell flake's `greeter` package into this flake. Its generated system theme carries the declared username and display name, the UWSM session command, the desktop wallpaper, Maple Mono NF CN, and the active Catppuccin palette. The package runs the same seeded grain generator as Seele Shell and applies the shell's 8px radius, translucent panel fill, accent border, vertical wash, grain, and interaction tints to the login and power cards. Its install check runs `qmllint` and asserts that the packaged QML still enumerates screens and paints the grain. A NixOS `system.checks` derivation also asks Hyprland to parse the temporary compositor config during every system build.
 
-`modules/hosts/nerv/sddm.nix` is preserved but dormant, on the same footing as `nerv-noctalia`: nothing imports `nerv-sddm`, and it carries its own `catppuccin.sddm.enable` so an inactive display manager pulls no theme into the closure and can still come back intact. Two display managers cannot both claim vt1, so restoring one means dropping the other.
+`modules/hosts/nerv/sddm.nix` is preserved but dormant: nothing imports `nerv-sddm`, and it carries its own `catppuccin.sddm.enable` so an inactive display manager pulls no theme into the closure and can still come back intact. Two display managers cannot both claim vt1, so restoring one means dropping the other.
 
 The greeter change is invisible to the YubiKey stacks. greetd's PAM service is `auth substack login`, exactly as SDDM's was, so it inherits `login`'s second factor with no entry of its own. Quickshell's Greetd service exposes the IPC `authMessage` fields directly, including whether PAM needs a response, so the greeter submits the pending password only when requested and renders `cue_prompt` with the same key state used by Seele Lock. The Catppuccin SDDM theme could not do this at all because it discarded PAM information messages before they reached the UI.
 
