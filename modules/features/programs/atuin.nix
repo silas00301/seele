@@ -10,4 +10,6 @@ let
 in
 {
   flake.modules.homeManager."atuin" = module;
+
+  seele.portable.atuin = { };
 }

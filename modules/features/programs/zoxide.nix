@@ -11,4 +11,6 @@ let
 in
 {
   flake.modules.homeManager."zoxide" = module;
+
+  seele.portable.zoxide = { };
 }

@@ -10,4 +10,6 @@ let
 in
 {
   flake.modules.homeManager."fzf" = module;
+
+  seele.portable.fzf = { };
 }

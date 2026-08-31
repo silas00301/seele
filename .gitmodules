@@ -1,0 +1,3 @@
+[submodule "seele-shell"]
+	path = seele-shell
+	url = https://github.com/silas00301/seele-shell.git

@@ -4,4 +4,6 @@ let
 in
 {
   flake.modules.homeManager."opencode" = module;
+
+  seele.portable.opencode = { };
 }

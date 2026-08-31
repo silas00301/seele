@@ -99,4 +99,39 @@ in
   };
   flake.modules.nixos.fish = systemModule;
   flake.modules.darwin.fish = darwinSystemModule;
+
+  # The whole interactive environment in one output: fish's aliases,
+  # abbreviations and startup reach for eza, zellij, tmux, television and the
+  # editor, so the portable shell carries the features it names instead of
+  # falling back to whatever the foreign host provides. The host-specific
+  # `fish-linux` and `fish-darwin` leaves stay out -- their `rebuild`
+  # abbreviation points at a checkout that only exists on nerv and asuka.
+  seele.portable.fish = {
+    modules = [
+      "fish"
+      "atuin"
+      "bat"
+      "bottom"
+      "direnv"
+      "eza"
+      "fd"
+      "fzf"
+      "gh-dash"
+      "git"
+      "github-cli"
+      "hunk"
+      "jq"
+      "jujutsu"
+      "lazygit"
+      "nixvim"
+      "ripgrep"
+      "sesh"
+      "starship"
+      "television"
+      "tmux"
+      "yazi"
+      "zellij"
+      "zoxide"
+    ];
+  };
 }

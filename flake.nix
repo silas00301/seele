@@ -30,7 +30,7 @@
     quickshell.url = "github:outfoxxed/quickshell";
     quickshell.inputs.nixpkgs.follows = "nixpkgs";
 
-    seele-shell.url = "github:silas00301/seele-shell";
+    seele-shell.url = "git+file:./seele-shell";
     seele-shell.inputs.nixpkgs.follows = "nixpkgs";
     seele-shell.inputs.quickshell.follows = "quickshell";
 

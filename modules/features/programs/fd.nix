@@ -12,4 +12,6 @@ let
 in
 {
   flake.modules.homeManager."fd" = module;
+
+  seele.portable.fd = { };
 }

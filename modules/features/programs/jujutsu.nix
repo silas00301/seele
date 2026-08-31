@@ -111,4 +111,17 @@ let
 in
 {
   flake.modules.homeManager."jujutsu" = module;
+
+  seele.portable.jj = {
+    # Jujutsu's pager and diff formatter are chosen by whether bat and hunk are
+    # present, and its `pr` alias shells out to gh, so all three take part in
+    # the standalone evaluation the way they do on a host.
+    modules = [
+      "jujutsu"
+      "bat"
+      "hunk"
+      "github-cli"
+    ];
+    binary = "jj";
+  };
 }

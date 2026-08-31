@@ -76,4 +76,17 @@ let
 in
 {
   flake.modules.homeManager."tmux" = module;
+
+  seele.portable.tmux = {
+    # tmux launches fish, and its popup binding reaches for television and sesh,
+    # so the wrapper carries them rather than borrowing whatever the foreign
+    # host happens to have.
+    modules = [
+      "tmux"
+      "fish"
+      "fzf"
+      "television"
+      "sesh"
+    ];
+  };
 }

@@ -66,4 +66,11 @@ let
 in
 {
   flake.modules.homeManager."git" = module;
+
+  seele.portable.git = {
+    modules = [
+      "git"
+      "bat"
+    ];
+  };
 }

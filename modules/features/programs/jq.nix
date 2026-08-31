@@ -4,4 +4,6 @@ let
 in
 {
   flake.modules.homeManager."jq" = module;
+
+  seele.portable.jq = { };
 }

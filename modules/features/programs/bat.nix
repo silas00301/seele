@@ -4,4 +4,6 @@ let
 in
 {
   flake.modules.homeManager."bat" = module;
+
+  seele.portable.bat = { };
 }

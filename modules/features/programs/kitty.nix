@@ -28,4 +28,11 @@ let
 in
 {
   flake.modules.homeManager."kitty" = module;
+
+  seele.portable.kitty = {
+    modules = [
+      "kitty"
+      "fish"
+    ];
+  };
 }

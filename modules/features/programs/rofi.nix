@@ -1,4 +1,8 @@
-{ ... }:
+{
+  config,
+  lib,
+  ...
+}:
 let
   module = (
     { pkgs, ... }:
@@ -31,4 +35,8 @@ let
 in
 {
   flake.modules.homeManager."rofi" = module;
+
+  seele.portable.rofi = {
+    systems = lib.filter (lib.hasSuffix "-linux") config.systems;
+  };
 }

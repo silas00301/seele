@@ -127,4 +127,11 @@ let
 in
 {
   flake.modules.homeManager."gh-dash" = module;
+
+  seele.portable.gh-dash = {
+    modules = [
+      "gh-dash"
+      "github-cli"
+    ];
+  };
 }

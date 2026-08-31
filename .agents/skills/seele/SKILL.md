@@ -29,6 +29,7 @@ Classify the change:
 | Both systems, system-level | both `flake.modules.nixos.common` and `.darwin.common` |
 | One OS or machine | matching NixOS/darwin `linux`, `darwin`, `nerv`, or `asuka` profile |
 | Reusable derivation | `modules/packages/` via `perSystem.packages` |
+| Configured program for unmanaged machines | `seele.portable.<command>` in the program's own feature leaf |
 | Package-set override | `modules/flake/overlays.nix` |
 | Inputs/global composition | `flake.nix`, `modules/flake/`, or host constructors |
 
@@ -44,6 +45,7 @@ rg -n 'option-or-package-name' --glob '*.nix' modules
 
 - Keep a feature's Home Manager, system, and flake contributions together when they express one concern.
 - Publish reusable modules as `flake.modules.<class>.<name>`.
+- Publish a portable application as `seele.portable.<command>` from the leaf that configures it, naming it after the command. Its Home Manager evaluation is standalone, so list every feature it reads through and narrow `systems` for a platform-bound program.
 - Enable named features from the narrowest matching Home Manager, system, or host aggregate, preserving import order.
 - Consume `seele.hosts.<name>.username`, `seele.catppuccin`, and host-provided arguments instead of duplicating constants or importing nixpkgs.
 - Keep non-flake-parts Nix package/config assets in an underscore-prefixed path.

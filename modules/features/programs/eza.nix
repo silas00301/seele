@@ -12,4 +12,6 @@ let
 in
 {
   flake.modules.homeManager."eza" = module;
+
+  seele.portable.eza = { };
 }

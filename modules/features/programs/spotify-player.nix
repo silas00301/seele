@@ -291,4 +291,8 @@ let
 in
 {
   flake.modules.homeManager."spotify-player" = module;
+
+  seele.portable.spotify-player = {
+    binary = "spotify_player";
+  };
 }

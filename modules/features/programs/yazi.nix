@@ -22,4 +22,14 @@ let
 in
 {
   flake.modules.homeManager."yazi" = module;
+
+  seele.portable.yazi = {
+    modules = [
+      "yazi"
+      "bat"
+      "fd"
+      "ripgrep"
+      "lazygit"
+    ];
+  };
 }

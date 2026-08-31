@@ -25,4 +25,13 @@ let
 in
 {
   flake.modules.homeManager."sesh" = module;
+
+  seele.portable.sesh = {
+    modules = [
+      "sesh"
+      "tmux"
+      "fish"
+      "fzf"
+    ];
+  };
 }

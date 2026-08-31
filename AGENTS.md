@@ -7,7 +7,7 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - NixOS host `nerv` (`x86_64-linux`)
 - nix-darwin host `asuka` (`aarch64-darwin`)
 - Home Manager profiles shared by both hosts and specialized by platform/host
-- local packages (`codexbar`, `nixvim`, `spt-st`), the external `seele-shell` package, and overlays
+- local packages (`codexbar`, `nixvim`, `spt-st`), the `seele-shell` submodule package, and overlays
 
 Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
 
@@ -21,7 +21,7 @@ Use the `seele` skill in `.agents/skills/` for the workflow and architecture map
 ## Architecture
 
 - `flake.nix`: inputs and the `flake-parts`/`import-tree` bootstrap.
-- `modules/flake/`: repository options, systems, package-set policy, overlays, and formatter.
+- `modules/flake/`: repository options, systems, package-set policy, overlays, the formatter, and the portable-application builder.
 - `modules/features/`: program, service, theme, and system leaves. Each leaf publishes deferred modules through `flake.modules.<class>.<name>`.
 - `modules/profiles/home/`: shared, OS-specific, and host-specific Home Manager profiles. These import named feature modules in activation order.
 - `modules/hosts/{nerv,asuka}.nix`: host output constructors and Home Manager integration.
@@ -31,6 +31,8 @@ Use the `seele` skill in `.agents/skills/` for the workflow and architecture map
 Active profiles are `common`, `linux`/`darwin`, and `nerv`/`asuka`. Host constructors compose the matching profiles. Named feature modules remain dormant until a profile imports them.
 
 `modules/flake/core.nix` owns per-host `seele.hosts.<name>.username` values, `seele.catppuccin`, supported systems, unstable `pkgs`, and OS-matched `pkgs-stable`. Host constructors pass `username`, `currentSystem`, `selfPackages`, `pkgs-stable`, `catppuccin`, and `configName` to Home Manager. Reuse these arguments instead of re-importing nixpkgs or hard-coding store paths.
+
+Portable applications are the second way a feature reaches outside this flake. `modules/flake/portable.nix` declares `seele.portable.<app>`, and each program leaf worth running on an unmanaged machine contributes one entry beside its `flake.modules.homeManager` definition. An entry names the Home Manager features to evaluate, and the builder wraps the resulting binary so it materializes the generated `.config` tree as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<app>` and puts that evaluation's own `home.path` on `PATH`. The evaluation is standalone rather than host-derived, so a feature the app reads through has to be listed or its options resolve to Home Manager defaults instead of the values a host would give them.
 
 Theme ownership is split deliberately. Catppuccin themes supported application ports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, fonts, and active targets without a Catppuccin module. Qt's qt5ct and qt6ct settings reuse the Catppuccin Papirus icon theme. `stylix.autoEnable` stays off, and each platform profile lists its active Stylix targets explicitly so dormant applications do not add configuration or packages.
 
@@ -42,7 +44,8 @@ Theme ownership is split deliberately. Catppuccin themes supported application p
 - Keep dormant feature modules out of active profile imports.
 - Contribute system-only behavior to the matching NixOS or Darwin `common`, OS, or host profile.
 - Put reusable derivations under `modules/packages/` and package-set overrides in `modules/flake/overlays.nix`.
-- Consume standalone package repositories through flake inputs; keep their output wiring in `modules/packages/`. The `seele-shell` input owns the shell, greeter, lock, and polkit package sources.
+- Publish a configured program for unmanaged machines by adding `seele.portable.<command>` to its own feature leaf, named after the command it runs rather than the feature. List every feature it reads through, and narrow `systems` when the program is platform-bound.
+- Consume standalone package repositories through flake inputs; keep their output wiring in `modules/packages/`. The `seele-shell` submodule is the local flake input that owns the shell, greeter, lock, and polkit package sources.
 - Keep raw Nix expressions that are not flake-parts modules below a path containing `/_` so `import-tree` ignores them.
 - Prefer explicit package references in generated shell snippets when execution must not depend on `PATH`.
 - Preserve state versions, hardware UUIDs, usernames, and signing keys unless explicitly requested.
@@ -76,6 +79,7 @@ For relevant build validation, plain `nix build` builds the current native host 
 nix build --no-link --no-write-lock-file
 system="$(nix eval --impure --raw --expr builtins.currentSystem)"
 nix build ".#packages.${system}.nixvim" --no-link --no-write-lock-file
+nix build ".#packages.${system}.<portable-app>" --no-link --no-write-lock-file
 nix build .#nixosConfigurations.nerv.config.system.build.toplevel --no-link --no-write-lock-file # Linux
 nix build .#darwinConfigurations.asuka.system --no-link --no-write-lock-file                     # Darwin
 ```

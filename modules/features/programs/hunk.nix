@@ -29,4 +29,6 @@ let
 in
 {
   flake.modules.homeManager."hunk" = module;
+
+  seele.portable.hunk = { };
 }

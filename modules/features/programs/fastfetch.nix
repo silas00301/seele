@@ -4,4 +4,6 @@ let
 in
 {
   flake.modules.homeManager."fastfetch" = module;
+
+  seele.portable.fastfetch = { };
 }

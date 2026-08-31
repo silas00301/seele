@@ -33,4 +33,8 @@ let
 in
 {
   flake.modules.homeManager."github-cli" = module;
+
+  seele.portable.gh = {
+    modules = [ "github-cli" ];
+  };
 }

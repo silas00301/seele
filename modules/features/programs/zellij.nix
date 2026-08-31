@@ -171,4 +171,11 @@ let
 in
 {
   flake.modules.homeManager."zellij" = module;
+
+  seele.portable.zellij = {
+    modules = [
+      "zellij"
+      "fish"
+    ];
+  };
 }

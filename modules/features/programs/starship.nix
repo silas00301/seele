@@ -118,4 +118,6 @@ let
 in
 {
   flake.modules.homeManager."starship" = module;
+
+  seele.portable.starship = { };
 }

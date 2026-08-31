@@ -1,4 +1,8 @@
-{ ... }:
+{
+  config,
+  lib,
+  ...
+}:
 let
   module = (
     { pkgs, ... }:
@@ -6,7 +10,7 @@ let
       programs.waybar = {
         enable = true;
         systemd.enable = true;
-        systemd.target = "graphical-session.target";
+        systemd.targets = [ "graphical-session.target" ];
         style = ''
           * {
             font-family: "Maple Mono NF CN";
@@ -165,4 +169,8 @@ let
 in
 {
   flake.modules.homeManager."waybar" = module;
+
+  seele.portable.waybar = {
+    systems = lib.filter (lib.hasSuffix "-linux") config.systems;
+  };
 }

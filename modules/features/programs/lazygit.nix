@@ -15,4 +15,12 @@ let
 in
 {
   flake.modules.homeManager."lazygit" = module;
+
+  seele.portable.lazygit = {
+    modules = [
+      "lazygit"
+      "git"
+      "bat"
+    ];
+  };
 }

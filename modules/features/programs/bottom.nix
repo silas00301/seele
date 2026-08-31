@@ -4,4 +4,9 @@ let
 in
 {
   flake.modules.homeManager."bottom" = module;
+
+  seele.portable.btm = {
+    modules = [ "bottom" ];
+    binary = "btm";
+  };
 }

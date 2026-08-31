@@ -57,4 +57,13 @@ let
 in
 {
   flake.modules.homeManager."television" = module;
+
+  seele.portable.tv = {
+    modules = [
+      "television"
+      "fd"
+      "bat"
+    ];
+    binary = "tv";
+  };
 }

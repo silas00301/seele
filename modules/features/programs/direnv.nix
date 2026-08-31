@@ -13,4 +13,6 @@ let
 in
 {
   flake.modules.homeManager."direnv" = module;
+
+  seele.portable.direnv = { };
 }

@@ -1,4 +1,8 @@
-{ ... }:
+{
+  config,
+  lib,
+  ...
+}:
 let
   homeModule = ({
     programs.ghostty = {
@@ -24,4 +28,12 @@ in
 {
   flake.modules.homeManager.ghostty = homeModule;
   flake.modules.darwin.ghostty = darwinModule;
+
+  seele.portable.ghostty = {
+    modules = [
+      "ghostty"
+      "fish"
+    ];
+    systems = lib.filter (lib.hasSuffix "-linux") config.systems;
+  };
 }
