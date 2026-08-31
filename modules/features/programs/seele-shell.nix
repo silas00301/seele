@@ -114,8 +114,8 @@ let
         seele-shell = {
           Unit = {
             Description = "Seele desktop shell";
-            PartOf = [ "hyprland-session.target" ];
-            After = [ "hyprland-session.target" ];
+            PartOf = [ "graphical-session.target" ];
+            After = [ "graphical-session.target" ];
           };
           Service = {
             Environment = [
@@ -136,7 +136,7 @@ let
             Restart = "on-failure";
             RestartSec = 1;
           };
-          Install.WantedBy = [ "hyprland-session.target" ];
+          Install.WantedBy = [ "graphical-session.target" ];
         };
 
         # PipeWire's mute is a software gate inside the graph and never
@@ -147,9 +147,9 @@ let
         seele-mic-sync = {
           Unit = {
             Description = "Microphone mute sync";
-            PartOf = [ "hyprland-session.target" ];
+            PartOf = [ "graphical-session.target" ];
             After = [
-              "hyprland-session.target"
+              "graphical-session.target"
               "pipewire.service"
             ];
           };
@@ -158,35 +158,38 @@ let
             Restart = "on-failure";
             RestartSec = 2;
           };
-          Install.WantedBy = [ "hyprland-session.target" ];
+          Install.WantedBy = [ "graphical-session.target" ];
         };
 
         librepods = {
           Unit = {
             Description = "AirPods controls and ear detection";
-            PartOf = [ "hyprland-session.target" ];
-            After = [ "hyprland-session.target" ];
+            PartOf = [ "graphical-session.target" ];
+            After = [ "graphical-session.target" ];
           };
           Service = {
             ExecStart = "${librepodsPackage}/bin/librepods --hide";
             Restart = "on-failure";
             RestartSec = 2;
           };
-          Install.WantedBy = [ "hyprland-session.target" ];
+          Install.WantedBy = [ "graphical-session.target" ];
         };
 
         tailscale-systray = {
           Unit = {
             Description = "Tailscale system tray";
-            PartOf = [ "hyprland-session.target" ];
-            After = [ "seele-shell.service" ];
+            PartOf = [ "graphical-session.target" ];
+            After = [
+              "graphical-session.target"
+              "seele-shell.service"
+            ];
           };
           Service = {
             ExecStart = "${pkgs.tailscale}/bin/tailscale systray";
             Restart = "on-failure";
             RestartSec = 2;
           };
-          Install.WantedBy = [ "hyprland-session.target" ];
+          Install.WantedBy = [ "graphical-session.target" ];
         };
 
         # Replaces hyprpolkitagent, which drew polkit's prompt but dropped the
@@ -199,15 +202,15 @@ let
         seele-polkit = {
           Unit = {
             Description = "Seele PolicyKit authentication agent";
-            PartOf = [ "hyprland-session.target" ];
-            After = [ "hyprland-session.target" ];
+            PartOf = [ "graphical-session.target" ];
+            After = [ "graphical-session.target" ];
           };
           Service = {
             ExecStart = lib.getExe polkitPackage;
             Restart = "on-failure";
             RestartSec = 1;
           };
-          Install.WantedBy = [ "hyprland-session.target" ];
+          Install.WantedBy = [ "graphical-session.target" ];
         };
       };
 

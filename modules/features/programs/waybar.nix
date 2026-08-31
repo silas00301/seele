@@ -6,7 +6,7 @@ let
       programs.waybar = {
         enable = true;
         systemd.enable = true;
-        systemd.target = "hyprland-session.target";
+        systemd.target = "graphical-session.target";
         style = ''
           * {
             font-family: "Maple Mono NF CN";

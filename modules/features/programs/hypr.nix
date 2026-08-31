@@ -33,6 +33,7 @@ let
       wayland.windowManager.hyprland = {
         enable = true;
         configType = "lua";
+        systemd.enable = false;
 
         # Keep XWayland support compiled in. Runtime enablement is configured below.
         xwayland.enable = true;

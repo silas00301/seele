@@ -83,6 +83,8 @@ let
       '';
     in
     {
+      programs.uwsm.enable = true;
+
       services.greetd = {
         enable = true;
         settings.default_session = {
