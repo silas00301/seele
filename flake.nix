@@ -33,6 +33,10 @@
     quickshell.url = "github:outfoxxed/quickshell";
     quickshell.inputs.nixpkgs.follows = "nixpkgs";
 
+    seele-shell.url = "github:silas00301/seele-shell";
+    seele-shell.inputs.nixpkgs.follows = "nixpkgs";
+    seele-shell.inputs.quickshell.follows = "quickshell";
+
     vicinae.url = "github:vicinaehq/vicinae";
 
     nixvim.url = "github:nix-community/nixvim";
