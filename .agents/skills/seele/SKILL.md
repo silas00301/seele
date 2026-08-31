@@ -68,6 +68,8 @@ nix flake show --no-write-lock-file
 nix flake check --no-build --no-write-lock-file
 ```
 
+To update the `seele-shell` parent gitlink after committing the submodule, run `nix run .#update-submodule`. The helper uses Git for this one gitlink because Jujutsu ignores submodules during snapshots, then imports the resulting commit, advances `main`, and refreshes `flake.lock`.
+
 Evaluate the native host:
 
 ```sh

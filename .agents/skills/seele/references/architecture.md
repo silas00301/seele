@@ -15,13 +15,14 @@ The flake exposes:
 - `packages.<system>.{seele-greeter,seele-lock,seele-polkit}` on Linux, re-exported from the external shell repository
 - `packages.x86_64-linux.{codexbar,t3code-nightly}`, the packaged CodexBar CLI and T3 Code nightly AppImage
 - `formatter.<system>` backed by `nixfmt-tree`
+- `apps.<system>.update-submodule`, which updates a submodule gitlink without folding unrelated parent changes into its commit
 - `overlays.zjstatus`
 - `modules.<class>.<name>` deferred modules from `flake.modules`
 - `darwinPackages`, the `asuka` package set convenience output
 
 `modules/flake/portable.nix` declares `seele.portable` and turns each entry into one of those `packages.<system>.<command>` outputs.
 
-`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently.
+`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently. `modules/flake/submodule.nix` contributes `nix run .#update-submodule`: it requires a clean, already-pushed submodule, commits only the parent gitlink through Git because Jujutsu ignores submodules during snapshots, imports that commit into the colocated repository, advances `main` when that bookmark exists, and refreshes the parent `flake.lock` input.
 
 ## Deferred modules and active profiles
 

@@ -21,7 +21,7 @@ Use the `seele` skill in `.agents/skills/` for the workflow and architecture map
 ## Architecture
 
 - `flake.nix`: inputs and the `flake-parts`/`import-tree` bootstrap.
-- `modules/flake/`: repository options, systems, package-set policy, overlays, the formatter, and the portable-application builder.
+- `modules/flake/`: repository options, systems, package-set policy, overlays, the formatter, the portable-application builder, and repository helper apps.
 - `modules/features/`: program, service, theme, and system leaves. Each leaf publishes deferred modules through `flake.modules.<class>.<name>`.
 - `modules/profiles/home/`: shared, OS-specific, and host-specific Home Manager profiles. These import named feature modules in activation order.
 - `modules/hosts/{nerv,asuka}.nix`: host output constructors and Home Manager integration.
@@ -50,6 +50,7 @@ Theme ownership is split deliberately. Catppuccin themes supported application p
 - Prefer explicit package references in generated shell snippets when execution must not depend on `PATH`.
 - Preserve state versions, hardware UUIDs, usernames, and signing keys unless explicitly requested.
 - Update `flake.lock` only when the task changes inputs.
+- Update the `seele-shell` gitlink with `nix run .#update-submodule` after committing and pushing the submodule; the helper uses Git for the gitlink because Jujutsu ignores Git submodules, imports the resulting commit back into the colocated repository, and refreshes `flake.lock`.
 - Use `jj file track <path>` if a new file is not tracked automatically. Use Jujutsu equivalents for restore/history operations.
 
 ## Keep agent guidance current
