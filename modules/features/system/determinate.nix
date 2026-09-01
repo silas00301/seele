@@ -26,8 +26,19 @@ let
       registry.nixpkgs.flake = inputs.nixpkgs;
     };
   };
+
+  # Every user profile this flake evaluates, on a managed host or on a machine
+  # a portable application is carried to, agrees that Nix is the system's own.
+  # Determinate's module holds `nix.package` at null, so Home Manager can never
+  # put a second Nix on `PATH`, and a leaf that tries to configure Nix through
+  # Home Manager fails the evaluation instead of writing a user-level `nix.conf`
+  # for a Nix that is not the one running.
+  homeManagerModule = {
+    imports = [ inputs.determinate.homeManagerModules.default ];
+  };
 in
 {
   flake.modules.nixos.determinate = nixosModule;
   flake.modules.darwin.determinate = darwinModule;
+  flake.modules.homeManager.determinate = homeManagerModule;
 }

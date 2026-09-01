@@ -24,6 +24,7 @@ let
       modules.bat
       modules.bottom
       modules.brave
+      modules.determinate
       modules.direnv
       modules.eza
       modules.fd
