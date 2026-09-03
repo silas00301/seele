@@ -685,10 +685,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1788212922,
-        "narHash": "sha256-+ZDC1rILX+8bFGDbmLJCPF34eL1rUiiEIYsiXUT1d9w=",
-        "rev": "8e460c55fbd8d8ea501a5961e2c1371ee20dadda",
-        "revCount": 3,
+        "lastModified": 1788469296,
+        "narHash": "sha256-daRfvKDyzEd5ps3P7CE9jcIco+ROcK6G5FqF9MemPMc=",
+        "rev": "12a0909c22bfc1ce22ad3ccbf6d3e33b62632b19",
+        "revCount": 5,
         "type": "git",
         "url": "file:./seele-shell"
       },
