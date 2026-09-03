@@ -132,6 +132,8 @@ The microphone's mute is two mutes on most desktops, and `seele-mic-sync` makes 
 
 Package directories are no longer discovered by custom `readDir` logic. A package exists because a dendritic leaf contributes it to `perSystem.packages`.
 
+Bluetooth follows the same hardware gate in both places: without a BlueZ adapter, neither its Control Center row nor its menu bar entry is shown. The hidden tray group opens only when its arrow is clicked, so moving the pointer across the arrow cannot reflow the bar. The network panel links to Allestörungen through the desktop's default URL handler.
+
 ## Portable applications
 
 `modules/flake/portable.nix` is the second route from a feature to a public output, and it exists so `nix run github:silas00301/seele#<command>` reaches a configured application on a machine this flake does not manage. Each program leaf that is worth running that way contributes `seele.portable.<command>` beside its `flake.modules.homeManager` definition, named after the command rather than the feature — `btm` rather than `bottom`, `jj` rather than `jujutsu` — because the attribute is what gets typed. An entry carries the Home Manager features to evaluate, the binary to wrap, the systems to publish for, and any extra environment.
