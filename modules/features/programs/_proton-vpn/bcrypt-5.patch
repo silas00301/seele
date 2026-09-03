@@ -1,0 +1,12 @@
+diff --git a/proton/session/srp/util.py b/proton/session/srp/util.py
+index 26de481..cbd4955 100644
+--- a/proton/session/srp/util.py
++++ b/proton/session/srp/util.py
+@@ -39,5 +39,7 @@ def hash_password_3(hash_class, password, salt, modulus):
+     salt = (salt + b"proton")[:16]
+     salt = bcrypt_b64_encode(salt)[:22]
+-    hashed = bcrypt.hashpw(password, b"$2y$10$" + salt)
++    # bcrypt 5 rejects inputs that older releases truncated. Proton's SRP
++    # protocol relies on that truncation for passwords longer than 72 bytes.
++    hashed = bcrypt.hashpw(password[:72], b"$2y$10$" + salt)
+     return hash_class(hashed + modulus).digest()

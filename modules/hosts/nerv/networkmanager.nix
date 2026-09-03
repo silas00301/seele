@@ -10,7 +10,6 @@ let
         disableUpstreamLogging = true;
         extraSetFlags = [
           "--operator=${config.username}"
-          "--ssh=false"
         ];
         openFirewall = true;
         useRoutingFeatures = "client";
