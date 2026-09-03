@@ -9,7 +9,7 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - Home Manager profiles shared by both hosts and specialized by platform/host
 - local packages (`codexbar`, `nixvim`, `spt-st`), the `seele-shell` submodule package, and overlays
 
-Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
+Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-shell` for changes inside the shell submodule and for its rebuild-ready commit, push, gitlink, and lock flow. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
 
 ## Before editing
 
@@ -52,7 +52,7 @@ Theme ownership is split deliberately. Catppuccin themes supported application p
 - Prefer explicit package references in generated shell snippets when execution must not depend on `PATH`.
 - Preserve state versions, hardware UUIDs, usernames, and signing keys unless explicitly requested.
 - Update `flake.lock` only when the task changes inputs.
-- Update the `seele-shell` gitlink with `nix run .#update-submodule` after committing and pushing the submodule; the helper uses Git for the gitlink because Jujutsu ignores Git submodules, imports the resulting commit back into the colocated repository, and refreshes `flake.lock`.
+- Follow the `seele-shell` skill when committing and pushing the submodule, updating its parent gitlink, and refreshing `flake.lock`.
 - Use `jj file track <path>` if a new file is not tracked automatically. Use Jujutsu equivalents for restore/history operations.
 
 ## Keep agent guidance current
