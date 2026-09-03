@@ -33,8 +33,12 @@ let
   # put a second Nix on `PATH`, and a leaf that tries to configure Nix through
   # Home Manager fails the evaluation instead of writing a user-level `nix.conf`
   # for a Nix that is not the one running.
-  homeManagerModule = {
+  homeManagerModule = { lib, ... }: {
     imports = [ inputs.determinate.homeManagerModules.default ];
+
+    # Home Manager's NixOS integration otherwise supplies its own Nix package
+    # at the same priority as Determinate's null assignment.
+    nix.package = lib.mkForce null;
   };
 in
 {
