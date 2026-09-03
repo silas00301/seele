@@ -86,6 +86,7 @@ let
         inputs.zen-browser.homeModules.beta
         inputs._1password-shell-plugins.hmModules.default
         homeModules.catppuccin
+        homeModules.determinate
       ]
       ++ map (feature: homeModules.${feature}) app.modules;
       extraSpecialArgs = inputs // {
