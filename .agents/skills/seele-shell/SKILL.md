@@ -23,6 +23,42 @@ Record pre-existing changes in each repository. Keep unrelated paths out of comm
 
 Keep UI and runtime behavior in `seele-shell/`. Put parent-side service, package, theme, or Home Manager integration in the parent flake.
 
+## Draw from the shell's design tokens
+
+`projects/shell/shell.qml` opens with the shell's whole visual vocabulary, and
+every surface below it reads from that block rather than deciding for itself:
+
+- **Type** — `textMicro` through `textHero`. Steps are named for the role they
+  play. A glyph normally takes the step above the text beside it.
+- **Weight** — `weightLight`, `weightRegular`, `weightMedium`, `weightStrong`.
+  Nothing sets `font.bold`.
+- **Tracking** — `trackingLabel`, for uppercase section rules only.
+- **Space and size** — `spaceTight` through `spaceLarge`, `cardPadding`, and the
+  three control heights `chipHeight`, `controlHeight`, `rowHeight`, beside the
+  existing `radius`, `panelMargin`, `panelSpacing`, and `panelHeaderHeight`.
+- **Elevation** — `panelColor`, `cardColor`, `rowColor`, `wellColor`,
+  `floatColor`, `cardBorder`, `separatorColor`, and the interaction tints.
+- **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
+  control that travels.
+
+Assemble a surface from the shared components rather than repeating their
+parts: `PanelHeader` (glyph or `mark`, title, optional detail, trailing slot),
+`SectionLabel`, `MeterBar`, `CardEdge`, `PanelSurface`, `SurfaceWash`,
+`SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`, `RefreshGlyph`, `HoverTip`,
+`BarItem`, `BarLabel`, `ControlTile`, `ConnectivityRow`, `ControlLevel`, and
+`MediaButton`. A `HoverTip` on a control inside a panel needs `inOverlay: true`;
+without it the menu bar's guard hides the tip whenever the panel is open.
+
+Size a panel from its content — `implicitHeight: <content>.implicitHeight +
+root.panelMargin * 2`, with the content column anchored left, right and top.
+Where a panel must state a height, build it from the tokens rather than a
+counted constant, and derive any viewport inside it from the same terms.
+
+`projects/lock/`, `projects/greeter/`, and `projects/polkit/` are separate
+clients that mirror the subset of these tokens they use. Keep a value they
+share identical to the shell's, and drop a token from their block when nothing
+in that client reads it.
+
 Use the narrowest package build that contains the change:
 
 ```sh
