@@ -129,22 +129,8 @@ let
       set -euo pipefail
 
       ${lib.optionalString (writesConfig hm) ''
-        # Home Manager's generated tree is read-only, but the applications that
-        # read it also write next to it -- shell universal variables, credential
-        # files, caches keyed by config path. Materialising it as a symlink farm
-        # in a stable per-user directory gives both: the managed files stay
-        # store symlinks that follow this flake, and anything the application
-        # creates for itself is a real file that survives the next run. Only
-        # symlinks are cleared when the generation changes, so relinking cannot
-        # take that state with it.
         configuration="${configDirectory}"
-        if [ "$(${pkgs.coreutils}/bin/cat "$configuration/.seele-generation" 2>/dev/null || true)" != "${files}" ]; then
-          ${pkgs.coreutils}/bin/mkdir -p "$configuration"
-          ${pkgs.findutils}/bin/find "$configuration" -type l -delete
-          ${pkgs.coreutils}/bin/cp -RsfT "${files}/.config" "$configuration"
-          ${pkgs.findutils}/bin/find "$configuration" -type d -exec ${pkgs.coreutils}/bin/chmod u+rwx {} +
-          printf '%s' "${files}" > "$configuration/.seele-generation"
-        fi
+        ${pkgs.python3}/bin/python3 ${./_portable/materialize.py} "${files}/.config" "$configuration"
       ''}
 
       export PATH="${searchPath}''${PATH:+:$PATH}"
@@ -178,6 +164,13 @@ in
       configuration, so `nix run` reaches them on a host this flake does not
       manage. Each entry evaluates its Home Manager features standalone and
       wraps the resulting binary.
+    '';
+  };
+
+  config.perSystem = { pkgs, ... }: {
+    checks.portable-config = pkgs.runCommand "portable-config-check" { } ''
+      ${pkgs.python3}/bin/python3 ${./_portable/test-materialize.py} ${./_portable/materialize.py}
+      touch "$out"
     '';
   };
 
