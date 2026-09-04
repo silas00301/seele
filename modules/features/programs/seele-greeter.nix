@@ -23,6 +23,7 @@ let
           fontFamily = "Maple Mono NF CN";
           base = colors.base.hex;
           mantle = colors.mantle.hex;
+          crust = colors.crust.hex;
           surface = colors.surface0.hex;
           overlay = colors.overlay0.hex;
           text = colors.text.hex;

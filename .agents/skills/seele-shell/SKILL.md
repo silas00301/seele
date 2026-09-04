@@ -29,7 +29,8 @@ Keep UI and runtime behavior in `seele-shell/`. Put parent-side service, package
 every surface below it reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
-  play. A glyph normally takes the step above the text beside it.
+  play. A glyph normally takes the step above the text beside it; a glyph set
+  in a well takes the step below, because the well carries the weight.
 - **Weight** — `weightLight`, `weightRegular`, `weightMedium`, `weightStrong`.
   Nothing sets `font.bold`.
 - **Tracking** — `trackingLabel`, for uppercase section rules only.
@@ -37,17 +38,29 @@ every surface below it reads from that block rather than deciding for itself:
   three control heights `chipHeight`, `controlHeight`, `rowHeight`, beside the
   existing `radius`, `panelMargin`, `panelSpacing`, and `panelHeaderHeight`.
 - **Elevation** — `panelColor`, `cardColor`, `rowColor`, `wellColor`,
-  `floatColor`, `cardBorder`, `separatorColor`, and the interaction tints.
+  `floatColor`, `cardBorder`, and `separatorColor`. Depth is built out of one
+  ink, `crust`: chrome is cut out of the wallpaper with it and wells are cut
+  back to it.
+- **Edges** — `panelBorder` grounds a surface in that ink, `edgeLight` is the
+  hairline of light inside it, and `edgeCrown` is the brighter line along the
+  top. No edge carries the accent.
+- **Interaction** — `hoverColor` reports the pointer in neutral light;
+  `pressColor`, `selectedColor` and `activeTint` report state in accent. A
+  state that is not hover never borrows `hoverColor`.
 - **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
   control that travels.
 
 Assemble a surface from the shared components rather than repeating their
-parts: `PanelHeader` (glyph or `mark`, title, optional detail, trailing slot),
-`SectionLabel`, `MeterBar`, `CardEdge`, `PanelSurface`, `SurfaceWash`,
-`SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`, `RefreshGlyph`, `HoverTip`,
-`BarItem`, `BarLabel`, `ControlTile`, `ConnectivityRow`, `ControlLevel`, and
-`MediaButton`. A `HoverTip` on a control inside a panel needs `inOverlay: true`;
-without it the menu bar's guard hides the tip whenever the panel is open.
+parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
+detail, trailing slot), `SectionLabel`, `MeterBar`, `CardEdge`, `PanelSurface`,
+`SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
+`RefreshGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
+`ConnectivityRow`, `ControlLevel`, and `MediaButton`. A framed surface takes
+all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
+the wash under the content, the edge and the film over it.
+
+A `HoverTip` on a control inside a panel needs `inOverlay: true`; without it the
+menu bar's guard hides the tip whenever the panel is open.
 
 Size a panel from its content — `implicitHeight: <content>.implicitHeight +
 root.panelMargin * 2`, with the content column anchored left, right and top.
@@ -58,6 +71,17 @@ counted constant, and derive any viewport inside it from the same terms.
 clients that mirror the subset of these tokens they use. Keep a value they
 share identical to the shell's, and drop a token from their block when nothing
 in that client reads it.
+
+A palette colour a client reads has to arrive from the parent as well: the
+generated `theme.json` in `modules/features/programs/seele-shell.nix` and
+`seele-greeter.nix` carries the named palette entries, and a client that reads
+a new one needs both the key there and the assignment in its own `FileView`.
+
+The grain film is generated at build time by `seele-tools grain`, in
+`projects/tools/src/grain.rs`. It is a seeded two-octave tile — fine noise
+drawn as the mean of several samples, clumped by a coarse wrapping octave —
+and both octaves wrap, so the tile stays seamless. Tune `grainOpacity` with it:
+a finer film needs a little more of it to read at all.
 
 Use the narrowest package build that contains the change:
 
