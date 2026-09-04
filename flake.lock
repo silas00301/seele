@@ -8,11 +8,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1788192290,
-        "narHash": "sha256-X+e/cX8dH/1Z7uUWx4yj7CkHV1n4Tfi57l1AfnQ94ds=",
+        "lastModified": 1788553775,
+        "narHash": "sha256-mNaiZn8QS2LGx9M09TRKcLv+OgFsyZjehd58NKp6dGY=",
         "owner": "1Password",
         "repo": "shell-plugins",
-        "rev": "bdeb73cf7ec8941e5f68e977b14586258a8b6a71",
+        "rev": "b73bdc1b179ee2abb25696ce86c599dc32eff02e",
         "type": "github"
       },
       "original": {
@@ -186,11 +186,11 @@
         "nixpkgs": "nixpkgs_4"
       },
       "locked": {
-        "lastModified": 1768818222,
-        "narHash": "sha256-460jc0+CZfyaO8+w8JNtlClB2n4ui1RbHfPTLkpwhU8=",
+        "lastModified": 1788342953,
+        "narHash": "sha256-EWkNM4JzBhZ/Yn1PG6lP4/QJuFAFeHYlY5gVxXu940Y=",
         "owner": "numtide",
         "repo": "devshell",
-        "rev": "255a2b1725a20d060f566e4755dbf571bbbb5f76",
+        "rev": "a67c0f87b63bcbdbdcb56785bec0205a2e3d6026",
         "type": "github"
       },
       "original": {
@@ -296,11 +296,11 @@
         "nixpkgs-lib": "nixpkgs-lib_2"
       },
       "locked": {
-        "lastModified": 1787559586,
-        "narHash": "sha256-onL0VLf9vPllmT0H/OlURIU5r5t5WIEl7t4tVNKT0Nw=",
+        "lastModified": 1788450739,
+        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "9d0d87172c374f89da73c1cfe6d81ae62feac1f1",
+        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
         "type": "github"
       },
       "original": {
@@ -569,11 +569,11 @@
     },
     "nixpkgs-lib_2": {
       "locked": {
-        "lastModified": 1785031560,
-        "narHash": "sha256-OmshNvn2vupOFpYinLUu+1Dnpu4n7Q5N3ggGVNHpkUI=",
+        "lastModified": 1788057806,
+        "narHash": "sha256-DTQSMxzDWmT0zhguthvegnVkn7CFqGCv4IHCzk5ZUpM=",
         "owner": "nix-community",
         "repo": "nixpkgs.lib",
-        "rev": "0e79af5e3d4dcfcd676ab5ba3f95d2e3352e078c",
+        "rev": "596e2e3940e09b2abbeb03f75fa1828c57fcd72c",
         "type": "github"
       },
       "original": {
@@ -883,10 +883,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1788547782,
-        "narHash": "sha256-9BhMLXQqZYZSYPTECW3r9qXn4vNfIK9l0RqxJSyzFmc=",
-        "rev": "f7758503705d245a46037e4b828380858df0d752",
-        "revCount": 10,
+        "lastModified": 1788556863,
+        "narHash": "sha256-W64n1btYNVYpLgPLrShIodnqzF3YIX9TVIjfOF5RxII=",
+        "rev": "9858256d2111a42dea190a364b700b95fa51d00a",
+        "revCount": 12,
         "type": "git",
         "url": "file:./seele-shell"
       },
@@ -1065,7 +1065,7 @@
     "t3code-nightly-release": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-3vhQcmiveYZ3onYj7orXzEMYjwm+I1kWSj6P5uDsEgk=",
+        "narHash": "sha256-Wk4QF6LkD3NtVHp2GBb9HF0lL8UjeWGE1AA9HST8Y9o=",
         "type": "file",
         "url": "https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20"
       },
@@ -1146,11 +1146,11 @@
         "systems": "systems_5"
       },
       "locked": {
-        "lastModified": 1788547205,
-        "narHash": "sha256-q9AidN55M4UB95grIiI1pOMmBHyQuTK6XCJnjV3I0ns=",
+        "lastModified": 1788554278,
+        "narHash": "sha256-HUeXK9g081p9uGVGinLJiBop7nd54p/1c/Y3B2hvYpE=",
         "owner": "vicinaehq",
         "repo": "vicinae",
-        "rev": "3a7857916aa07c0a3deccc3dd9345599b8c196aa",
+        "rev": "98a3efce6de1c4d60ed8da5de9fbb6609b2dd278",
         "type": "github"
       },
       "original": {
