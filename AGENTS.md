@@ -9,7 +9,7 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - Home Manager profiles shared by both hosts and specialized by platform/host
 - local packages (`codexbar`, `nixvim`, `spt-st`), the `seele-shell` submodule package, and overlays
 
-Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-shell` for changes inside the shell submodule and for its rebuild-ready commit, push, gitlink, and lock flow. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
+Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-shell` for changes inside the shell submodule, for the shell's design tokens and shared QML components, and for its rebuild-ready commit, push, gitlink, and lock flow. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
 
 ## Before editing
 
