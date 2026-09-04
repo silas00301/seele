@@ -1,7 +1,7 @@
 { ... }:
 let
   module =
-    { config, ... }:
+    { config, lib, ... }:
     {
       users.users.${config.username}.openssh.authorizedKeys.keys = [
         # Snapshot of https://github.com/silas00301.keys
@@ -10,7 +10,7 @@ let
 
       services.openssh = {
         enable = true;
-        openFirewall = false;
+        openFirewall = true;
         settings = {
           AllowUsers = [ config.username ];
           AuthenticationMethods = "publickey";
@@ -21,7 +21,8 @@ let
         };
       };
 
-      networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 22 ];
+      # Seele Shell starts this unit only for the ordinary SSH selector mode.
+      systemd.services.sshd.wantedBy = lib.mkForce [ ];
     };
 in
 {
