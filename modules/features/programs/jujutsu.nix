@@ -72,15 +72,11 @@ let
         };
       };
       home.packages = [
-        (pkgs.writeShellScriptBin "jj-flip" ''
-          #!${pkgs.zsh}/bin/zsh
-          ${pkgs.jujutsu}/bin/jj bookmark create current --revision @
-          ${pkgs.jujutsu}/bin/jj bookmark create previous --revision @-
-          ${pkgs.jujutsu}/bin/jj parallelize current previous
-          ${pkgs.jujutsu}/bin/jj rebase --branch previous --destination current
-          ${pkgs.jujutsu}/bin/jj bookmark forget current
-          ${pkgs.jujutsu}/bin/jj bookmark forget previous 
-        '')
+        (pkgs.writeShellApplication {
+          name = "jj-flip";
+          runtimeInputs = [ pkgs.jujutsu ];
+          text = builtins.readFile ./_jujutsu/flip.sh;
+        })
         (pkgs.writeShellApplication {
           name = "jj-pr";
           runtimeInputs = [
