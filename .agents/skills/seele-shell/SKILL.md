@@ -44,9 +44,11 @@ every surface below it reads from that block rather than deciding for itself:
 - **Edges** — `panelBorder` grounds a surface in that ink, `edgeLight` is the
   hairline of light inside it, and `edgeCrown` is the brighter line along the
   top. No edge carries the accent.
-- **Interaction** — `hoverColor` reports the pointer in neutral light;
-  `pressColor`, `selectedColor` and `activeTint` report state in accent. A
-  state that is not hover never borrows `hoverColor`.
+- **Interaction** — `hoverColor` is the neutral light wash that reports the
+  pointer. Apply it directly only over transparency; a filled control uses
+  `hoveredColor(<resting fill>)` so the wash remains visibly composited over
+  its material. `pressColor`, `selectedColor` and `activeTint` report state in
+  accent. A state that is not hover never borrows `hoverColor`.
 - **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
   control that travels.
 
