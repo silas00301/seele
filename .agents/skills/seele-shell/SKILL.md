@@ -48,7 +48,11 @@ every surface below it reads from that block rather than deciding for itself:
   pointer. Apply it directly only over transparency; a filled control uses
   `hoveredColor(<resting fill>)` so the wash remains visibly composited over
   its material. `pressColor`, `selectedColor` and `activeTint` report state in
-  accent. A state that is not hover never borrows `hoverColor`.
+  accent. A state that is not hover never borrows `hoverColor`. An animated
+  fill that rests on nothing rests on `clearColor`, or on `clearDanger` where
+  the state it fades from is red — never on `transparent`, because Qt
+  interpolates a colour channel by channel and `transparent` is black, so a
+  tint animated against it is dragged through grey at both ends of the fade.
 - **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
   control that travels.
 
@@ -63,6 +67,18 @@ the wash under the content, the edge and the film over it.
 
 A `HoverTip` on a control inside a panel needs `inOverlay: true`; without it the
 menu bar's guard hides the tip whenever the panel is open.
+
+A card, row or tile that reports the pointer takes that state from a
+`HoverHandler` on the surface itself, never from a covering
+`MouseArea.containsMouse`. Qt hands a hover event to one item, so a control the
+surface carries takes it away from the area underneath and the surface goes
+cold under a pointer that is still on it. Keep the `MouseArea` for the click
+and the press — including where it is deliberately inset, as the Tailscale
+card's is to leave its switch alone — and ask the handler whether the pointer
+is there. The control doing the stealing is often not written inline: the
+Control Center's audio card is covered by two `ControlLevel` instantiations,
+each a hover area, and a `ModuleDragArea` is a `MouseArea` under another name,
+so grepping for `MouseArea` misses both.
 
 Size a panel from its content — `implicitHeight: <content>.implicitHeight +
 root.panelMargin * 2`, with the content column anchored left, right and top.

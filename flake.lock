@@ -883,10 +883,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1788638605,
-        "narHash": "sha256-2y5v35eI3u/maXI8DeiX/xiJT4QL6/nnySANghGy5bo=",
-        "rev": "a18b04f8277ffd5de3bf0ca2e615b6f04fd604b1",
-        "revCount": 29,
+        "lastModified": 1788639123,
+        "narHash": "sha256-iFjNNUItPRpmmas4ZkCVXcXcwK5nFA2TdKptr7nx7VU=",
+        "rev": "a454cfb905f3772e47a64a3c9382a49bebf4f812",
+        "revCount": 31,
         "type": "git",
         "url": "file:./seele-shell"
       },
@@ -1065,7 +1065,7 @@
     "t3code-nightly-release": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-BoFFf12+C4KGy7qfLHBIGETgmwp7vHGZM3jxYFmHsBk=",
+        "narHash": "sha256-j5NDVKjZTYtog6IQMMW1kdTKWmwZ+diH8RN9ZbQqIMk=",
         "type": "file",
         "url": "https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20"
       },
@@ -1146,11 +1146,11 @@
         "systems": "systems_5"
       },
       "locked": {
-        "lastModified": 1788616957,
-        "narHash": "sha256-dxDrGdqKznh9nCUTwSriCsgla4sMLY1rwpjeynNAXzo=",
+        "lastModified": 1788626857,
+        "narHash": "sha256-3485OynPN8Ojd5BAz/obyZiSLMVpam4XPojPeEfMn08=",
         "owner": "vicinaehq",
         "repo": "vicinae",
-        "rev": "995bfe603a965b306f0d47baa095bc0a537c6b87",
+        "rev": "de81fa2e544f77ef6d5cd88bfa74be066300e91f",
         "type": "github"
       },
       "original": {

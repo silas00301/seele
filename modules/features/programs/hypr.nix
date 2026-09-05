@@ -485,7 +485,7 @@ let
           -- corners would otherwise sit on a squared-off pane of glass.
           hl.layer_rule({
             match = {
-              namespace = "^seele-shell-(bar|osd|agents|tray-menu|calendar|clock|control-center|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session|polkit)$",
+              namespace = "^seele-shell-(bar|osd|agents|tray-menu|application|calendar|clock|control-center|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session|polkit)$",
             },
             blur = true,
             ignore_alpha = 0.4,
