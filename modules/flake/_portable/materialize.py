@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import sys
-import tempfile
 
 
 def links_in(source):
@@ -40,6 +39,10 @@ def read_json(path):
 
 
 def atomic_json(path, value):
+    # Most launches return at the generation check. Load tempfile and its
+    # dependencies only when a refresh actually needs an atomic write.
+    import tempfile
+
     fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".seele-manifest-")
     try:
         with os.fdopen(fd, "w") as stream:
