@@ -24,8 +24,10 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-monitor_rects() {
-  hyprctl monitors -j | jq -r '
+monitors=$(hyprctl monitors -j)
+clients=$(hyprctl clients -j)
+
+rectangles=$(jq -r --argjson monitors "$monitors" '
     def geometry:
       (.width / .scale | floor) as $width
       | (.height / .scale | floor) as $height
@@ -34,36 +36,23 @@ monitor_rects() {
         else
           "\(.x),\(.y) \($width)x\($height)"
         end;
-    .[] | geometry
-  '
-}
-
-window_rects() {
-  local visible_workspaces
-  visible_workspaces=$(hyprctl monitors -j | jq -c '
-    [
-      .[]
+    . as $clients
+    | ($monitors[] | geometry),
+    ([
+      $monitors[]
       | .activeWorkspace.id,
         (if .specialWorkspace.id == 0 then empty else .specialWorkspace.id end)
     ]
-    | unique
-  ')
-
-  hyprctl clients -j | jq -r --argjson visible "$visible_workspaces" '
+    | unique) as $visible
+    |
     [
-      .[]
+      $clients[]
       | select((.mapped // true) and (.hidden != true))
       | select(.pinned == true or (.workspace.id as $id | $visible | index($id) != null))
       | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"
     ]
     | unique[]
-  '
-}
-
-rectangles=$( {
-  monitor_rects
-  window_rects
-} )
+' <<<"$clients")
 
 # Hyprpicker holds a snapshot on every output. Grim runs before this process is
 # stopped, so the saved pixels are the same ones shown during selection.
