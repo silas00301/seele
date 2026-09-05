@@ -61,7 +61,7 @@ parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
 detail, trailing slot), `SectionLabel`, `MeterBar`, `CardEdge`, `PanelSurface`,
 `SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
 `RefreshGlyph`, `CenteredGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
-`ConnectivityRow`, `ControlLevel`, and `MediaButton`. A framed surface takes
+`ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
 all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
 the wash under the content, the edge and the film over it.
 
@@ -79,6 +79,25 @@ is there. The control doing the stealing is often not written inline: the
 Control Center's audio card is covered by two `ControlLevel` instantiations,
 each a hover area, and a `ModuleDragArea` is a `MouseArea` under another name,
 so grepping for `MouseArea` misses both.
+
+Two more ways a surface goes quiet under the pointer. A fill that branches on
+state before hover — `active ? accent : hovered ? ...` — can never report a
+pointer on an active control; lay the neutral hover wash over the state as its
+own child instead of making it another branch. And a highlight inset inside its
+row leaves a dead line above and below itself, which the spacing between rows
+widens into a band; a row highlight takes the row's full height.
+
+The Control Center's media module and the Now Playing panel it opens draw the
+same `MediaBody` at the same `mediaBodyHeight`, so there is one place to change
+what a track looks like. The card wraps it in a module surface with hover and a
+`ModuleDragArea`; the panel puts it under a `PanelHeader`. Neither arranges the
+parts itself.
+
+Hover cannot be verified by warping the cursor with `hl.dsp.cursor.move`: the
+compositor delivers a pointer event only when the warp crosses into a different
+surface, so consecutive moves inside one panel leave the shell reading the first
+position. Bounce off an unrelated surface between samples, then diff `grim`
+captures against a pointer-away baseline.
 
 Size a panel from its content — `implicitHeight: <content>.implicitHeight +
 root.panelMargin * 2`, with the content column anchored left, right and top.

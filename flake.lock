@@ -883,10 +883,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1788639123,
-        "narHash": "sha256-iFjNNUItPRpmmas4ZkCVXcXcwK5nFA2TdKptr7nx7VU=",
-        "rev": "a454cfb905f3772e47a64a3c9382a49bebf4f812",
-        "revCount": 31,
+        "lastModified": 1788639159,
+        "narHash": "sha256-x3QiBLmAkb7JWrK2HIDvnZ1C99MgIe4LlFjC2+LcU4U=",
+        "rev": "3890921e38354f601d54dd652780427ac2bb7343",
+        "revCount": 32,
         "type": "git",
         "url": "file:./seele-shell"
       },
@@ -1065,7 +1065,7 @@
     "t3code-nightly-release": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-j5NDVKjZTYtog6IQMMW1kdTKWmwZ+diH8RN9ZbQqIMk=",
+        "narHash": "sha256-pMm5fYb86eBIoadgIUtEXMnRCSurILep9lpopy7Omnw=",
         "type": "file",
         "url": "https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20"
       },
@@ -1146,11 +1146,11 @@
         "systems": "systems_5"
       },
       "locked": {
-        "lastModified": 1788626857,
-        "narHash": "sha256-3485OynPN8Ojd5BAz/obyZiSLMVpam4XPojPeEfMn08=",
+        "lastModified": 1788639206,
+        "narHash": "sha256-NZPJzLEkWv381np4kwpFfmXEafkSF694iyVQRvA0f6E=",
         "owner": "vicinaehq",
         "repo": "vicinae",
-        "rev": "de81fa2e544f77ef6d5cd88bfa74be066300e91f",
+        "rev": "9b44ab9871f70fadbf4c0ca1dec97b93190b1144",
         "type": "github"
       },
       "original": {
@@ -1167,11 +1167,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788405419,
-        "narHash": "sha256-wuGizAVEmY0u15MYrhgy7AoQdHg+4Y2QiC+v/mxA8dc=",
+        "lastModified": 1788631059,
+        "narHash": "sha256-dTXXfL/ebqRvOLV/cFiTh/TKN6FNVGg+IMgk1lKtxMs=",
         "owner": "0xc000022070",
         "repo": "zen-browser-flake",
-        "rev": "fdb83f8fce835213fab7eab52c375926fe1a32dc",
+        "rev": "7e8bf446cd9cfa86d30dafb9694f548afc7b2df0",
         "type": "github"
       },
       "original": {
