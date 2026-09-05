@@ -216,13 +216,13 @@ let
       };
 
       wayland.windowManager.hyprland.extraConfig = lib.mkAfter ''
-        hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl menu"))
-        hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl menu apps"))
-        hl.bind("SUPER + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agents"))
-        hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agent pi"))
-        hl.bind("SUPER + C", hl.dsp.exec_cmd("${package}/bin/seele-shellctl center"))
-        hl.bind("SUPER + ESCAPE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl controls"))
-        hl.bind("SUPER + K", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae cmd launch @seele/seele-shell:keybindings"))
+        hl.bind("ALT + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl menu apps"), { description = "Open the Vicinae application launcher" })
+        hl.bind("SUPER + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agents"), { description = "Open the AI cockpit" })
+        hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agent pi"), { description = "Launch Pi" })
+        hl.bind("SUPER + C", hl.dsp.exec_cmd("${package}/bin/seele-shellctl center"), { description = "Open the Control Center" })
+        hl.bind("SUPER + N", hl.dsp.exec_cmd("${package}/bin/seele-shellctl control notifications"), { description = "Open notifications" })
+        hl.bind("SUPER + ESCAPE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl controls"), { description = "Open session controls" })
+        hl.bind("SUPER + K", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae cmd launch @seele/seele-shell:keybindings"), { description = "Search Hyprland keybindings" })
       '';
     };
   # Pi and OpenCode publish session state from extensions the Home Manager

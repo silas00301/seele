@@ -182,35 +182,53 @@ let
             bezier = "default",
           })
 
-          hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
-          hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
-          hl.bind(mod .. " + ALT + mouse:272", hl.dsp.window.resize(), { mouse = true })
+          hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), {
+            mouse = true,
+            description = "Move the focused window",
+          })
+          hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), {
+            mouse = true,
+            description = "Resize the focused window",
+          })
+          hl.bind(mod .. " + ALT + mouse:272", hl.dsp.window.resize(), {
+            mouse = true,
+            description = "Resize the focused window",
+          })
 
-          hl.bind(mod .. " + Q", hl.dsp.window.close())
-          hl.bind(mod .. " + W", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
-          hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"))
-          hl.bind(mod .. " + B", hl.dsp.exec_cmd("${lib.getExe config.programs.zen-browser.package}"))
-          hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"))
-          hl.bind(mod .. " + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot capture"))
-          hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot annotate"))
-          hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }))
+          hl.bind(mod .. " + Q", hl.dsp.window.close(), { description = "Close the focused window" })
+          hl.bind(mod .. " + W", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"), { description = "Open a terminal" })
+          hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("${pkgs.ghostty}/bin/ghostty"), { description = "Open a terminal" })
+          hl.bind(mod .. " + B", hl.dsp.exec_cmd("${lib.getExe config.programs.zen-browser.package}"), { description = "Open the web browser" })
+          hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"), { description = "Lock the session" })
+          hl.bind(mod .. " + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot capture"), { description = "Capture a screenshot" })
+          hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot annotate"), { description = "Capture and annotate a screenshot" })
+          hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating for the focused window" })
 
-          hl.bind(mod .. " + F", hl.dsp.window.fullscreen({
-            mode = "maximized",
-            action = "toggle",
-          }))
+          hl.bind(
+            mod .. " + F",
+            hl.dsp.window.fullscreen({
+              mode = "maximized",
+              action = "toggle",
+            }),
+            { description = "Toggle maximized for the focused window" }
+          )
 
-          hl.bind(mod .. " + SHIFT + F", hl.dsp.window.fullscreen({
-            mode = "fullscreen",
-            action = "toggle",
-          }))
+          hl.bind(
+            mod .. " + SHIFT + F",
+            hl.dsp.window.fullscreen({
+              mode = "fullscreen",
+              action = "toggle",
+            }),
+            { description = "Toggle fullscreen for the focused window" }
+          )
 
           hl.bind(
             "SUPER + ALT + CTRL + SHIFT + Q",
-            hl.dsp.exec_cmd("${pkgs.hyprshutdown}/bin/hyprshutdown")
+            hl.dsp.exec_cmd("${pkgs.hyprshutdown}/bin/hyprshutdown"),
+            { description = "Open the shutdown menu" }
           )
 
-          hl.bind("SUPER + CTRL + F12", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"))
+          hl.bind("SUPER + CTRL + F12", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"), { description = "Lock the session" })
 
           local workspace_keys = {
             { keys = "1", workspace = 1 },
@@ -228,57 +246,89 @@ let
           }
 
           for _, binding in ipairs(workspace_keys) do
-            hl.bind(mod .. " + " .. binding.keys, hl.dsp.focus({
-              workspace = binding.workspace,
-            }))
+            hl.bind(
+              mod .. " + " .. binding.keys,
+              hl.dsp.focus({
+                workspace = binding.workspace,
+              }),
+              { description = "Focus workspace " .. binding.workspace }
+            )
 
-            hl.bind(mod .. " + SHIFT + " .. binding.keys, hl.dsp.window.move({
-              workspace = binding.workspace,
-              follow = true,
-            }))
+            hl.bind(
+              mod .. " + SHIFT + " .. binding.keys,
+              hl.dsp.window.move({
+                workspace = binding.workspace,
+                follow = true,
+              }),
+              { description = "Move the focused window to workspace " .. binding.workspace }
+            )
           end
 
-          hl.bind("CTRL + SHIFT + H", hl.dsp.window.swap({ direction = "l" }))
-          hl.bind("CTRL + SHIFT + J", hl.dsp.window.swap({ direction = "d" }))
-          hl.bind("CTRL + SHIFT + K", hl.dsp.window.swap({ direction = "u" }))
-          hl.bind("CTRL + SHIFT + L", hl.dsp.window.swap({ direction = "r" }))
+          hl.bind("CTRL + SHIFT + H", hl.dsp.window.swap({ direction = "l" }), { description = "Swap with the window to the left" })
+          hl.bind("CTRL + SHIFT + J", hl.dsp.window.swap({ direction = "d" }), { description = "Swap with the window below" })
+          hl.bind("CTRL + SHIFT + K", hl.dsp.window.swap({ direction = "u" }), { description = "Swap with the window above" })
+          hl.bind("CTRL + SHIFT + L", hl.dsp.window.swap({ direction = "r" }), { description = "Swap with the window to the right" })
 
-          hl.bind("CTRL + H", hl.dsp.focus({ direction = "l" }))
-          hl.bind("CTRL + J", hl.dsp.focus({ direction = "d" }))
-          hl.bind("CTRL + K", hl.dsp.focus({ direction = "u" }))
-          hl.bind("CTRL + L", hl.dsp.focus({ direction = "r" }))
+          hl.bind("CTRL + H", hl.dsp.focus({ direction = "l" }), { description = "Focus the window to the left" })
+          hl.bind("CTRL + J", hl.dsp.focus({ direction = "d" }), { description = "Focus the window below" })
+          hl.bind("CTRL + K", hl.dsp.focus({ direction = "u" }), { description = "Focus the window above" })
+          hl.bind("CTRL + L", hl.dsp.focus({ direction = "r" }), { description = "Focus the window to the right" })
 
-          hl.bind(mod .. " + SHIFT + H", hl.dsp.window.resize({
-            x = -100,
-            y = 0,
-            relative = true,
-          }))
+          hl.bind(
+            mod .. " + SHIFT + H",
+            hl.dsp.window.resize({
+              x = -100,
+              y = 0,
+              relative = true,
+            }),
+            { description = "Shrink the focused window horizontally" }
+          )
 
-          hl.bind(mod .. " + SHIFT + J", hl.dsp.window.resize({
-            x = 0,
-            y = 100,
-            relative = true,
-          }))
+          hl.bind(
+            mod .. " + SHIFT + J",
+            hl.dsp.window.resize({
+              x = 0,
+              y = 100,
+              relative = true,
+            }),
+            { description = "Grow the focused window vertically" }
+          )
 
-          hl.bind(mod .. " + SHIFT + K", hl.dsp.window.resize({
-            x = 0,
-            y = -100,
-            relative = true,
-          }))
+          hl.bind(
+            mod .. " + SHIFT + K",
+            hl.dsp.window.resize({
+              x = 0,
+              y = -100,
+              relative = true,
+            }),
+            { description = "Shrink the focused window vertically" }
+          )
 
-          hl.bind(mod .. " + SHIFT + L", hl.dsp.window.resize({
-            x = 100,
-            y = 0,
-            relative = true,
-          }))
+          hl.bind(
+            mod .. " + SHIFT + L",
+            hl.dsp.window.resize({
+              x = 100,
+              y = 0,
+              relative = true,
+            }),
+            { description = "Grow the focused window horizontally" }
+          )
 
-          hl.bind(mod .. " + TAB", hl.dsp.workspace.move({
-            monitor = "+1",
-          }))
+          hl.bind(
+            mod .. " + TAB",
+            hl.dsp.workspace.move({
+              monitor = "+1",
+            }),
+            { description = "Move the workspace to the next monitor" }
+          )
 
-          hl.bind(mod .. " + SHIFT + TAB", hl.dsp.workspace.move({
-            monitor = "-1",
-          }))
+          hl.bind(
+            mod .. " + SHIFT + TAB",
+            hl.dsp.workspace.move({
+              monitor = "-1",
+            }),
+            { description = "Move the workspace to the previous monitor" }
+          )
 
           hl.bind(
             "XF86AudioRaiseVolume",
@@ -286,6 +336,7 @@ let
             {
               locked = true,
               repeating = true,
+              description = "Raise the volume",
             }
           )
 
@@ -295,43 +346,44 @@ let
             {
               locked = true,
               repeating = true,
+              description = "Lower the volume",
             }
           )
 
           hl.bind(
             "XF86AudioMute",
             hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl volume mute"),
-            { locked = true }
+            { locked = true, description = "Toggle mute" }
           )
 
           hl.bind(
             "XF86AudioMicMute",
             hl.dsp.exec_cmd("${seeleShell}/bin/seele-shellctl microphone mute"),
-            { locked = true }
+            { locked = true, description = "Toggle microphone mute" }
           )
 
           hl.bind(
             "XF86AudioPlay",
             hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"),
-            { locked = true }
+            { locked = true, description = "Toggle media playback" }
           )
 
           hl.bind(
             "XF86AudioPause",
             hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"),
-            { locked = true }
+            { locked = true, description = "Toggle media playback" }
           )
 
           hl.bind(
             "XF86AudioNext",
             hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl next"),
-            { locked = true }
+            { locked = true, description = "Play the next track" }
           )
 
           hl.bind(
             "XF86AudioPrev",
             hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl previous"),
-            { locked = true }
+            { locked = true, description = "Play the previous track" }
           )
 
           -- Replaces the removed general.no_border_on_floating option.
@@ -485,7 +537,7 @@ let
           -- corners would otherwise sit on a squared-off pane of glass.
           hl.layer_rule({
             match = {
-              namespace = "^seele-shell-(bar|osd|agents|tray-menu|application|calendar|clock|control-center|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session|polkit)$",
+              namespace = "^seele-shell-(bar|osd|agents|tray-menu|application|calendar|clock|control-center|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session|polkit)$",
             },
             blur = true,
             ignore_alpha = 0.4,

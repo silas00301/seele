@@ -52,10 +52,6 @@
 
     spicetify-nix.url = "github:Gerg-L/spicetify-nix";
 
-    t3code-nightly-release = {
-      url = "file+https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20";
-      flake = false;
-    };
   };
 
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules);

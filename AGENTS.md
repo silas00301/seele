@@ -7,7 +7,7 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - NixOS host `nerv` (`x86_64-linux`)
 - nix-darwin host `asuka` (`aarch64-darwin`)
 - Home Manager profiles shared by both hosts and specialized by platform/host
-- local packages (`codexbar`, `nixvim`, `spt-st`), the `seele-shell` submodule package, and overlays
+- local packages (`codexbar`, `nixvim`, `spt-st`, `t3code-nightly`), the `seele-shell` submodule package, and overlays
 
 Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-shell` for changes inside the shell submodule, for the shell's design tokens and shared QML components, and for its rebuild-ready commit, push, gitlink, and lock flow. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
 
@@ -50,6 +50,7 @@ Theme ownership is split deliberately. Catppuccin themes supported application p
 - Put reusable derivations under `modules/packages/` and package-set overrides in `modules/flake/overlays.nix`.
 - Publish a configured program for unmanaged machines by adding `seele.portable.<command>` to its own feature leaf, named after the command it runs rather than the feature. List every feature it reads through, and narrow `systems` when the program is platform-bound.
 - Consume standalone package repositories through flake inputs; keep their output wiring in `modules/packages/`. The `seele-shell` submodule is the local flake input that owns the shell, greeter, lock, and polkit package sources.
+- Pin binary packages whose releases are consumed directly (`codexbar` and `t3code-nightly`) with literal versions and hashes in their package leaves. Run `nix run .#update-packaged` to refresh both pins from their public release APIs; the helper also prefetches CodexBar to record its Nix hash.
 - Keep raw Nix expressions that are not flake-parts modules below a path containing `/_` so `import-tree` ignores them.
 - Prefer explicit package references in generated shell snippets when execution must not depend on `PATH`.
 - Preserve state versions, hardware UUIDs, usernames, and signing keys unless explicitly requested.
@@ -67,6 +68,12 @@ Always format the entire repository:
 
 ```sh
 nix fmt
+```
+
+For intentional CodexBar and T3 Code release updates, refresh their pins with:
+
+```sh
+nix run .#update-packaged
 ```
 
 Then inspect `jj diff` and run:

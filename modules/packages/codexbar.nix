@@ -6,11 +6,11 @@
       packages = lib.optionalAttrs (system == "x86_64-linux") {
         codexbar = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
           pname = "codexbar-cli";
-          version = "0.50.0";
+          version = "0.56.6";
 
           src = pkgs.fetchurl {
             url = "https://github.com/steipete/CodexBar/releases/download/v${finalAttrs.version}/CodexBarCLI-v${finalAttrs.version}-linux-x86_64.tar.gz";
-            hash = "sha256-gBGtUUpm54epxKAKQ/BtJ4DbllccBHxaKVKzE3hiqKY=";
+            hash = "sha256-EGONJb7pSFh30HS2wM9x8xXVFo24B+kSzalALCvz9HA=";
           };
 
           sourceRoot = ".";
@@ -42,7 +42,7 @@
           installCheckPhase = ''
             runHook preInstallCheck
 
-            test "$("$out/bin/codexbar" --version)" = "CodexBar ${finalAttrs.version}"
+            test "$($out/bin/codexbar --version)" = "CodexBar ${finalAttrs.version}"
 
             runHook postInstallCheck
           '';

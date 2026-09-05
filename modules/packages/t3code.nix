@@ -1,4 +1,4 @@
-{ inputs, lib, ... }:
+{ lib, ... }:
 {
   perSystem =
     { pkgs, system, ... }:
@@ -6,30 +6,36 @@
       packages = lib.optionalAttrs (system == "x86_64-linux") {
         t3code-nightly =
           let
-            releases = builtins.fromJSON (builtins.readFile inputs."t3code-nightly-release");
-            release = lib.findFirst (
-              candidate: candidate.prerelease && lib.hasInfix "-nightly." candidate.tag_name
-            ) (throw "GitHub returned no T3 Code nightly releases") releases;
-            asset = lib.findFirst (
-              candidate: lib.hasSuffix "-x86_64.AppImage" candidate.name
-            ) (throw "The latest T3 Code nightly release has no x86_64 AppImage") release.assets;
-            version = lib.removePrefix "v" release.tag_name;
+            version = "0.0.39-nightly.20260906.1303";
             src = pkgs.fetchurl {
-              url = asset.browser_download_url;
-              hash = builtins.convertHash {
-                hash = lib.removePrefix "sha256:" asset.digest;
-                hashAlgo = "sha256";
-                toHashFormat = "sri";
-              };
+              url = "https://github.com/pingdotgg/t3code/releases/download/v${version}/T3-Code-${version}-x86_64.AppImage";
+              hash = "sha256-zKeGYaBXoRj4Y1XHFXA6/mOsNKp2eUO/j+G6rJYAjT0=";
             };
             contents = pkgs.appimageTools.extract {
               pname = "t3code";
               inherit version src;
+
+              # The AppImage's own AppRun prepends its `usr/lib` to
+              # LD_LIBRARY_PATH, and every process started from inside the
+              # editor -- a terminal, an agent's shell -- inherits it. The
+              # bundled libnotify predates
+              # `notify_notification_get_activation_app_launch_context`, so it
+              # shadowed the current one and any `notify-send` run from in
+              # here died on the missing symbol. Dropping it leaves the
+              # matching library below as the only one on that path.
+              postExtract = ''
+                rm -f "$out/usr/lib/libnotify.so"*
+              '';
             };
           in
-          pkgs.appimageTools.wrapType2 {
+          # Wrapped from the extracted tree rather than the AppImage, because
+          # `wrapType2` extracts it a second time internally and would restore
+          # the library removed above.
+          pkgs.appimageTools.wrapAppImage {
             pname = "t3code";
-            inherit version src;
+            inherit version contents;
+
+            extraPkgs = pkgs: [ pkgs.libnotify ];
 
             extraInstallCommands = ''
               install -Dm444 ${contents}/t3code.desktop "$out/share/applications/t3code.desktop"
