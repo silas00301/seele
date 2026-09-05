@@ -22,7 +22,7 @@ The flake exposes:
 
 `modules/flake/portable.nix` declares `seele.portable` and turns each entry into one of those `packages.<system>.<command>` outputs.
 
-`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently. `modules/flake/submodule.nix` contributes `nix run .#update-submodule`: it requires a clean, already-pushed submodule, commits only the parent gitlink through Git because Jujutsu ignores submodules during snapshots, imports that commit into the colocated repository, advances `main` when that bookmark exists, and refreshes the parent `flake.lock` input.
+`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently. `modules/flake/submodule.nix` contributes `nix run .#update-submodule`: it requires a clean submodule and verifies its revision against freshly fetched origin bookmarks, commits only the parent gitlink through Git because Jujutsu ignores submodules during snapshots, imports that commit into the colocated repository, advances `main` when that bookmark exists, and refreshes the selected parent `flake.lock` input from the parent directory, including when an earlier attempt already committed the matching gitlink.
 
 ## Deferred modules and active profiles
 
