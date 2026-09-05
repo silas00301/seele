@@ -54,7 +54,7 @@ Assemble a surface from the shared components rather than repeating their
 parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
 detail, trailing slot), `SectionLabel`, `MeterBar`, `CardEdge`, `PanelSurface`,
 `SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
-`RefreshGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
+`RefreshGlyph`, `CenteredGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
 `ConnectivityRow`, `ControlLevel`, and `MediaButton`. A framed surface takes
 all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
 the wash under the content, the edge and the film over it.
