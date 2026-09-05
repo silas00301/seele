@@ -662,11 +662,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1788400875,
-        "narHash": "sha256-JIHQ6xNAN53cdo6zZ72LRcQ9lpvnABCnNE4hldJ5uZU=",
+        "lastModified": 1788431191,
+        "narHash": "sha256-MFClkboDeW56feBCAeAV3Z3J2quGSZFlAOXQ4JjIlIA=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "5545adfad2e98de106a5544ca7067e03010410bd",
+        "rev": "9b9402b959a2276982ddd5ad3652a38b97f7c40b",
         "type": "github"
       },
       "original": {
@@ -1065,7 +1065,7 @@
     "t3code-nightly-release": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-Wk4QF6LkD3NtVHp2GBb9HF0lL8UjeWGE1AA9HST8Y9o=",
+        "narHash": "sha256-TUgFw2Nf5NPCyEB0EXIVi7dZ/uWRfFt5jlvOEZ/yF+A=",
         "type": "file",
         "url": "https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20"
       },
@@ -1146,11 +1146,11 @@
         "systems": "systems_5"
       },
       "locked": {
-        "lastModified": 1788554278,
-        "narHash": "sha256-HUeXK9g081p9uGVGinLJiBop7nd54p/1c/Y3B2hvYpE=",
+        "lastModified": 1788578623,
+        "narHash": "sha256-zTYK35HAElGgY4tkwmvr5Mcl5rip7Zh/JZaR9KuIiC0=",
         "owner": "vicinaehq",
         "repo": "vicinae",
-        "rev": "98a3efce6de1c4d60ed8da5de9fbb6609b2dd278",
+        "rev": "ab03b9c2297ac2582f187e06c05ca5542ba5e8db",
         "type": "github"
       },
       "original": {
