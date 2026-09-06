@@ -23,6 +23,12 @@ Record pre-existing changes in each repository. Keep unrelated paths out of comm
 
 Keep UI and runtime behavior in `seele-shell/`. Put parent-side service, package, theme, or Home Manager integration in the parent flake.
 
+`nerv` runs a Lua Hyprland configuration, so anything in `projects/tools/` that
+reaches the compositor issues one `hl.dsp` call — `hl.dsp.window.close({ window
+= "address:0x…" })`, not `dispatch closewindow address:0x…`. hyprctl exits zero
+on the Lua error the legacy form raises, so a wrong call is invisible until the
+action is tried by hand.
+
 ## Draw from the shell's design tokens
 
 `projects/shell/shell.qml` opens with the shell's whole visual vocabulary, and
