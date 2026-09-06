@@ -14,6 +14,11 @@ let
     ];
 
     home.sessionVariables = { };
+
+    # Home Manager's generated option manpage currently loses the context on
+    # Nixpkgs declaration paths, which makes Nix warn that its options.json
+    # derivation is unreliable.
+    manual.manpages.enable = false;
   };
   profile = {
     imports = [

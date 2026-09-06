@@ -882,17 +882,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1788719532,
-        "narHash": "sha256-4gF4/bXBBJ4+/4xopJWxWx1Z9GPAtO3xSyRN2poRo6o=",
-        "rev": "38a6a11c4c6d7d09754085bd64d5669b9334c7ef",
-        "revCount": 39,
-        "type": "git",
-        "url": "file:./seele-shell"
+        "path": "seele-shell",
+        "type": "path"
       },
       "original": {
-        "type": "git",
-        "url": "file:./seele-shell"
-      }
+        "path": "seele-shell",
+        "type": "path"
+      },
+      "parent": []
     },
     "soulver-cpp": {
       "inputs": {

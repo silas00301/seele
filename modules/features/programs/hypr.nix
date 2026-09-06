@@ -162,6 +162,14 @@ let
           --   bezier = "smoothIn",
           -- })
 
+          -- Hyprland's speed is a duration in deciseconds: halve the default 8.
+          hl.animation({
+            leaf = "global",
+            enabled = true,
+            speed = 4,
+            bezier = "default",
+          })
+
           -- Popup tooltips should appear and disappear immediately.
           hl.animation({
             leaf = "fadePopups",
@@ -171,14 +179,14 @@ let
           hl.animation({
             leaf = "fadeDim",
             enabled = true,
-            speed = 10,
+            speed = 5,
             bezier = "smoothIn",
           })
 
           hl.animation({
             leaf = "workspaces",
             enabled = true,
-            speed = 6,
+            speed = 3,
             bezier = "default",
           })
 
@@ -540,6 +548,8 @@ let
               namespace = "^seele-shell-(bar|osd|agents|tray-menu|application|calendar|clock|control-center|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session|polkit)$",
             },
             blur = true,
+            -- HoverTip uses child PopupWindows, not separate layer surfaces.
+            blur_popups = true,
             ignore_alpha = 0.4,
           })
         '';

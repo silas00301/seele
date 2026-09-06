@@ -2,6 +2,8 @@
   description = "Seele: my Nix and Home Manager configuration";
 
   inputs = {
+    self.submodules = true;
+
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nixpkgs-stable-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixpkgs-stable-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -36,7 +38,7 @@
     quickshell.url = "github:outfoxxed/quickshell";
     quickshell.inputs.nixpkgs.follows = "nixpkgs";
 
-    seele-shell.url = "git+file:./seele-shell";
+    seele-shell.url = ./seele-shell;
     seele-shell.inputs.nixpkgs.follows = "nixpkgs";
     seele-shell.inputs.quickshell.follows = "quickshell";
 

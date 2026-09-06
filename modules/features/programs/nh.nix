@@ -6,10 +6,7 @@ let
       programs.nh = {
         enable = true;
         flake =
-          if pkgs.lib.hasSuffix "-linux" pkgs.system then
-            "/home/${username}/seele"
-          else
-            "/Users/${username}/seele";
+          if pkgs.stdenv.hostPlatform.isLinux then "/home/${username}/seele" else "/Users/${username}/seele";
         clean = {
           enable = true;
           extraArgs = "--keep 3 --keep-since 3d";
@@ -26,7 +23,7 @@ let
       # running system's run0, and pinning one build of systemd for a privilege
       # escalation path would let it drift from the systemd actually booted.
       # run0 is systemd's, so Darwin keeps nh's own default.
-      home.sessionVariables = pkgs.lib.optionalAttrs (pkgs.lib.hasSuffix "-linux" pkgs.system) {
+      home.sessionVariables = pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
         NH_ELEVATION_STRATEGY = "run0";
       };
     }

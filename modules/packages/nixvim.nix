@@ -8,7 +8,10 @@
     }:
     {
       packages.nixvim = inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule {
-        module = import ./_nixvim/config.nix;
+        module = {
+          imports = [ ./_nixvim/config.nix ];
+          nixpkgs.source = inputs.nixpkgs;
+        };
         extraSpecialArgs = {
           inherit pkgs-stable;
           catppuccin = config.seele.catppuccin;

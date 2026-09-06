@@ -29,6 +29,35 @@ reaches the compositor issues one `hl.dsp` call — `hl.dsp.window.close({ windo
 on the Lua error the legacy form raises, so a wrong call is invisible until the
 action is tried by hand.
 
+## Preserve status model identity
+
+`projects/shell/SystemState.qml` owns the status fields and their startup
+values. Feed snapshots and optimistic patches through `apply()` so each field
+notifies independently and unchanged JSON branches retain their identity.
+Replacing the whole state object makes unrelated bindings rerun and rebuilds
+list delegates. Add new backend status fields to this component as well.
+`tests/system-state.sh` checks signal counts, delegate reuse, and unchanged
+rendered pixels; both `test-shell` and the main package build run it.
+
+Performance work keeps rendering components, visual tokens, and motion timing
+unchanged unless the user asks to change their appearance or pace.
+
+The shell reads field patches from `seele-control watch-status`. Guard callback
+side effects on the presence of their field: an audio update carries neither
+headphones nor notifications. `projects/tools/src/live.rs` owns D-Bus listener
+reconnects, a buffered PipeWire monitor, and the five-second ancillary refresh.
+NetworkManager, BlueZ, and mako signals trigger source-specific probes; cached
+notification lists age without another mako query. Explicit stdin requests
+return complete source fields even when unchanged so optimistic controls can
+settle. Keep that acknowledgement separate from unsolicited deltas.
+`projects/tools/tests/live.rs` runs against a private bus and mock probes;
+`tests/status-patches.js` exercises the shell's actual partial-update callback.
+
+`seele-clock watch` caches static timezone metadata for the current database,
+year, and locale, but computes times, offsets, and pins on every `refresh` line.
+Both workers exit on stdin EOF. Clock's timezone conversions remain in its own
+single-threaded process because libc's `TZ` state is process-global.
+
 ## Draw from the shell's design tokens
 
 `projects/shell/shell.qml` opens with the shell's whole visual vocabulary, and
@@ -190,7 +219,7 @@ Return to the parent root and run:
 nix run .#update-submodule
 ```
 
-The helper verifies that the submodule is clean, commits only the parent gitlink through Git, imports that commit into Jujutsu, advances `main` to it when possible, and updates the `seele-shell` entry in `flake.lock`. Do not stage the parent gitlink manually.
+The helper verifies that the submodule is clean, commits only the parent gitlink through Git, imports that commit into Jujutsu, advances `main` to it when possible, and refreshes the shell's transitive inputs in the parent lock. Do not stage the parent gitlink manually. The `seele-shell` input is a path inside the parent flake, so the gitlink pins its source revision and source-only shell updates leave `flake.lock` unchanged.
 
 Review the resulting parent state:
 
@@ -199,7 +228,7 @@ jj status
 jj diff
 ```
 
-Commit the refreshed lock and any intended companion parent changes with Jujutsu file selection so existing work stays separate:
+If the lock or companion parent code changed, commit only those paths before advancing and pushing `main`:
 
 ```sh
 jj commit flake.lock <companion-parent-paths> -m "Refresh Seele Shell"
@@ -207,20 +236,20 @@ jj bookmark set main -r @-
 jj git push --bookmark main
 ```
 
-Omit `<companion-parent-paths>` when the shell change has no parent-side code. Keep unrelated paths in the working-copy commit.
+Omit `flake.lock` when the shell's transitive inputs did not change, and omit `<companion-parent-paths>` when there is no parent-side code. If neither changed, the helper's gitlink commit is ready to push. Keep unrelated paths in the working-copy commit.
 
 ## Prove the parent consumes the new revision
 
-The gitlink and lock must both match the pushed submodule commit:
+The gitlink must match the pushed submodule commit, and the lock must keep the relative path input:
 
 ```sh
 shell_rev="$(jj -R seele-shell log -r @- --no-graph -T commit_id)"
 gitlink_rev="$(git ls-tree main -- seele-shell | awk '$1 == "160000" { print $3 }')"
-lock_rev="$(jq -r '.nodes["seele-shell"].locked.rev' flake.lock)"
+lock_path="$(jq -r '.nodes["seele-shell"].locked.path' flake.lock)"
 test "$shell_rev" = "$gitlink_rev"
-test "$shell_rev" = "$lock_rev"
+test "$lock_path" = "seele-shell"
 ```
 
-Then run the parent Seele validation workflow. At minimum, format the parent, evaluate the flake and native host, build `packages.<system>.seele-shell`, and build the native host closure. A rebuild-ready result has a clean pushed submodule, matching gitlink and lock revisions, passing submodule and parent builds, and a pushed parent bookmark.
+Then run the parent Seele validation workflow. At minimum, format the parent, evaluate the flake and native host, build `packages.<system>.seele-shell`, and build the native host closure. A rebuild-ready result has a clean pushed submodule, a matching gitlink, the relative path lock with refreshed transitive inputs, passing submodule and parent builds, and a pushed parent bookmark.
 
 Activation is separate. Run `nh os switch`, `nh darwin switch`, or an equivalent activation command only when the user explicitly asks to change the live machine.

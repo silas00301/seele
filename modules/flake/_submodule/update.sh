@@ -55,9 +55,9 @@ if [ "$old_submodule" != "$new_submodule" ]; then
 
 fi
 
-# Retry the lock refresh even if a previous run already committed the gitlink.
-# It must run against the parent flake when invoked from inside the submodule.
+# The path input itself follows the gitlink, but its transitive inputs still
+# live in the parent lock and may have changed with the submodule flake.
 cd "$root"
-nix flake lock --update-input "$submodule"
+nix flake update "$submodule"
 printf '%s now points to %s\n' "$submodule" "$new_submodule"
-printf 'commit the refreshed flake.lock with jj, then push the parent with: jj git push --bookmark main\n'
+printf 'commit the refreshed flake.lock if it changed, then push the parent with: jj git push --bookmark main\n'
