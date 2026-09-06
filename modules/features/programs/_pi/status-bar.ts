@@ -105,6 +105,10 @@ export default function (pi: ExtensionAPI) {
 
     ctx.ui.setFooter((tui, theme, footerData) => {
       requestRender = () => tui.requestRender();
+      let tokenSessionId: string | undefined;
+      let tokenLeafId: string | null | undefined;
+      let inputTokens = 0;
+      let outputTokens = 0;
       const unsubscribe = footerData.onBranchChange(() => {
         if (jjState) void refreshJj?.();
         else tui.requestRender();
@@ -112,16 +116,25 @@ export default function (pi: ExtensionAPI) {
 
       return {
         dispose: unsubscribe,
-        invalidate() {},
+        invalidate() { tokenSessionId = undefined; },
         render(width: number): string[] {
-          let inputTokens = 0;
-          let outputTokens = 0;
-          for (const entry of ctx.sessionManager.getBranch()) {
-            if (entry.type === "message" && entry.message.role === "assistant") {
-              const usage = (entry.message as AssistantMessage).usage;
-              inputTokens += usage.input;
-              outputTokens += usage.output;
+          // Pi persists completed messages as append-only session entries.
+          // Streaming redraws do not change that branch; switches, appends and
+          // compaction move its leaf or replace the session.
+          const sessionId = ctx.sessionManager.getSessionId();
+          const leafId = ctx.sessionManager.getLeafId();
+          if (sessionId !== tokenSessionId || leafId !== tokenLeafId) {
+            inputTokens = 0;
+            outputTokens = 0;
+            for (const entry of ctx.sessionManager.getBranch()) {
+              if (entry.type === "message" && entry.message.role === "assistant") {
+                const usage = (entry.message as AssistantMessage).usage;
+                inputTokens += usage.input;
+                outputTokens += usage.output;
+              }
             }
+            tokenSessionId = sessionId;
+            tokenLeafId = leafId;
           }
 
           const context = ctx.getContextUsage();
