@@ -6,10 +6,10 @@
       packages = lib.optionalAttrs (system == "x86_64-linux") {
         t3code-nightly =
           let
-            version = "0.0.39-nightly.20260906.1303";
+            version = "0.0.39-nightly.20260906.1316";
             src = pkgs.fetchurl {
               url = "https://github.com/pingdotgg/t3code/releases/download/v${version}/T3-Code-${version}-x86_64.AppImage";
-              hash = "sha256-zKeGYaBXoRj4Y1XHFXA6/mOsNKp2eUO/j+G6rJYAjT0=";
+              hash = "sha256-bja7Nh2gRVUFkKKSEGOEroS39H/+2ySr2e9Buasv4W4=";
             };
             contents = pkgs.appimageTools.extract {
               pname = "t3code";
