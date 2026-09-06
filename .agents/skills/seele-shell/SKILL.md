@@ -97,7 +97,9 @@ The Control Center's media module and the Now Playing panel it opens draw the
 same `MediaBody` at the same `mediaBodyHeight`, so there is one place to change
 what a track looks like. The card wraps it in a module surface with hover and a
 `ModuleDragArea`; the panel puts it under a `PanelHeader`. Neither arranges the
-parts itself.
+parts itself. Their player comes from one root selection. The panel exposes that
+selection through `MediaPlayerPicker` when more than one resumable player is on
+the bus, and the Control Center follows it.
 
 Hover cannot be verified by warping the cursor with `hl.dsp.cursor.move`: the
 compositor delivers a pointer event only when the warp crosses into a different
