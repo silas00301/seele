@@ -23,9 +23,23 @@ checkout | co)
     pr_id=$2
   fi
   details=$(gh pr view "$pr_id" --json headRefName,headRepository,headRepositoryOwner)
-  branch=$(jq -er '.headRefName' <<<"$details")
-  owner=$(jq -er '.headRepositoryOwner.login' <<<"$details")
-  repository=$(jq -er '.headRepository.name' <<<"$details")
+  if fields=$(jq -ers '
+    if length != 1 then error("expected one PR") else .[0] end
+    | [.headRefName, .headRepositoryOwner.login, .headRepository.name]
+    | if all(.[]; type == "string" and length > 0 and (test("[\\r\\n]") | not))
+      then .[] else error("incomplete PR metadata") end
+  ' <<<"$details" 2>/dev/null); then
+    mapfile -t fields <<<"$fields"
+    branch=${fields[0]}
+    owner=${fields[1]}
+    repository=${fields[2]}
+  else
+    # Keep the existing diagnostics and exit status for missing or unusual
+    # responses; the normal GitHub response needs only one jq process.
+    branch=$(jq -er '.headRefName' <<<"$details")
+    owner=$(jq -er '.headRepositoryOwner.login' <<<"$details")
+    repository=$(jq -er '.headRepository.name' <<<"$details")
+  fi
   # A temporary remote also handles forks and cannot collide with the user's
   # existing bookmarks/remotes. jj new retains the fetched commit after cleanup.
   temporary=$(mktemp -d)
