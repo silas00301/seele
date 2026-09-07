@@ -6,11 +6,11 @@
       packages = lib.optionalAttrs (system == "x86_64-linux") {
         codexbar = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
           pname = "codexbar-cli";
-          version = "0.56.7";
+          version = "0.56.8";
 
           src = pkgs.fetchurl {
             url = "https://github.com/steipete/CodexBar/releases/download/v${finalAttrs.version}/CodexBarCLI-v${finalAttrs.version}-linux-x86_64.tar.gz";
-            hash = "sha256-XDsk4o7jaJ/+esc3c6xkxX6rYB4K2RIm0S272xzChv8=";
+            hash = "sha256-q5h4jhKEDlaJrlBb9icx4OoNscd+Y9ztoVibbnlaxbg=";
           };
 
           sourceRoot = ".";

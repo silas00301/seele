@@ -29,11 +29,12 @@ let
         librepodsPackage
       ];
       home.file = {
-        ".local/share/vicinae/extensions/seele-shell".source =
-          "${package}/share/vicinae/extensions/seele-shell";
         "${config.programs.pi-coding-agent.configDir}/extensions/seele-shell-status.ts".source =
           "${package}/share/seele-shell/pi-status.ts";
       };
+
+      xdg.dataFile."vicinae/extensions/seele-shell".source =
+        "${package}/share/vicinae/extensions/seele-shell";
 
       xdg.configFile."opencode/plugins/seele-shell-status.ts".source =
         "${package}/share/seele-shell/opencode-status.ts";

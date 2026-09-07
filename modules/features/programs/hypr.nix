@@ -272,15 +272,15 @@ let
             )
           end
 
-          hl.bind("CTRL + SHIFT + H", hl.dsp.window.swap({ direction = "l" }), { description = "Swap with the window to the left" })
-          hl.bind("CTRL + SHIFT + J", hl.dsp.window.swap({ direction = "d" }), { description = "Swap with the window below" })
-          hl.bind("CTRL + SHIFT + K", hl.dsp.window.swap({ direction = "u" }), { description = "Swap with the window above" })
-          hl.bind("CTRL + SHIFT + L", hl.dsp.window.swap({ direction = "r" }), { description = "Swap with the window to the right" })
+          hl.bind("ALT + SHIFT + H", hl.dsp.window.swap({ direction = "l" }), { description = "Swap with the window to the left" })
+          hl.bind("ALT + SHIFT + J", hl.dsp.window.swap({ direction = "d" }), { description = "Swap with the window below" })
+          hl.bind("ALT + SHIFT + K", hl.dsp.window.swap({ direction = "u" }), { description = "Swap with the window above" })
+          hl.bind("ALT + SHIFT + L", hl.dsp.window.swap({ direction = "r" }), { description = "Swap with the window to the right" })
 
-          hl.bind("CTRL + H", hl.dsp.focus({ direction = "l" }), { description = "Focus the window to the left" })
-          hl.bind("CTRL + J", hl.dsp.focus({ direction = "d" }), { description = "Focus the window below" })
-          hl.bind("CTRL + K", hl.dsp.focus({ direction = "u" }), { description = "Focus the window above" })
-          hl.bind("CTRL + L", hl.dsp.focus({ direction = "r" }), { description = "Focus the window to the right" })
+          hl.bind("ALT + H", hl.dsp.focus({ direction = "l" }), { description = "Focus the window to the left" })
+          hl.bind("ALT + J", hl.dsp.focus({ direction = "d" }), { description = "Focus the window below" })
+          hl.bind("ALT + K", hl.dsp.focus({ direction = "u" }), { description = "Focus the window above" })
+          hl.bind("ALT + L", hl.dsp.focus({ direction = "r" }), { description = "Focus the window to the right" })
 
           hl.bind(
             mod .. " + SHIFT + H",

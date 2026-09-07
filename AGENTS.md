@@ -7,7 +7,7 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - NixOS host `nerv` (`x86_64-linux`)
 - nix-darwin host `asuka` (`aarch64-darwin`)
 - Home Manager profiles shared by both hosts and specialized by platform/host
-- local packages (`codexbar`, `nixvim`, `spt-st`, `t3code-nightly`), the `seele-shell` submodule package, and overlays
+- local packages (`codexbar`, `nixvim`, `pipewire-nothing`, `spt-st`, `t3code-nightly`), the `seele-shell` submodule package, and overlays
 
 Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-shell` for changes inside the shell submodule, for the shell's design tokens and shared QML components, and for its rebuild-ready commit, push, gitlink, and transitive input lock flow. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
 
@@ -37,7 +37,10 @@ Both hosts run Determinate Nix. `modules/features/system/determinate.nix` publis
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
 On `nerv`, `Super + Ctrl + S` invokes `seele-shellctl uris`. The shell freezes
-one image per output and numbers OCR-detected URIs globally. The submodule owns
+one image per output and numbers OCR-detected URIs, QR codes and barcodes globally.
+Code captions show decoded text below the code, or above when space is short.
+Selection opens URIs or copies other text; Ctrl + number copies any selection.
+The submodule owns
 the QML overlay and resident Rust OCR worker; the parent owns the Hyprland
 binding. Keep capture and OCR dependencies in official nixpkgs. Captures are
 private runtime files, never screenshot-library or persistent-cache entries.
@@ -49,6 +52,16 @@ toasts, app stacks, local images, progress, and verification-code copying.
 Notification state and DND belong to the QML store rather than Rust's hardware
 status feed. History and pins survive QML reloads in memory; notification text
 is never written to disk. See the `seele-shell` skill for the protocol and tests.
+
+Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
+live controls, audio device selection, window/workspace search, keybindings,
+and direct shell commands. For extension changes, read its `README.md`; the
+shell package bundles the manifest's command entries and runs its focused
+checks. Home Manager installs it through `xdg.dataFile`. The shell Audio panel
+and Vicinae share `seele-control audio-outputs` for simultaneous playback;
+`projects/tools/src/audio_route.rs` owns the session-local PipeWire combined
+sink and its cleanup. Test routing on the private server in
+`seele-shell/tests/audio-routing.sh`.
 
 Portable applications are the second way a feature reaches outside this flake. `modules/flake/portable.nix` declares `seele.portable.<app>`, and each program leaf worth running on an unmanaged machine contributes one entry beside its `flake.modules.homeManager` definition. An entry names the Home Manager features to evaluate, and the builder wraps the resulting binary so it materializes the generated `.config` tree as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<app>` and puts that evaluation's own `home.path` on `PATH`. The evaluation is standalone rather than host-derived, so a feature the app reads through has to be listed or its options resolve to Home Manager defaults instead of the values a host would give them.
 
