@@ -35,7 +35,10 @@ action is tried by hand.
 surface per output. The separate Rust `seele-uri-worker` owns concurrent Grim
 PPM captures and a bounded pool of warmed Tesseract engines from nixpkgs. Its
 Rust grayscale and 1.5× enlargement pass preserves small URI punctuation. Keep
-OCR off the QML thread and display the exact pixels being recognized. Capture
+OCR off the QML thread and display the exact pixels being recognized. Use
+local adaptive thresholds for dim address-bar text beside bright browser chrome.
+An empty scan or failure releases captures and keyboard focus immediately;
+a separate click-through status surface shows the result for five seconds. Capture
 open shell panels and toasts before covering them, and preserve panel state
 across dismissal. Stream results into the retained ListModel, keep numbers
 stable across outputs, and
