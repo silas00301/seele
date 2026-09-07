@@ -43,97 +43,146 @@
   keymaps = [
     {
       mode = "n";
+      key = "<leader>sd";
+      action = "<cmd>Telescope diagnostics bufnr=0<CR>";
+      options.desc = "Search buffer diagnostics";
+    }
+    {
+      mode = "n";
+      key = "<leader>sD";
+      action = "<cmd>Telescope diagnostics<CR>";
+      options.desc = "Search workspace diagnostics";
+    }
+    {
+      mode = "n";
+      key = "<leader>se";
+      action = "<cmd>lua vim.diagnostic.open_float()<CR>";
+      options.desc = "Show diagnostics at cursor";
+    }
+    {
+      mode = "n";
+      key = "<leader>sl";
+      action = "<cmd>lua vim.diagnostic.setloclist()<CR>";
+      options.desc = "Open buffer diagnostics list";
+    }
+    {
+      mode = "n";
+      key = "<leader>sq";
+      action = "<cmd>lua vim.diagnostic.setqflist()<CR>";
+      options.desc = "Open workspace diagnostics list";
+    }
+    {
+      mode = "n";
       key = "<leader>sg";
+      options.desc = "Search project text";
       action = "<cmd>Telescope live_grep<CR>";
     }
     {
       mode = "n";
       key = "<leader>sf";
+      options.desc = "Find frequent files";
       action = "<cmd>Telescope frecency<CR>";
     }
     {
       mode = "n";
       key = "<leader>sa";
+      options.desc = "Find all project files";
       action = "<cmd>Telescope find_files<CR>";
     }
     {
       mode = "n";
       key = "<leader>y";
+      options.desc = "Open Yazi";
       action = "<cmd>Yazi<CR>";
     }
     {
       mode = "n";
       key = "<leader>g";
+      options.desc = "Open LazyGit";
       action = "<cmd>LazyGit<CR>";
     }
     {
       mode = "n";
       key = "<leader>t";
+      options.desc = "Search message history";
       action = "<cmd>Noice telescope<CR>";
     }
     {
       mode = "n";
       key = "<leader>ha";
+      options.desc = "Add file to Harpoon";
       action.__raw = "function() require'harpoon':list():add() end";
     }
     {
       mode = "n";
       key = "<leader>hl";
+      options.desc = "Open Harpoon list";
       action.__raw = "function() require'harpoon'.ui:toggle_quick_menu(require'harpoon':list()) end";
     }
     {
       mode = "n";
       key = "<leader>1";
+      options.desc = "Open Harpoon file 1";
       action.__raw = "function() require'harpoon':list():select(1) end";
     }
     {
       mode = "n";
       key = "<leader>2";
+      options.desc = "Open Harpoon file 2";
       action.__raw = "function() require'harpoon':list():select(2) end";
     }
     {
       mode = "n";
       key = "<leader>3";
+      options.desc = "Open Harpoon file 3";
       action.__raw = "function() require'harpoon':list():select(3) end";
     }
     {
       mode = "n";
       key = "<leader>4";
+      options.desc = "Open Harpoon file 4";
       action.__raw = "function() require'harpoon':list():select(4) end";
     }
     {
       mode = "n";
       key = "<leader>5";
+      options.desc = "Open Harpoon file 5";
       action.__raw = "function() require'harpoon':list():select(5) end";
     }
     {
       mode = "n";
       key = "<leader>6";
+      options.desc = "Open Harpoon file 6";
       action.__raw = "function() require'harpoon':list():select(6) end";
     }
     {
       mode = "n";
       key = "<leader>7";
+      options.desc = "Open Harpoon file 7";
       action.__raw = "function() require'harpoon':list():select(7) end";
     }
     {
       mode = "n";
       key = "<leader>8";
+      options.desc = "Open Harpoon file 8";
       action.__raw = "function() require'harpoon':list():select(8) end";
     }
     {
       mode = "n";
       key = "<leader>9";
+      options.desc = "Open Harpoon file 9";
       action.__raw = "function() require'harpoon':list():select(9) end";
     }
     {
       mode = "n";
       key = "<leader>f";
+      options.desc = "Browse current file directory";
       action = "<cmd>lua MiniFiles.open(vim.api.nvim_buf_get_name(0))<CR>";
     }
     {
       mode = "i";
       key = "<C-Space>";
+      options.desc = "Show completion suggestions";
       action.__raw = "cmp.mapping.complete()";
     }
   ];
@@ -425,9 +474,29 @@
       inlayHints = true;
       keymaps = {
         diagnostic = {
-          "<leader>n" = "goto_next";
-          "<leader>N" = "goto_prev";
+          "<leader>n" = {
+            action = "goto_next";
+            desc = "Go to next diagnostic";
+          };
+          "<leader>N" = {
+            action = "goto_prev";
+            desc = "Go to previous diagnostic";
+          };
         };
+        extra = [
+          {
+            mode = "n";
+            key = "<leader>ss";
+            action = "<cmd>Telescope lsp_document_symbols<CR>";
+            options.desc = "Search document symbols";
+          }
+          {
+            mode = "n";
+            key = "<leader>sS";
+            action = "<cmd>Telescope lsp_dynamic_workspace_symbols<CR>";
+            options.desc = "Search workspace symbols";
+          }
+        ];
         lspBuf = {
           K = "hover";
           gD = "references";

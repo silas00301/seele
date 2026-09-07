@@ -70,6 +70,14 @@ changes, EOF and graceful termination retire the private runtime captures. No
 new flake input or Cargo dependency is needed. The shell package runs real OCR
 fixtures and numeric-selection tests in its install checks.
 
+Nixvim's shared package configuration lives in `modules/packages/_nixvim/config.nix`.
+Its diagnostics use the existing Telescope picker: `<leader>sd` searches the
+current buffer, `<leader>sD` the workspace, and `<leader>se` shows the diagnostic
+float. `<leader>sl` and `<leader>sq` populate the location and quickfix lists.
+LSP-attached buffers also get `<leader>ss` for document symbols and
+`<leader>sS` for dynamic workspace symbols. The existing diagnostic jumps remain
+`<leader>n` and `<leader>N`; shortcut descriptions feed which-key.
+
 ## Host assembly
 
 `modules/hosts/nerv.nix` constructs `nixosConfigurations.nerv` from:
