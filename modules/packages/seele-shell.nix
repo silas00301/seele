@@ -5,6 +5,7 @@
     {
       packages = lib.optionalAttrs (lib.hasSuffix "-linux" system) {
         seele-shell = inputs.seele-shell.packages.${system}.default;
+        seele-notes = inputs.seele-shell.packages.${system}.notes;
       };
     };
 }
