@@ -275,6 +275,15 @@ spaces remain valid PipeWire arguments.
 
 Bluetooth follows the same hardware gate in both places: without a BlueZ adapter, neither its Control Center row nor its menu bar entry is shown. The hidden tray group opens only when its arrow is clicked, so moving the pointer across the arrow cannot reflow the bar. The network panel links to Allestörungen through the desktop's default URL handler.
 
+## Terminal clipboard
+
+The active tmux feature uses its native OSC 52 clipboard path in `external`
+mode. Prefix + `y` enters vi copy mode; `v` begins selection, `Ctrl-v` toggles a
+rectangle, `y` copies and leaves copy mode, and Escape cancels. Ghostty's terminal
+entry explicitly advertises clipboard support. Local and SSH sessions use the
+same bindings without requiring wl-copy or pbcopy on the remote host. The
+terminal's clipboard permission policy still applies.
+
 ## Portable applications
 
 `modules/flake/portable.nix` is the second route from a feature to a public output, and it exists so `nix run github:silas00301/seele#<command>` reaches a configured application on a machine this flake does not manage. Each program leaf that is worth running that way contributes `seele.portable.<command>` beside its `flake.modules.homeManager` definition, named after the command rather than the feature — `btm` rather than `bottom`, `jj` rather than `jujutsu` — because the attribute is what gets typed. An entry carries the Home Manager features to evaluate, the binary to wrap, the systems to publish for, and any extra environment.

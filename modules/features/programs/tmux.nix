@@ -21,6 +21,15 @@ let
           set-option -g renumber-windows on
           set-option -g status-right-length 80
           set-option -g focus-events on
+
+          # Copy through the terminal so the same keys work locally and over SSH.
+          set-option -s set-clipboard external
+          set-option -as terminal-features ',xterm-ghostty:clipboard'
+          bind-key -T copy-mode-vi v send-keys -X begin-selection
+          bind-key -T copy-mode-vi C-v send-keys -X rectangle-toggle
+          bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel
+          bind-key -T copy-mode-vi Escape send-keys -X cancel
+
           set -g extended-keys on
           set -g extended-keys-format csi-u
 

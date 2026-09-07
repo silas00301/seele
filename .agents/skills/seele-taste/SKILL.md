@@ -116,6 +116,7 @@ Use Vicinae's standard launcher layout; Seele Shell carries the compact native d
 - Provide rich language intelligence: LSP, inlay hints, Treesitter, formatting, snippets, diagnostics, and contextual documentation.
 - Keep completion user-controlled: offer strong suggestions and fuzzy matching without silently accepting the first item.
 - Integrate navigation boundaries. Pane movement should flow between Neovim and tmux instead of trapping focus.
+- In tmux copy mode, use `v` to select, `Ctrl-v` for a rectangle, `y` to copy and close, and Escape to cancel. Copy through the terminal clipboard so the workflow also works over SSH; the terminal retains its clipboard permission policy.
 - Prefer previews and structured dashboards for changes, pull requests, files, and sessions.
 - Optimize routine VCS flow around rebasing, autosquash/autostash, pruning, rerere, signed work, and small composable Jujutsu operations.
 - Treat a configured program as reachable off the managed hosts. When a tool's worth is its configuration rather than the machine around it, publish it as a portable flake output so one `nix run` carries it to a borrowed or remote machine. Shells, editors, terminals, pickers, multiplexers, and VCS tooling qualify; the compositor, greeter, desktop shell, and anything whose state belongs to the machine do not. A portable wrapper keeps the foreign machine's own configuration intact and confines whatever it writes to a directory of its own.
