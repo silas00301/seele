@@ -45,6 +45,16 @@ the QML overlay and resident Rust OCR worker; the parent owns the Hyprland
 binding. Keep capture and OCR dependencies in official nixpkgs. Captures are
 private runtime files, never screenshot-library or persistent-cache entries.
 
+Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
+live controls, audio device selection, window/workspace search, keybindings,
+and direct shell commands. For extension changes, read its `README.md`; the
+shell package bundles the manifest's command entries and runs its focused
+checks. Home Manager installs it through `xdg.dataFile`. The shell Audio panel
+and Vicinae share `seele-control audio-outputs` for simultaneous playback;
+`projects/tools/src/audio_route.rs` owns the session-local PipeWire combined
+sink and its cleanup. Test routing on the private server in
+`seele-shell/tests/audio-routing.sh`.
+
 Portable applications are the second way a feature reaches outside this flake. `modules/flake/portable.nix` declares `seele.portable.<app>`, and each program leaf worth running on an unmanaged machine contributes one entry beside its `flake.modules.homeManager` definition. An entry names the Home Manager features to evaluate, and the builder wraps the resulting binary so it materializes the generated `.config` tree as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<app>` and puts that evaluation's own `home.path` on `PATH`. The evaluation is standalone rather than host-derived, so a feature the app reads through has to be listed or its options resolve to Home Manager defaults instead of the values a host would give them.
 
 Theme ownership is split deliberately. Catppuccin themes supported application ports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, fonts, and active targets without a Catppuccin module. Qt's qt5ct and qt6ct settings reuse the Catppuccin Papirus icon theme. `stylix.autoEnable` stays off, and each platform profile lists its active Stylix targets explicitly so dormant applications do not add configuration or packages.
