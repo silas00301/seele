@@ -48,6 +48,15 @@ Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, 
 
 Named modules are available through the flake's `modules` output but remain dormant until a profile or host imports them. Home Manager profiles import user features; system and host aggregates import NixOS and Darwin features such as shells, themes, Homebrew applications, and host-only integrations. This replaces the old behavior where an unlisted file under `home/shared/programs/` was dormant.
 
+`tv project-text` (F2 from Television) searches nonempty project lines and
+opens Enter or Ctrl+E selections at their line in Neovim. Ctrl+S includes
+hidden files; ignore rules still apply and `.git`/`.jj` metadata stays excluded.
+The channel uses ripgrep JSON, readable escaped labels, and a highlighted Bat
+preview. Only base64 paths and numeric line fields reach Television's shell
+templates; the helper passes decoded paths as process arguments with `--`.
+`checks.<system>.television-text` exercises real searches and unusual filenames.
+The existing portable `tv` output carries the helper and its dependencies.
+
 `modules/features/` contains program, service, theme, and shared system concerns. `modules/profiles/home/` contains profile-wide Home Manager settings that do not belong to one feature. Raw Nix expressions cannot live directly in the recursive tree; place them below a path containing `/_`.
 
 The shell submodule's `projects/shell/SystemState.qml` owns status fields and publishes changes per field. Full snapshots and optimistic patches go through its `apply()` method, which retains unchanged JSON branches so unrelated updates leave list models and delegates alone. `tests/system-state.sh` checks change-signal counts, delegate reuse, and unchanged rendered pixels. Agent CPU sampling reuses the process name in `/proc/<pid>/stat` instead of opening each process's `comm` separately; command-line fallback discovery stays in place.
