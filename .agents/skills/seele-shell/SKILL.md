@@ -123,7 +123,9 @@ every surface below it reads from that block rather than deciding for itself:
 
 Assemble a surface from the shared components rather than repeating their
 parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
-detail, trailing slot), `SectionLabel`, `MeterBar`, `CardEdge`, `PanelSurface`,
+detail, trailing slot), `SectionLabel`, `SectionRule` (that label with the
+group's live summary at the far end and, where the group folds, the chevron and
+the click target that fold it), `MeterBar`, `CardEdge`, `PanelSurface`,
 `SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
 `RefreshGlyph`, `CenteredGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
 `ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
@@ -165,6 +167,27 @@ compositor delivers a pointer event only when the warp crosses into a different
 surface, so consecutive moves inside one panel leave the shell reading the first
 position. Bounce off an unrelated surface between samples, then diff `grim`
 captures against a pointer-away baseline.
+
+The AI cockpit is a readout. Its session row is one card with a cell per
+harness — a lit dot and a name, beating only while that session works or waits,
+a well in the card while nothing runs — and no cell answers a click, so none of
+them takes the pointer cursor. `agentIndicators()` is what the row draws: the
+launchers CodexBar reports, plus any harness that published lifecycle state
+without one. A lit cell answers the pointer and focuses its
+session through `seele-control agent-focus`, which walks the record's pid up
+through `/proc` to the terminal holding it; a finished record has no window
+left, so only a running session takes the pointer cursor. Launching lives in
+`seele-agent`, `seele-shellctl agent`, the `launchAgent` IPC method, and the
+menu bar entry's right click, not in the panel.
+
+`AgentMark` draws a harness or provider as its own vendored SVG, rasterized
+well above the size it is drawn at because the OpenAI knot loses its loops in a
+24px raster squeezed into the menu bar. `agentMark()` maps an id to a file and
+returns an empty string for anything unknown, which falls back to
+`agentBadge()`'s two letters. The marks are flat: state belongs to the beating
+bar under a badge and to the tier colour on a capacity's number, not to the
+mark. Adding one means the SVG beside `shell.qml`, an `install` line and the
+`installCheckPhase` mark loop in `package.nix`, and an entry in `agentMark()`.
 
 Size a panel from its content — `implicitHeight: <content>.implicitHeight +
 root.panelMargin * 2`, with the content column anchored left, right and top.
