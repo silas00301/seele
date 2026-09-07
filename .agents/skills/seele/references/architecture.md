@@ -17,6 +17,7 @@ The flake exposes:
 - `formatter.<system>` backed by `nixfmt-tree`
 - `devShells.<system>.default`, a quiet `nix develop` environment with that formatter, nixd, Statix, deadnix, ShellCheck, jq, Python, Jujutsu, and GitHub CLI; it reuses the installed Nix distribution
 - `apps.<system>.update-submodule`, which updates a submodule gitlink without folding unrelated parent changes into its commit
+- `apps.<system>.inputs`, an [offline report of input pins and follows](input-report.md) derived from the local lock file
 - `overlays.zjstatus`
 - `modules.<class>.<name>` deferred modules from `flake.modules`
 - `darwinPackages`, the `asuka` package set convenience output
