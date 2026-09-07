@@ -59,6 +59,37 @@ never use desktop-global coordinates or assume every monitor shares a scale.
 `tests/uri-picker.sh` exercises real OCR, capture identity, strip boundaries,
 and cleanup, while `tests/uri-picker.js` covers selection and badge geometry.
 
+## Notification interactions
+
+`NotificationStore.qml` owns the desktop notification service through
+Quickshell, with lifecycle and presentation helpers in `notifications.js`.
+The parent disables mako; hardware status workers never publish notification
+or DND fields. `seele-shellctl notification <action>` and `notification-status`
+reach the native store over IPC, and `seele-control` keeps matching commands.
+
+Ordinary toasts default to 30 seconds, pause while hovered, and retire without
+closing the inbox entry. Respect positive sender timeouts for the toast;
+critical, explicitly non-expiring, and user-pinned toasts stay until hidden.
+Resident means actions do not close the notification, independently of its
+toast timeout. Transient notifications skip the inbox and history and expire
+through the protocol. Only explicit dismissals enter the bounded 24-hour
+history. Keep DND, history, timestamps, and pins across QML reloads through
+`PersistentProperties`; never persist message text or codes to disk.
+
+Both views group by desktop entry (falling back to app name), show overlapping
+cards, and expand independently. Toasts have individual card material with no
+shared backdrop. A toast close hides it; panel dismissal closes it. Named
+actions, including Reply, invoke the sender's app interface. Verification codes
+copy explicitly without dismissal. Preserve urgency, local images, progress,
+markup, links, action icons, and replacement IDs/tags. Only advertise capabilities
+that are rendered. At the pinned Quickshell revision, `expireTimeout` exposes
+raw D-Bus milliseconds despite its seconds documentation.
+
+`tests/notifications.js` exercises the state machine and grouping;
+`tests/notification-server.sh` runs a windowless Quickshell on a private D-Bus
+session to check the real API and production IPC handlers during the package
+build. `tests/control-actions.sh` checks command and clipboard failures.
+
 ## Preserve status model identity
 
 `projects/shell/SystemState.qml` owns the status fields and their startup
@@ -76,8 +107,8 @@ The shell reads field patches from `seele-control watch-status`. Guard callback
 side effects on the presence of their field: an audio update carries neither
 headphones nor notifications. `projects/tools/src/live.rs` owns D-Bus listener
 reconnects, a buffered PipeWire monitor, and the five-second ancillary refresh.
-NetworkManager, BlueZ, and mako signals trigger source-specific probes; cached
-notification lists age without another mako query. Explicit stdin requests
+NetworkManager and BlueZ signals trigger source-specific probes. Notifications
+and DND belong exclusively to the native QML store. Explicit stdin requests
 return complete source fields even when unchanged so optimistic controls can
 settle. Keep that acknowledgement separate from unsolicited deltas.
 `projects/tools/tests/live.rs` runs against a private bus and mock probes;

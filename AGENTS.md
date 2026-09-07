@@ -45,6 +45,14 @@ the QML overlay and resident Rust OCR worker; the parent owns the Hyprland
 binding. Keep capture and OCR dependencies in official nixpkgs. Captures are
 private runtime files, never screenshot-library or persistent-cache entries.
 
+Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
+notification server; mako stays disabled. The shell handles actions, resident
+and transient lifetimes, a 30-second default toast timeout, permanent/pinned
+toasts, app stacks, local images, progress, and verification-code copying.
+Notification state and DND belong to the QML store rather than Rust's hardware
+status feed. History and pins survive QML reloads in memory; notification text
+is never written to disk. See the `seele-shell` skill for the protocol and tests.
+
 Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
 live controls, audio device selection, window/workspace search, keybindings,
 and direct shell commands. For extension changes, read its `README.md`; the
