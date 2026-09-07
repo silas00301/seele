@@ -44,6 +44,19 @@ The shell submodule's `projects/shell/SystemState.qml` owns status fields and pu
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and packages its private helpers from `_hypr/`. It sets `configType = "lua"`, and that choice reaches every caller rather than only the config file: Hyprland evaluates `hyprctl dispatch` as Lua, so a dispatch is one `hl.dsp` call — `hl.dsp.exit()`, `hl.dsp.focus({ workspace = "9" })`, `hl.dsp.window.close({ window = "address:0x…" })` — and the legacy `hyprctl dispatch <name> <args>` form resolves to an undefined global. hyprctl still exits zero on that error, so a stale call fails in silence; `hyprctl repl` evaluates a candidate without dispatching it. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it; plain captures are saved and copied directly, while the modifier binding hands the same capture to Satty.
 
+The screen-link picker is a second frozen-screen workflow. Its binding lives
+beside the other shell IPC bindings in `modules/features/programs/seele-shell.nix`:
+`Super + Ctrl + S` calls `seele-shellctl uris`. The submodule's `UriPicker.qml`
+owns lifecycle and numeric input; `shell.qml` draws one full-screen layer surface
+per output using the shared tokens and components. `projects/tools/src/uri/`
+implements the separate resident Rust worker. It captures outputs concurrently
+with nixpkgs Grim, displays and recognizes the same uncompressed PPM pixels,
+and streams numbered URIs from a bounded pool of warmed nixpkgs Tesseract
+engines. Normalized boxes map to each output's logical size. Escape, output
+changes, EOF and graceful termination retire the private runtime captures. No
+new flake input or Cargo dependency is needed. The shell package runs real OCR
+fixtures and numeric-selection tests in its install checks.
+
 ## Host assembly
 
 `modules/hosts/nerv.nix` constructs `nixosConfigurations.nerv` from:
