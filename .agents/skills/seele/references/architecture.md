@@ -275,6 +275,15 @@ spaces remain valid PipeWire arguments.
 
 Bluetooth follows the same hardware gate in both places: without a BlueZ adapter, neither its Control Center row nor its menu bar entry is shown. The hidden tray group opens only when its arrow is clicked, so moving the pointer across the arrow cannot reflow the bar. The network panel links to Allestörungen through the desktop's default URL handler.
 
+## Terminal clipboard
+
+The active tmux feature uses its native OSC 52 clipboard path in `external`
+mode. Prefix + `y` enters vi copy mode; `v` begins selection, `Ctrl-v` toggles a
+rectangle, `y` copies and leaves copy mode, and Escape cancels. Ghostty's terminal
+entry explicitly advertises clipboard support. Local and SSH sessions use the
+same bindings without requiring wl-copy or pbcopy on the remote host. The
+terminal's clipboard permission policy still applies.
+
 ## Portable applications
 
 `nix run .#portable-apps` lists the portable commands for the current platform,
