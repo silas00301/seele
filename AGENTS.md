@@ -7,7 +7,7 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - NixOS host `nerv` (`x86_64-linux`)
 - nix-darwin host `asuka` (`aarch64-darwin`)
 - Home Manager profiles shared by both hosts and specialized by platform/host
-- local packages (`codexbar`, `nixvim`, `spt-st`, `t3code-nightly`), the `seele-shell` submodule package, and overlays
+- local packages (`codexbar`, `nixvim`, `pipewire-nothing`, `spt-st`, `t3code-nightly`), the `seele-shell` submodule package, and overlays
 
 Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-shell` for changes inside the shell submodule, for the shell's design tokens and shared QML components, and for its rebuild-ready commit, push, gitlink, and transitive input lock flow. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
 
