@@ -33,6 +33,7 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Use vi-shaped navigation: `h/j/k/l`, a space leader where applicable, and the same directional geometry across editor, multiplexer, and window manager.
 - Favor direct numbered workspaces/tabs, predictable modifier layers, and shortcuts that compose navigation, move, and resize actions.
 - Favor fuzzy search, frecency, previews, command palettes, and session launchers over deep menus or manual path traversal.
+- In Yazi, keep Markdown previews and Git status available; use `g D` to copy a selected-versus-hovered patch and `c m` for the explicit permissions prompt.
 - Focus a searchable popup's query field when it opens and select any retained query so typing starts a fresh search immediately.
 - Keep frequent actions fast and reversible. Automate routine cleanup, session setup, refetching, and integration work.
 - Let the desktop change itself: a session that edits this flake should open in the repository, rebuild on its own when the work is done, and then ask before recording it. Generate the commit message from the repository's own history and keep the decision to commit with the user.
