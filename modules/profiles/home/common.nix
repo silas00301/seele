@@ -8,7 +8,6 @@ let
       pkgs.nerd-fonts.geist-mono
       pkgs.maple-mono.NF-CN
       pkgs.vue-language-server
-      pkgs.glow
       pkgs.obsidian
       pkgs.nixd
     ];
@@ -37,6 +36,7 @@ let
       modules.fzf
       modules.git
       modules.github-cli
+      modules.glow
       modules.home-manager
       modules.hunk
       modules.jq

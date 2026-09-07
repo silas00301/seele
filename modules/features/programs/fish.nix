@@ -115,6 +115,7 @@ in
       "gh-dash"
       "git"
       "github-cli"
+      "glow"
       "hunk"
       "jq"
       "jujutsu"
