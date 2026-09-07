@@ -437,6 +437,34 @@
         };
       };
       servers = {
+        bashls = {
+          enable = true;
+          settings.bashIde = {
+            shellcheckPath = "${pkgs.shellcheck}/bin/shellcheck";
+            shfmt.path = "${pkgs.shfmt}/bin/shfmt";
+            explainshellEndpoint = "";
+          };
+        };
+        basedpyright = {
+          enable = true;
+          settings.basedpyright = {
+            disableOrganizeImports = true;
+            analysis = {
+              diagnosticMode = "openFilesOnly";
+              diagnosticSeverityOverrides = {
+                reportUnusedImport = "none";
+                reportUnusedVariable = "none";
+              };
+            };
+          };
+        };
+        ruff = {
+          enable = true;
+          onAttach.function = ''
+            -- basedpyright owns Python hover; Ruff owns lint fixes and formatting.
+            client.server_capabilities.hoverProvider = false
+          '';
+        };
         lua_ls = {
           enable = true;
           settings.telemetry.enable = false;

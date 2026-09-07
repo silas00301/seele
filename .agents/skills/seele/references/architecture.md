@@ -143,6 +143,16 @@ The per-system `pkgs` set uses unstable nixpkgs, the repository overlays, unfree
 
 ## Packages and assets
 
+`modules/packages/_nixvim/config.nix` enables Bash and Python services in the
+shared editor package on both platforms. Bash uses `bashls` with explicit
+nixpkgs ShellCheck and shfmt paths, and keeps remote explainshell requests off.
+Python uses basedpyright for type analysis, completion, navigation and hover;
+Ruff supplies lint fixes, import organization and formatting through the
+existing LSP formatting integration. Basedpyright's unused import/variable
+reports and import organizer are disabled where Ruff already owns that work,
+and Ruff's hover capability is disabled. Project Python and Ruff configuration
+still controls the servers; no Python interpreter or environment is hard-coded.
+
 `modules/packages/seele-lock.nix` wires the `seele-shell` submodule flake's Linux-only `lock` package into this flake. Its small Quickshell configuration lives in the submodule's `projects/lock/` directory and acquires `ext-session-lock-v1` directly through `WlSessionLock`, with one surface per output. The wrapper rejects duplicate clients and waits for the lock's `secure` signal, so suspend does not proceed until the compositor confirms that every output is covered. Quickshell's native PAM bridge drives the `seele-lock` stack without passing passwords through a command line. The surface shares Seele Shell's generated theme and wallpaper, renders password, failure, and YubiKey prompts in place, and keeps the session actions behind one power menu.
 
 The external lock package copies the shell's material token block rather than maintaining a parallel auth theme: the wallpaper stays unblurred, while the profile marker, power trigger, and power popup use the same 8px geometry, translucent fill, accent border, wash, grain, and interaction tints. The external lock package generates its grain tile from the shell's seeded script during the build, so both packages use the same reproducible texture without committing a binary asset.
