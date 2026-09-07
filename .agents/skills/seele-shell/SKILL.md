@@ -77,7 +77,9 @@ history. Keep DND, history, timestamps, and pins across QML reloads through
 `PersistentProperties`; never persist message text or codes to disk.
 
 Both views group by desktop entry (falling back to app name), show overlapping
-cards, and expand independently. Toasts have individual card material with no
+cards, and expand independently. `stackedRows` returns one row per group whether
+it is open or shut, so opening a stack grows that group's own card instead of
+inserting rows the list would reflow around. Toasts have individual card material with no
 shared backdrop. A toast close hides it; panel dismissal closes it. Named
 actions, including Reply, invoke the sender's app interface. Verification codes
 copy explicitly without dismissal. Preserve urgency, local images, progress,
@@ -119,127 +121,46 @@ year, and locale, but computes times, offsets, and pins on every `refresh` line.
 Both workers exit on stdin EOF. Clock's timezone conversions remain in its own
 single-threaded process because libc's `TZ` state is process-global.
 
-## Draw from the shell's design tokens
+## Draw the surface in the shell's own vocabulary
 
-`projects/shell/shell.qml` opens with the shell's whole visual vocabulary, and
-every surface below it reads from that block rather than deciding for itself:
+Every visual decision — which type step, which spacing, which elevation, which
+component, how a group is composed, how the pointer is reported — belongs to the
+[`seele-style` skill](../seele-style/SKILL.md). Read it before drawing or
+restyling any surface. What follows is only what that vocabulary does not cover:
+the parts of this shell whose behaviour, not appearance, has to be preserved.
 
-- **Type** — `textMicro` through `textHero`. Steps are named for the role they
-  play. A glyph normally takes the step above the text beside it; a glyph set
-  in a well takes the step below, because the well carries the weight.
-- **Weight** — `weightLight`, `weightRegular`, `weightMedium`, `weightStrong`.
-  Nothing sets `font.bold`.
-- **Tracking** — `trackingLabel`, for uppercase section rules only.
-- **Space and size** — `spaceTight` through `spaceLarge`, `cardPadding`, and the
-  three control heights `chipHeight`, `controlHeight`, `rowHeight`, beside the
-  existing `radius`, `panelMargin`, `panelSpacing`, and `panelHeaderHeight`.
-- **Elevation** — `panelColor`, `cardColor`, `rowColor`, `wellColor`,
-  `floatColor`, `cardBorder`, and `separatorColor`. Depth is built out of one
-  ink, `crust`: chrome is cut out of the wallpaper with it and wells are cut
-  back to it.
-- **Edges** — `panelBorder` grounds a surface in that ink, `edgeLight` is the
-  hairline of light inside it, and `edgeCrown` is the brighter line along the
-  top. No edge carries the accent.
-- **Interaction** — `hoverColor` is the neutral light wash that reports the
-  pointer. Apply it directly only over transparency; a filled control uses
-  `hoveredColor(<resting fill>)` so the wash remains visibly composited over
-  its material. `pressColor`, `selectedColor` and `activeTint` report state in
-  accent. A state that is not hover never borrows `hoverColor`. An animated
-  fill that rests on nothing rests on `clearColor`, or on `clearDanger` where
-  the state it fades from is red — never on `transparent`, because Qt
-  interpolates a colour channel by channel and `transparent` is black, so a
-  tint animated against it is dragged through grey at both ends of the fade.
-- **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
-  control that travels.
+The AI cockpit is a readout. Its session row is one card with a cell per
+harness — a lit dot and a name, beating only while that session works or waits,
+a well in the card while nothing runs. A lit cell answers the pointer and
+focuses its session through `seele-control agent-focus`, which walks the
+record's pid up through `/proc` to the terminal holding it; a finished record
+has no window left, so only a running session takes the pointer cursor.
+`agentIndicators()` is what the row draws: the launchers CodexBar reports, plus
+any harness that published lifecycle state without one. Launching lives in
+`seele-agent`, `seele-shellctl agent`, the `launchAgent` IPC method, and the
+menu bar entry's right click, not in the panel.
 
-Assemble a surface from the shared components rather than repeating their
-parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
-detail, trailing slot), `SectionLabel`, `SectionRule` (that label with the
-group's live summary at the far end and, where the group folds, the chevron and
-the click target that fold it), `MeterBar`, `CardEdge`, `PanelSurface`,
-`SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
-`RefreshGlyph`, `CenteredGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
-`ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
-all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
-the wash under the content, the edge and the film over it.
-
-A `HoverTip` on a control inside a panel needs `inOverlay: true`; without it the
-menu bar's guard hides the tip whenever the panel is open.
-
-A card, row or tile that reports the pointer takes that state from a
-`HoverHandler` on the surface itself, never from a covering
-`MouseArea.containsMouse`. Qt hands a hover event to one item, so a control the
-surface carries takes it away from the area underneath and the surface goes
-cold under a pointer that is still on it. Keep the `MouseArea` for the click
-and the press — including where it is deliberately inset, as the Tailscale
-card's is to leave its switch alone — and ask the handler whether the pointer
-is there. The control doing the stealing is often not written inline: the
-Control Center's audio card is covered by two `ControlLevel` instantiations,
-each a hover area, and a `ModuleDragArea` is a `MouseArea` under another name,
-so grepping for `MouseArea` misses both.
-
-Two more ways a surface goes quiet under the pointer. A fill that branches on
-state before hover — `active ? accent : hovered ? ...` — can never report a
-pointer on an active control; lay the neutral hover wash over the state as its
-own child instead of making it another branch. And a highlight inset inside its
-row leaves a dead line above and below itself, which the spacing between rows
-widens into a band; a row highlight takes the row's full height.
+`AgentMark` draws a harness or provider as its own vendored SVG, rasterized well
+above the size it is drawn at because the OpenAI knot loses its loops in a 24px
+raster squeezed into the menu bar. `agentMark()` maps an id to a file and
+returns an empty string for anything unknown, which falls back to
+`agentBadge()`'s two letters. Adding a mark means the SVG beside `shell.qml`, an
+`install` line and the `installCheckPhase` mark loop in `package.nix`, and an
+entry in `agentMark()`.
 
 The Control Center's media module and the Now Playing panel it opens draw the
 same `MediaBody` at the same `mediaBodyHeight`, so there is one place to change
 what a track looks like. The card wraps it in a module surface with hover and a
 `ModuleDragArea`; the panel puts it under a `PanelHeader`. Neither arranges the
-parts itself. Their player comes from one root selection. The panel exposes that
-selection through `MediaPlayerPicker` when more than one resumable player is on
-the bus, and the Control Center follows it.
-
-Hover cannot be verified by warping the cursor with `hl.dsp.cursor.move`: the
-compositor delivers a pointer event only when the warp crosses into a different
-surface, so consecutive moves inside one panel leave the shell reading the first
-position. Bounce off an unrelated surface between samples, then diff `grim`
-captures against a pointer-away baseline.
-
-The AI cockpit is a readout. Its session row is one card with a cell per
-harness — a lit dot and a name, beating only while that session works or waits,
-a well in the card while nothing runs — and no cell answers a click, so none of
-them takes the pointer cursor. `agentIndicators()` is what the row draws: the
-launchers CodexBar reports, plus any harness that published lifecycle state
-without one. A lit cell answers the pointer and focuses its
-session through `seele-control agent-focus`, which walks the record's pid up
-through `/proc` to the terminal holding it; a finished record has no window
-left, so only a running session takes the pointer cursor. Launching lives in
-`seele-agent`, `seele-shellctl agent`, the `launchAgent` IPC method, and the
-menu bar entry's right click, not in the panel.
-
-`AgentMark` draws a harness or provider as its own vendored SVG, rasterized
-well above the size it is drawn at because the OpenAI knot loses its loops in a
-24px raster squeezed into the menu bar. `agentMark()` maps an id to a file and
-returns an empty string for anything unknown, which falls back to
-`agentBadge()`'s two letters. The marks are flat: state belongs to the beating
-bar under a badge and to the tier colour on a capacity's number, not to the
-mark. Adding one means the SVG beside `shell.qml`, an `install` line and the
-`installCheckPhase` mark loop in `package.nix`, and an entry in `agentMark()`.
-
-Size a panel from its content — `implicitHeight: <content>.implicitHeight +
-root.panelMargin * 2`, with the content column anchored left, right and top.
-Where a panel must state a height, build it from the tokens rather than a
-counted constant, and derive any viewport inside it from the same terms.
-
-`projects/lock/`, `projects/greeter/`, and `projects/polkit/` are separate
-clients that mirror the subset of these tokens they use. Keep a value they
-share identical to the shell's, and drop a token from their block when nothing
-in that client reads it.
-
-A palette colour a client reads has to arrive from the parent as well: the
-generated `theme.json` in `modules/features/programs/seele-shell.nix` and
-`seele-greeter.nix` carries the named palette entries, and a client that reads
-a new one needs both the key there and the assignment in its own `FileView`.
+parts itself. Their player comes from one root selection, which the panel
+exposes through `MediaPlayerPicker` when more than one resumable player is on
+the bus.
 
 The grain film is generated at build time by `seele-tools grain`, in
-`projects/tools/src/grain.rs`. It is a seeded two-octave tile — fine noise
-drawn as the mean of several samples, clumped by a coarse wrapping octave —
-and both octaves wrap, so the tile stays seamless. Tune `grainOpacity` with it:
-a finer film needs a little more of it to read at all.
+`projects/tools/src/grain.rs`. It is a seeded two-octave tile — fine noise drawn
+as the mean of several samples, clumped by a coarse wrapping octave — and both
+octaves wrap, so the tile stays seamless. Tune `grainOpacity` with it: a finer
+film needs a little more of it to read at all.
 
 Use the narrowest package build that contains the change:
 

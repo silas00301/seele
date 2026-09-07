@@ -9,7 +9,12 @@ Seele is a personal, multi-platform dendritic Nix flake for one user (`silash`).
 - Home Manager profiles shared by both hosts and specialized by platform/host
 - local packages (`codexbar`, `nixvim`, `pipewire-nothing`, `spt-st`, `t3code-nightly`), the `seele-shell` submodule package, and overlays
 
-Use the `seele` skill in `.agents/skills/` for the workflow and architecture map. Use `seele-shell` for changes inside the shell submodule, for the shell's design tokens and shared QML components, and for its rebuild-ready commit, push, gitlink, and transitive input lock flow. Use `seele-taste` when choosing tools, UI defaults, keybindings, automation, privacy settings, or cross-platform equivalents that the request leaves open.
+Skills live in `.agents/skills/`:
+
+- **`seele`** — the change workflow and the architecture map. Read it for any Nix change, and its [architecture map](.agents/skills/seele/references/architecture.md) before touching composition, profiles, module arguments, packages, overlays, or hosts.
+- **`seele-shell`** — anything under `seele-shell/`: the shell's subsystems, its focused builds and tests, and the submodule commit, push, gitlink, and lock flow that makes a shell change rebuild-ready.
+- **`seele-style`** — how any shell surface is drawn: tokens, shared components, panel composition, hover, the menu bar. Read it before drawing, restyling, or reviewing a panel, bar entry, card, list, toast, OSD, or auth screen.
+- **`seele-taste`** — the default when a request leaves a tool, keybinding, automation, privacy setting, product behaviour, or cross-platform equivalent open.
 
 ## Before editing
 
@@ -32,40 +37,7 @@ Active profiles are `common`, `linux`/`darwin`, and `nerv`/`asuka`. Host constru
 
 `modules/flake/core.nix` owns per-host `seele.hosts.<name>.username` values, `seele.catppuccin`, supported systems, unstable `pkgs`, and OS-matched `pkgs-stable`. Host constructors pass `username`, `currentSystem`, `selfPackages`, `pkgs-stable`, `catppuccin`, and `configName` to Home Manager. Reuse these arguments instead of re-importing nixpkgs or hard-coding store paths.
 
-Both hosts run Determinate Nix. `modules/features/system/determinate.nix` publishes `flake.modules.nixos.determinate` and `flake.modules.darwin.determinate` around the `determinate` input's modules, and the NixOS and Darwin `common` profiles import them. How Nix is configured then differs by platform. The NixOS module keeps `nix.settings` and `nix.registry` working by redirecting the generated `/etc/nix/nix.conf` to `/etc/nix/nix.custom.conf`. The nix-darwin module forces `nix.enable` off, so a Darwin leaf that configures Nix writes `determinateNix.customSettings` and `determinateNix.registry` instead; anything left in `nix.settings` there is silently dropped. Keep the `determinate` input free of a nixpkgs `follows`. On `asuka`, Determinate Nix itself comes from Determinate's macOS installer, because the nix-darwin module only configures an existing installation. `flake.modules.homeManager.determinate` covers every machine rather than only the two hosts: the Home Manager `common` profile imports it, and the portable builder adds it to every standalone evaluation. It forces `nix.package = null` because Home Manager's NixOS integration otherwise supplies its own package, ensuring no user profile carries a second Nix onto a managed or unmanaged machine.
-
-Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
-
-On `nerv`, `Super + Ctrl + S` invokes `seele-shellctl uris`. The shell freezes
-one image per output and numbers OCR-detected URIs, QR codes and barcodes globally.
-Code captions show decoded text below the code, or above when space is short.
-Selection opens URIs or copies other text; Ctrl + number copies any selection.
-The submodule owns
-the QML overlay and resident Rust OCR worker; the parent owns the Hyprland
-binding. Keep capture and OCR dependencies in official nixpkgs. Captures are
-private runtime files, never screenshot-library or persistent-cache entries.
-
-Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
-notification server; mako stays disabled. The shell handles actions, resident
-and transient lifetimes, a 30-second default toast timeout, permanent/pinned
-toasts, app stacks, local images, progress, and verification-code copying.
-Notification state and DND belong to the QML store rather than Rust's hardware
-status feed. History and pins survive QML reloads in memory; notification text
-is never written to disk. See the `seele-shell` skill for the protocol and tests.
-
-Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
-live controls, audio device selection, window/workspace search, keybindings,
-and direct shell commands. For extension changes, read its `README.md`; the
-shell package bundles the manifest's command entries and runs its focused
-checks. Home Manager installs it through `xdg.dataFile`. The shell Audio panel
-and Vicinae share `seele-control audio-outputs` for simultaneous playback;
-`projects/tools/src/audio_route.rs` owns the session-local PipeWire combined
-sink and its cleanup. Test routing on the private server in
-`seele-shell/tests/audio-routing.sh`.
-
-Portable applications are the second way a feature reaches outside this flake. `modules/flake/portable.nix` declares `seele.portable.<app>`, and each program leaf worth running on an unmanaged machine contributes one entry beside its `flake.modules.homeManager` definition. An entry names the Home Manager features to evaluate, and the builder wraps the resulting binary so it materializes the generated `.config` tree as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<app>` and puts that evaluation's own `home.path` on `PATH`. The evaluation is standalone rather than host-derived, so a feature the app reads through has to be listed or its options resolve to Home Manager defaults instead of the values a host would give them.
-
-Theme ownership is split deliberately. Catppuccin themes supported application ports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, fonts, and active targets without a Catppuccin module. Qt's qt5ct and qt6ct settings reuse the Catppuccin Papirus icon theme. `stylix.autoEnable` stays off, and each platform profile lists its active Stylix targets explicitly so dormant applications do not add configuration or packages.
+The subsystems themselves — Determinate Nix per platform, remote shell access, the frozen URI picker, native notifications, the Vicinae extension, portable applications, and theme ownership between Catppuccin and Stylix — are described in the [architecture map](.agents/skills/seele/references/architecture.md). Read it before changing any of them.
 
 ## Editing conventions
 
@@ -87,7 +59,12 @@ Theme ownership is split deliberately. Catppuccin themes supported application p
 
 ## Keep agent guidance current
 
-After every repository change, review `AGENTS.md` and `.agents/skills/seele/` against the resulting codebase. When a change establishes or reverses a configuration preference, also review `.agents/skills/seele-taste/`. Update guidance when architecture, profiles, outputs, commands, validation, conventions, workflows, or preferences changed.
+After every repository change, review `AGENTS.md` and `.agents/skills/seele/` against the resulting codebase. Update guidance when architecture, profiles, outputs, commands, validation, conventions, workflows, or preferences changed. Two of the other skills track things a change can silently invalidate:
+
+- A change that adds, renames or retires a token or a shared component, or that settles how a surface is composed, belongs in `.agents/skills/seele-style/`.
+- A change that establishes or reverses a preference about tools, interaction, product behaviour, or privacy belongs in `.agents/skills/seele-taste/`.
+
+Each meaning lives in exactly one of these files. When you find the same rule written in two, delete the copy and leave a pointer.
 
 ## Validation
 

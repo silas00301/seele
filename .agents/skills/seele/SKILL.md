@@ -99,7 +99,7 @@ Platform boundaries:
 
 ## 6. Synchronize agent guidance
 
-After code/configuration changes, compare the repository with `AGENTS.md`, this skill, and [the architecture map](references/architecture.md). If the change establishes or reverses a tool, interaction, visual, workflow, or privacy preference, also compare the [`seele-taste` skill](../seele-taste/SKILL.md). Update guidance when architecture, profiles, outputs, commands, validation, conventions, workflows, or preferences changed.
+After code/configuration changes, compare the repository with `AGENTS.md`, this skill, and [the architecture map](references/architecture.md). A change that touches a token, a shared component, or how a surface is composed also belongs in the [`seele-style` skill](../seele-style/SKILL.md); one that establishes or reverses a tool, product, or privacy preference belongs in [`seele-taste`](../seele-taste/SKILL.md). Update guidance when architecture, profiles, outputs, commands, validation, conventions, workflows, or preferences changed, and keep each rule in exactly one of those files.
 
 ## 7. Report precisely
 
