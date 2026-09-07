@@ -312,6 +312,19 @@ The wrapper does not point applications at the store tree directly, because the 
 
 The mechanism has two known limits. It re-roots `XDG_CONFIG_HOME` only, so a Home Manager module that writes outside `.config` — nushell's Darwin path under `~/Library` is the example — is unconfigured in its wrapper on that platform. And features that only make sense as part of a running system, the compositor, the greeter, the shell, and the browsers with heavy profile state, have no portable entry.
 
+## Yazi file inspection
+
+`modules/features/programs/yazi.nix` activates the installed Git and Glow
+plugins: Git fetchers cover files and directories, and Markdown files render
+in the preview pane. `g D` copies a patch comparing the selected and hovered
+files, while `c m` opens the permissions prompt. Plugin executables are on
+Yazi's own wrapped PATH so these actions also work in `nix run .#yazi`. The pinned
+Glow plugin receives a local compatibility patch for Yazi's current command,
+preview and event APIs; fail-on-mismatch substitutions require review when
+upstream changes, and the package's existing post-patch hook is preserved. Preview
+wrapping follows the pane width, and the inherited Glamour theme is used when
+available.
+
 ## Validation boundaries
 
 `nix run .#check` formats the whole checkout, inspects flake outputs, and
