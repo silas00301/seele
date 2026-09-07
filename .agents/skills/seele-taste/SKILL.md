@@ -104,6 +104,7 @@ When the request does not select a tool, preserve these active defaults:
 | Nix distribution | Determinate Nix everywhere this flake reaches: both hosts through its NixOS and nix-darwin modules, and every Home Manager and portable evaluation through its Home Manager module, so no user profile carries a Nix of its own. This flake's own nixpkgs stays the `nixpkgs` registry pin. Configure Nix through `nix.settings` on NixOS and `determinateNix.customSettings` on Darwin |
 | Browser | Zen as the primary experience; Brave as a compatible secondary browser |
 | Logitech peripherals | OpenLogi on Linux; Logi Options+ on macOS |
+| Notes and voice memos | Standalone Seele Notes, with local storage and the identical shared shell style |
 | App launchers | Seele's native unified menu with Vicinae on Linux and Raycast on macOS |
 
 Use Vicinae's standard launcher layout; Seele Shell carries the compact native desktop UI. Prefer explicit package paths in generated services and bindings when execution must be independent of `PATH`. Preserve interoperability rather than forcing every tool into one implementation.
