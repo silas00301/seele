@@ -25,6 +25,15 @@ The flake exposes:
 
 `modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently. `modules/flake/submodule.nix` contributes `nix run .#update-submodule`: it requires a clean submodule and verifies its revision against freshly fetched origin bookmarks, commits only the parent gitlink through Git because Jujutsu ignores submodules during snapshots, imports that commit into the colocated repository, advances `main` when that bookmark exists, and refreshes the shell's transitive inputs in the parent lock. `inputs.self.submodules` includes the gitlink target in the parent source, while the relative `seele-shell` path entry in `flake.lock` remains unchanged across source-only shell revisions.
 
+## Markdown reading
+
+`modules/features/programs/glow.nix` configures the common profile's Markdown
+reader and publishes `nix run .#glow`. The Catppuccin Glamour port supplies the
+shared flavor, with 100-column wrapping and mouse support; hidden and ignored
+files remain out of the browser. Its wrapper chooses the runtime XDG config
+location on both platforms, including a portable config farm, and preserves an
+explicit `GLOW_CONFIG_HOME` override. Portable Fish also includes this feature.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:
