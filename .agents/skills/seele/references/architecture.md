@@ -277,6 +277,11 @@ Bluetooth follows the same hardware gate in both places: without a BlueZ adapter
 
 ## Portable applications
 
+`nix run .#portable-apps` lists the portable commands for the current platform,
+derived from `seele.portable` without building them. Pass `-- --all-systems`
+for every platform, `-- --json` for metadata, or `-- <command>` to inspect one
+command's included features, executable, platforms, and run command.
+
 `modules/flake/portable.nix` is the second route from a feature to a public output, and it exists so `nix run github:silas00301/seele#<command>` reaches a configured application on a machine this flake does not manage. Each program leaf that is worth running that way contributes `seele.portable.<command>` beside its `flake.modules.homeManager` definition, named after the command rather than the feature — `btm` rather than `bottom`, `jj` rather than `jujutsu` — because the attribute is what gets typed. An entry carries the Home Manager features to evaluate, the binary to wrap, the systems to publish for, and any extra environment.
 
 The builder evaluates those features through `home-manager.lib.homeManagerConfiguration` rather than reading them out of a host, so the wrappers stay independent of `nerv` and `asuka` and of each other. That evaluation imports the same third-party Home Manager modules the host constructors do and receives the same argument set, including `catppuccin`, `pkgs-stable`, and `selfPackages`, so a feature keeps working unchanged. Its base list also carries `homeModules.catppuccin` and `homeModules.determinate`, the two features that belong to every evaluation rather than to an entry's own module list. It is a genuinely standalone evaluation, which is the one thing an entry has to account for: a feature that is merely present on a host has to be listed here, or the options it defines resolve to Home Manager defaults instead. Jujutsu's pager is chosen by whether bat is enabled, tmux launches fish and reaches for television and sesh, and fish's aliases name most of the common profile, so each of those entries lists what it reads through. `sesh` also asserts on `programs.fzf.tmux.enableShellIntegration`, which the tmux feature is what sets, so an entry that names sesh has to name tmux and fzf too.

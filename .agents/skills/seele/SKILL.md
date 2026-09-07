@@ -41,6 +41,11 @@ Search before introducing a second setting or package:
 rg -n 'option-or-package-name' --glob '*.nix' modules
 ```
 
+Use `nix run .#portable-apps` to discover configured portable commands for the
+current platform. Add `-- --all-systems` to include other platforms, `-- --json`
+for structured metadata, or `-- <command>` for its features and run command.
+The catalog reads declarations without building the listed applications.
+
 ## 3. Implement narrowly
 
 - Keep a feature's Home Manager, system, and flake contributions together when they express one concern.
