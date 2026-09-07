@@ -291,6 +291,11 @@ The mechanism has two known limits. It re-roots `XDG_CONFIG_HOME` only, so a Hom
 
 ## Validation boundaries
 
+`nix run .#check` formats the whole checkout, inspects flake outputs, and
+evaluates the native host. `-- --build` also builds that host without a result
+link or activation. The app uses the caller's Nix distribution and keeps
+`flake.lock` unchanged; unsupported host platforms only check flake outputs.
+
 The interactive rebuild abbreviations remain:
 
 - NixOS: `nh os switch`
