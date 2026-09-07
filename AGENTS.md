@@ -37,7 +37,10 @@ Both hosts run Determinate Nix. `modules/features/system/determinate.nix` publis
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
 On `nerv`, `Super + Ctrl + S` invokes `seele-shellctl uris`. The shell freezes
-one image per output and numbers OCR-detected URIs globally. The submodule owns
+one image per output and numbers OCR-detected URIs, QR codes and barcodes globally.
+Code captions show decoded text below the code, or above when space is short.
+Selection opens URIs or copies other text; Ctrl + number copies any selection.
+The submodule owns
 the QML overlay and resident Rust OCR worker; the parent owns the Hyprland
 binding. Keep capture and OCR dependencies in official nixpkgs. Captures are
 private runtime files, never screenshot-library or persistent-cache entries.

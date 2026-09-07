@@ -52,7 +52,10 @@ per output using the shared tokens and components. `projects/tools/src/uri/`
 implements the separate resident Rust worker. It captures outputs concurrently
 with nixpkgs Grim, displays and recognizes the same uncompressed PPM pixels,
 and streams numbered URIs from a bounded pool of warmed nixpkgs Tesseract
-engines. Normalized boxes map to each output's logical size. Escape, output
+engines. The same pool scans whole outputs with nixpkgs ZBar for QR codes and
+barcodes, alongside ordinary OCR. Code captions show decoded text below the
+code or above when space is short. Selection opens URIs or copies other text;
+Ctrl + number copies either through wl-copy. Normalized boxes map to each output's logical size. Escape, output
 changes, EOF and graceful termination retire the private runtime captures. No
 new flake input or Cargo dependency is needed. The shell package runs real OCR
 fixtures and numeric-selection tests in its install checks.

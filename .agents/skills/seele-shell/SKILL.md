@@ -45,6 +45,13 @@ stable across outputs, and
 wait for the complete number set before auto-opening a typed number. Enter
 resolves an exact numeric prefix; never use a timeout to guess user intent.
 
+The same pool runs nixpkgs ZBar on whole outputs for QR codes and barcodes.
+Keep ordinary OCR active alongside code detection. Code payloads use exact
+decoded text, without OCR prose cleanup. Number selects a URI or copies other
+text; Ctrl + number copies either and stays latched through multi-digit input.
+Show code text below its box, or above when the output has insufficient room.
+Pass clipboard text through stdin to wl-copy and render it as plain text.
+
 Images are private runtime files and are removed on cancellation, EOF, errors,
 and graceful termination. Guard messages by generation so an old scan cannot
 reopen a dismissed overlay. Boxes are normalized within each captured output;
