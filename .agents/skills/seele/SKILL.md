@@ -53,6 +53,10 @@ rg -n 'option-or-package-name' --glob '*.nix' modules
 - Preserve state versions, hardware data, lock data, identity/signing values, and live-machine state unless the request requires a change.
 - Update `flake.lock` only for intentional input changes.
 
+For repository authoring, `nix develop` provides the configured formatter, Nix
+language server and linters, ShellCheck, jq, Python, Jujutsu, and GitHub CLI. It
+adds no Nix distribution and runs no setup or activation hook.
+
 ## 4. Format the whole repository
 
 ```sh

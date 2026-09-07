@@ -15,6 +15,7 @@ The flake exposes:
 - `packages.<system>.{seele-greeter,seele-lock,seele-polkit}` on Linux, re-exported from the external shell repository
 - `packages.x86_64-linux.{codexbar,t3code-nightly}`, the packaged CodexBar CLI and T3 Code nightly AppImage
 - `formatter.<system>` backed by `nixfmt-tree`
+- `devShells.<system>.default`, a quiet `nix develop` environment with that formatter, nixd, Statix, deadnix, ShellCheck, jq, Python, Jujutsu, and GitHub CLI; it reuses the installed Nix distribution
 - `apps.<system>.update-submodule`, which updates a submodule gitlink without folding unrelated parent changes into its commit
 - `overlays.zjstatus`
 - `modules.<class>.<name>` deferred modules from `flake.modules`
