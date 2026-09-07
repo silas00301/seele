@@ -67,6 +67,12 @@ Inspect `jj diff` afterward and retain the repository-wide formatting result.
 
 ## 5. Validate incrementally
 
+From the checkout root, `nix run .#check` runs the whole-repository formatter,
+flake output checks, and native host evaluation below. Add `-- --build` to
+build that host without activation. It uses the caller's Nix distribution and
+never updates `flake.lock`. Systems without a host only check flake outputs;
+`--build` requires x86_64-linux or aarch64-darwin.
+
 ```sh
 nix flake show --no-write-lock-file
 nix flake check --no-build --no-write-lock-file
