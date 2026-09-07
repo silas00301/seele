@@ -128,6 +128,7 @@ Use Vicinae's standard launcher layout; Seele Shell carries the compact native d
 ## Privacy and security defaults
 
 - Disable telemetry, analytics, studies, and install tracking when the option exists and functionality does not depend on them.
+- Keep persistent editor undo in private local state, exclude temporary and common secret paths, and preserve a buffer-local opt-out for other sensitive edits.
 - Prefer tracking protection, content blocking, privacy-oriented search, and role-separated browser containers/spaces.
 - Delegate secrets to an existing password manager or hardware-backed mechanism; preserve SSH signing, YubiKey, Touch ID, and trust prompts.
 - Reuse a successful graphical login to unlock the user's existing secret store when its password matches the login password; a non-Plasma session must still start the PAM handoff bridge rather than prompting again later.

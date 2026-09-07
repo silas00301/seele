@@ -367,3 +367,16 @@ The interactive rebuild abbreviations remain:
 They activate live state and are not validation commands. Use direct `nix flake`, `nix eval`, and `nix build` commands from the skill. Darwin Home Manager theme modules can force generated Darwin assets, so Linux evaluation may fail with a platform mismatch; validate the complete `asuka` closure on Darwin.
 
 Evaluating this flake at all now needs `flakehub.com` and `install.determinate.systems` reachable, because the `determinate` input and its own inputs resolve from there. A sandbox that allows GitHub but not those hosts cannot lock or evaluate the flake; report that boundary instead of dropping the input.
+
+## Editor undo state
+
+Nixvim sources `modules/packages/_nixvim/undo.vim` for persistent undo under
+`stdpath('state')/undo`, using an owner-only directory and full-path filenames.
+Temporary/runtime paths, environment files, private key files and common
+credential directories are excluded, including symlink destinations and renamed
+buffers. An explicit `:setlocal noundofile` remains respected. Undo files retain
+previous text and Neovim never expires them automatically; this is private local
+editor state, never a flake asset. Validate persistence, permissions and exclusions
+with `python3 modules/packages/_nixvim/test-undo.py` using Neovim, or its existing
+Vim compatibility mode when Neovim is unavailable.
+

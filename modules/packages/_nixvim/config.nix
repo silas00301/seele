@@ -22,6 +22,8 @@
 
   globals.mapleader = " ";
 
+  extraConfigVim = "source ${./undo.vim}";
+
   opts = {
     number = true;
     relativenumber = true;
