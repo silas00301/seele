@@ -114,6 +114,7 @@ Use Vicinae's standard launcher layout; Seele Shell carries the compact native d
 
 - Favor two-space indentation where the language or formatter permits it, relative line numbers, smart-case search, and smart indentation.
 - Provide rich language intelligence: LSP, inlay hints, Treesitter, formatting, snippets, diagnostics, and contextual documentation.
+- Keep editor diagnostics and symbols in the existing Telescope search layer: lowercase `sd`/`ss` after the leader search the buffer/document, uppercase `sD`/`sS` search the workspace. Give shortcuts readable which-key descriptions.
 - Keep completion user-controlled: offer strong suggestions and fuzzy matching without silently accepting the first item.
 - Integrate navigation boundaries. Pane movement should flow between Neovim and tmux instead of trapping focus.
 - Prefer previews and structured dashboards for changes, pull requests, files, and sessions.
