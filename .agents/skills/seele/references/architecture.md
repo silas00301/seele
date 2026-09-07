@@ -130,6 +130,9 @@ Machine system settings live in `modules/hosts/asuka/system.nix`. JankyBorders i
 
 ## Arguments and package sets
 
+The shared Atuin feature owns contextual history and Fish history-key precedence;
+see [the history workflow](history.md) for behavior, lifecycle and validation.
+
 Host constructors select `seele.hosts.<name>.username` and pass all flake inputs plus:
 
 - the selected `username`
