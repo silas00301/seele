@@ -29,6 +29,26 @@ reaches the compositor issues one `hl.dsp` call — `hl.dsp.window.close({ windo
 on the Lua error the legacy form raises, so a wrong call is invisible until the
 action is tried by hand.
 
+## Keep frozen URI picking responsive
+
+`seele-shellctl uris` reaches `UriPicker.qml` and one `seele-shell-uris` layer
+surface per output. The separate Rust `seele-uri-worker` owns concurrent Grim
+PPM captures and a bounded pool of warmed Tesseract engines from nixpkgs. Its
+Rust grayscale and 1.5× enlargement pass preserves small URI punctuation. Keep
+OCR off the QML thread and display the exact pixels being recognized. Capture
+open shell panels and toasts before covering them, and preserve panel state
+across dismissal. Stream results into the retained ListModel, keep numbers
+stable across outputs, and
+wait for the complete number set before auto-opening a typed number. Enter
+resolves an exact numeric prefix; never use a timeout to guess user intent.
+
+Images are private runtime files and are removed on cancellation, EOF, errors,
+and graceful termination. Guard messages by generation so an old scan cannot
+reopen a dismissed overlay. Boxes are normalized within each captured output;
+never use desktop-global coordinates or assume every monitor shares a scale.
+`tests/uri-picker.sh` exercises real OCR, capture identity, strip boundaries,
+and cleanup, while `tests/uri-picker.js` covers selection and badge geometry.
+
 ## Preserve status model identity
 
 `projects/shell/SystemState.qml` owns the status fields and their startup
