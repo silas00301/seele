@@ -33,7 +33,8 @@ action is tried by hand.
 
 `seele-shellctl uris` reaches `UriPicker.qml` and one `seele-shell-uris` layer
 surface per output. The separate Rust `seele-uri-worker` owns concurrent Grim
-PPM captures and a bounded pool of warmed Tesseract engines from nixpkgs. Keep
+PPM captures and a bounded pool of warmed Tesseract engines from nixpkgs. Its
+Rust grayscale and 1.5× enlargement pass preserves small URI punctuation. Keep
 OCR off the QML thread and display the exact pixels being recognized. Capture
 open shell panels and toasts before covering them, and preserve panel state
 across dismissal. Stream results into the retained ListModel, keep numbers
