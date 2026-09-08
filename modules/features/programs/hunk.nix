@@ -1,7 +1,7 @@
 { ... }:
 let
   module = (
-    { pkgs, lib, ... }:
+    { config, pkgs, lib, ... }:
     let
       tomlFormat = pkgs.formats.toml { };
     in
@@ -11,7 +11,7 @@ let
       ];
 
       xdg.configFile."hunk/config.toml".source = tomlFormat.generate "config.toml" {
-        theme = "catppuccin-mocha";
+        theme = "catppuccin-${config.catppuccin.flavor}";
         vcs = "jj";
       };
 

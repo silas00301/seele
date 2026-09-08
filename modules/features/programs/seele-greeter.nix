@@ -20,7 +20,7 @@ let
           inherit username wallpaper;
           userName = username;
           displayName = config.users.users.${username}.description;
-          fontFamily = "Maple Mono NF CN";
+          fontFamily = config.stylix.fonts.monospace.name;
           base = colors.base.hex;
           mantle = colors.mantle.hex;
           crust = colors.crust.hex;
@@ -123,7 +123,7 @@ let
       };
 
       environment.etc."seele-greeter/theme.json".source = theme;
-      fonts.packages = [ pkgs.maple-mono.NF-CN ];
+      fonts.packages = [ config.stylix.fonts.monospace.package ];
 
       system.checks = [
         (pkgs.runCommandLocal "seele-greeter-hyprland-check" { nativeBuildInputs = [ pkgs.hyprland ]; } ''

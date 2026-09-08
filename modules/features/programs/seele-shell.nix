@@ -41,7 +41,7 @@ let
         "${package}/share/seele-shell/opencode-status.ts";
       xdg.configFile."seele-shell/theme.json".text = builtins.toJSON {
         inherit wallpaper;
-        fontFamily = "Maple Mono NF CN";
+        fontFamily = config.stylix.fonts.monospace.name;
         base = colors.base.hex;
         mantle = colors.mantle.hex;
         crust = colors.crust.hex;

@@ -286,9 +286,11 @@ Where a panel must state a height, build it from the tokens rather than a
 counted constant, and derive any viewport inside it from the same terms.
 
 `projects/lock/`, `projects/greeter/`, and `projects/polkit/` are separate
-clients that mirror the subset of these tokens they use. Keep a value they
-share identical to the shell's, and drop a token from their block when nothing
-in that client reads it.
+clients that mirror the subset of non-palette tokens they use. Their roots take
+fallback palette values and JSON assignment from `projects/shared/Palette.js`,
+which each package copies beside its root; do not restore local Catppuccin values
+or assignment loops. Keep another shared token identical to the shell's, and
+drop it from a client block when nothing there reads it.
 
 A palette colour a client reads has to arrive from the parent as well: the
 generated `theme.json` in `modules/features/programs/seele-shell.nix` and

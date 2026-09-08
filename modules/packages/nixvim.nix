@@ -14,6 +14,7 @@
         };
         extraSpecialArgs = {
           inherit pkgs-stable;
+          catppuccinPalette = inputs.catppuccin.packages.${system}.palette;
           catppuccin = config.seele.catppuccin;
         };
       };

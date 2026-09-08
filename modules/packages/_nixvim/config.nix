@@ -2,8 +2,14 @@
   lib,
   pkgs,
   catppuccin,
+  catppuccinPalette,
   ...
 }:
+let
+  colors =
+    (builtins.fromJSON (builtins.readFile "${catppuccinPalette}/palette.json"))
+    .${catppuccin.flavor}.colors;
+in
 {
   colorschemes.catppuccin = {
     enable = catppuccin.enable;
@@ -262,7 +268,7 @@
                 end
               '';
               color = {
-                fg = "#f38ba8";
+                fg = colors.red.hex;
               };
             }
           ];
