@@ -150,8 +150,11 @@ Keep ISO week arithmetic in UTC and local clock display in the system timezone.
 
 `projects/shared/Theme.qml` owns the shell and Notes visual vocabulary. Both
 entrypoints inherit it, and shared components receive it as `theme`. The shell
-keeps thin inline aliases for its existing instances. Every surface reads from
-that block rather than deciding for itself:
+keeps thin inline aliases for its existing instances. Quickshell rejects local
+imports that escape a packaged config root, so each package installs its own
+`shared/` directory below that root and rewrites the source tree's sibling
+import to `import "shared" as Shared`; keep an install check for that layout.
+Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
   play. A glyph normally takes the step above the text beside it; a glyph set
@@ -281,7 +284,7 @@ nix build .#lock --no-link --no-write-lock-file
 nix build .#polkit --no-link --no-write-lock-file
 ```
 
-The default package build compiles the Rust tools, runs `qmllint`, bundles the extensions, and runs the focused shell tests. Build every affected output when shared code changes. Use `nix develop -c test-shell` for a faster Rust and JavaScript loop, but finish with the relevant package build.
+The default package build compiles the Rust tools, runs `qmllint`, bundles the extensions, and runs the focused shell tests. `tests/feature-integrations.js` also proves that independently tested feature helpers remain wired into production `shell.qml`, installed by the package, and covered by its install checks; extend it when a feature adds another production seam. Build every affected output when shared code changes. Use `nix develop -c test-shell` for a faster Rust and JavaScript loop, but finish with the relevant package build.
 
 Inspect the submodule diff before crossing back into the parent:
 
