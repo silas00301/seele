@@ -39,6 +39,13 @@ Active profiles are `common`, `linux`/`darwin`, and `nerv`/`asuka`. Host constru
 
 The subsystems themselves — Determinate Nix per platform, remote shell access, the frozen URI picker, native notifications, the Vicinae extension, portable applications, and theme ownership between Catppuccin and Stylix — are described in the [architecture map](.agents/skills/seele/references/architecture.md). Read it before changing any of them.
 
+Shell integrations and local controls are documented in
+[the integration map](.agents/skills/seele/references/shell-integrations.md).
+GitHub reuses the existing `gh` login; Home Assistant reads a private local
+connection file. Neither puts credentials in QML or the Nix store. Their request
+workers stay separate from the hardware status stream. Clipboard actions use
+stdin and acknowledge completion; notification text remains in memory.
+
 ## Editing conventions
 
 - Follow nearby leaf style and let the flake formatter decide layout.
