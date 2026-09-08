@@ -1,6 +1,6 @@
 ---
 name: seele-style
-description: Seele Shell's visual language — the token block, the shared components, and how a surface is composed from them. Use when drawing, restyling, or reviewing any shell surface: a panel, a menu bar entry, a card, a list, a toast, an OSD, or the lock, greeter and polkit clients.
+description: Use this to build new applications and shell elements matching the rest of the ui
 ---
 
 # Seele's visual language
