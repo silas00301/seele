@@ -284,9 +284,11 @@ runs `qmllint` over the result, so a new shared component is picked up automatic
 a warning in one fails `nix build .#notes`.
 
 `projects/lock/`, `projects/greeter/` and `projects/polkit/` are separate clients that
-mirror the subset of these tokens they use. Keep a shared value identical to the shell's,
-and drop a token from their block when nothing in that client reads it. A palette colour
-a client reads also has to arrive from the parent: the generated `theme.json` in
+mirror the subset of non-palette tokens they use. Their roots take fallback palette values
+and JSON assignment from `projects/shared/Palette.js`, copied into each package; never put
+a Catppuccin value or a second assignment loop back in those roots. Keep another shared
+token identical to the shell's, and drop it when nothing in that client reads it. A palette
+colour a client reads also has to arrive from the parent: the generated `theme.json` in
 `modules/features/programs/seele-shell.nix` and `seele-greeter.nix` carries the named
 entries, and a client reading a new one needs both the key there and the assignment in
 its own `FileView`.
