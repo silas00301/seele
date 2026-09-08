@@ -24,10 +24,6 @@ let
           };
         };
       };
-
-      programs._1password-shell-plugins.plugins = with pkgs; [
-        gh
-      ];
     }
   );
 in

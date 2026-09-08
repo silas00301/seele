@@ -32,9 +32,8 @@ The submodule's `projects/home-assistant/README.md` documents the JSON schema.
 - Right-click the clock or use `seele-shellctl control focus` for focus/break
   presets, pause/resume and completion. `FocusTimer.qml`/`focus.js` retain deadlines
   only in memory across QML reloads; suspension counts toward elapsed time.
-- The native notification store owns timed DND, search and text copying. Timed
-  quiet periods expire without replaying the backlog. Manual DND replaces a timer.
-  Search and copying do not dismiss entries or persist message text.
+- The native notification store owns manual DND, app stacks and verification-code
+  copying. See the `seele-shell` skill for the restored 11:00 notification behavior.
 - Calendar arrows select days/weeks, Home returns to today, and Enter copies an
   ISO date. World-clock search uses Up/Down and Enter to copy a selected zone;
   Ctrl+Enter copies local time. Timestamps carry explicit UTC offsets.
@@ -45,7 +44,22 @@ The submodule's `projects/home-assistant/README.md` documents the JSON schema.
 - Copying network details is an explicit action. Clipboard payloads go through
   process stdin and UI success follows successful process completion.
 
+## Panel integration
+
+Ordinary panels use `WlrKeyboardFocus.OnDemand`, leaving the bar and click-away
+catcher available. Keep their namespaces in the blur rule in
+`modules/features/programs/hypr.nix`, including GitHub, Focus and Home Assistant.
+Changing QML alone cannot add compositor blur.
+
 ## Validation
+
+`tests/shell-load.sh` compiles the full shell with Quickshell and a private
+headless compositor, catching runtime type errors without starting the desktop.
+`tests/panel-layouts.js` renders production clock labels, checks the bounded
+address disclosure, and exercises focus buttons, keyboard controls and the
+notification button's shared hover tint in QtTest. `tests/focus-timer.sh` runs the real
+Quickshell timer through cold start, pause/resume and completion without touching
+the desktop or sending notifications.
 
 Run the focused JavaScript suites in `tests/` and the GitHub/Home Assistant Python
 suites with private fixtures. They are wired into the shell package and

@@ -254,6 +254,7 @@ Each of these has been hit at least once. The symptom is what to watch for.
   Cure: `SurfaceGrain`'s `inset`.
 - **A `Rectangle` asked to clip.** Symptom: content escapes the rounded corner. Cure:
   `ClippingRectangle`.
+- **An anchored click area inside a `Column`.** Symptom: labels overlap because Qt disables the positioner. Put the labels in a nested column and its full-size click area beside it, inside an `Item` sized from the labels.
 - **A panel following the focused monitor.** Symptom: an open surface jumps to another
   output when the pointer crosses a screen edge. Cure: record the output at open time.
 - **A tooltip hidden because a panel is open.** Symptom: a control inside a panel never

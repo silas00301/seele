@@ -84,7 +84,6 @@ let
         inputs.spicetify-nix.homeManagerModules.default
         inputs.vicinae.homeManagerModules.default
         inputs.zen-browser.homeModules.beta
-        inputs._1password-shell-plugins.hmModules.default
         homeModules.catppuccin
         homeModules.determinate
       ]

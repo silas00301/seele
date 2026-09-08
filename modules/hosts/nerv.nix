@@ -49,7 +49,6 @@ in
               inputs.vicinae.homeManagerModules.default
               inputs.zen-browser.homeModules.beta
               inputs.nix-index-database.homeModules.default
-              inputs._1password-shell-plugins.hmModules.default
             ];
             extraSpecialArgs = moduleArgs // {
               inherit (perSystemArgs) pkgs-stable;

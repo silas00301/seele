@@ -61,6 +61,11 @@ and cleanup, while `tests/uri-picker.js` covers selection and badge geometry.
 
 ## Notification interactions
 
+Keep the September 8, 2026 11:00 CEST behavior from `b728ef05d8bd`: native
+notifications, in-place app stacks, and the Current/History view selector.
+Notification search, title/message copying and timed DND were added later and
+have been reverted. Verification-code copying remains.
+
 `NotificationStore.qml` owns the desktop notification service through
 Quickshell, with lifecycle and presentation helpers in `notifications.js`.
 The parent disables mako; hardware status workers never publish notification
@@ -284,7 +289,7 @@ nix build .#lock --no-link --no-write-lock-file
 nix build .#polkit --no-link --no-write-lock-file
 ```
 
-The default package build compiles the Rust tools, runs `qmllint`, bundles the extensions, and runs the focused shell tests. `tests/feature-integrations.js` also proves that independently tested feature helpers remain wired into production `shell.qml`, installed by the package, and covered by its install checks; extend it when a feature adds another production seam. Build every affected output when shared code changes. Use `nix develop -c test-shell` for a faster Rust and JavaScript loop, but finish with the relevant package build.
+The default package build compiles the Rust tools, runs `qmllint`, bundles the extensions, and runs the focused shell tests. `tests/shell-load.sh` also compiles the complete production QML through Quickshell on a private headless Sway compositor. It does not instantiate the desktop, start workers, or access the session bus. Keep this runtime check: `qmllint` missed a nonexistent property assigned through an inline shared-component alias, and the built shell could not start. `tests/feature-integrations.js` also proves that independently tested feature helpers remain wired into production `shell.qml`, installed by the package, and covered by its install checks; extend it when a feature adds another production seam. Build every affected output when shared code changes. Use `nix develop -c test-shell` for a faster Rust and JavaScript loop, but finish with the relevant package build.
 
 Inspect the submodule diff before crossing back into the parent:
 

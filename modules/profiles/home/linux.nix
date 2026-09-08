@@ -16,7 +16,6 @@ let
   };
   profile = {
     imports = [
-      modules."1password"
       modules."1password-linux"
       modules.comma
       modules.fastfetch
