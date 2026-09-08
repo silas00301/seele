@@ -17,15 +17,24 @@ not a real account, when validating request logic. See the submodule's
 
 ## Home Assistant
 
-`seele-shellctl control home-assistant` opens selected entity states and explicit
-light/switch/input_boolean on/off controls. Other selected domains are read-only.
-`projects/home-assistant/control.py` alone reads the private user-owned mode-0600
-regular connection file at `$XDG_CONFIG_HOME/seele-shell/home-assistant.json`.
-`SEELE_HOME_ASSISTANT_CONFIG` can override the path. Do not generate this token
-through Nix. Missing configuration disables network access and hides the bar item.
-Keep requests bounded, do not forward authorization across redirects, and disable
-controls when state is stale. Mock-HTTP tests never load the user's connection.
-The submodule's `projects/home-assistant/README.md` documents the JSON schema.
+`seele-shellctl control home-assistant` opens the always-visible house entry's
+panel. `HomeAssistantPanel.qml` owns setup, selected devices, room groups,
+favorites, light sliders and the optional menu bar reading. Preserve list identity
+across live updates so an active field or slider keeps its delegate.
+
+`projects/home-assistant/control.py` handles private metadata and libsecret's
+`secret-tool`; `home_assistant_live.py` owns the resident WebSocket connection.
+Use the standard Secret Service API, never a KWallet-specific interface. Tokens
+arrive from the setup field through stdin, clear on submit/close, and are stored
+only in the system keyring. The mode-0600 `home-assistant.json` stores URL and
+preferences. Legacy token files migrate only after a successful keyring save.
+Missing configuration keeps the house icon visible and makes no server requests.
+
+Device requests carry explicit intent and remain pending until state confirms
+it. Other devices stay usable. Stale values remain visible with controls disabled.
+Keep network bounds, redirect rejection, sanitized responses and private fixture
+tests. See the submodule's `projects/home-assistant/README.md` for the protocol,
+metadata schema and HTTP/WebSocket, store and rendered-panel validation.
 
 ## Local controls
 

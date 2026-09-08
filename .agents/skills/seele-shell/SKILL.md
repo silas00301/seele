@@ -172,7 +172,7 @@ keeps thin inline aliases for its existing instances — `component X:
 Shared.X { theme: root }` — so shell code writes `X { }` unqualified while the
 component itself, and its reasoning, live in `shared/`. Put a part there as
 soon as a standalone application could want it; `SectionRule`, `SegmentWell`,
-`Segment`, `IconButton` and `MeterBar` moved out of `shell.qml` for exactly
+`Segment`, `IconButton`, `MeterBar` and `ControlSwitch` moved out of `shell.qml` for exactly
 that reason. Quickshell rejects local imports that escape a packaged config
 root, so each package installs its own `shared/` directory below that root and
 rewrites the source tree's sibling import to `import "shared" as Shared`; keep
