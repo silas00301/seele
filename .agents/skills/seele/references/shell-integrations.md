@@ -19,7 +19,9 @@ not a real account, when validating request logic. See the submodule's
 
 `seele-shellctl control home-assistant` opens the always-visible house entry's
 panel. `HomeAssistantPanel.qml` owns setup, selected devices, room groups,
-favorites, light sliders and the optional menu bar reading. Preserve list identity
+favorites, light sliders, fan power/speed and the optional menu bar reading.
+Temperature and humidity appear only in their room header, including unavailable
+readings; keep them selectable in the device picker. Preserve list identity
 across live updates so an active field or slider keeps its delegate.
 
 `projects/home-assistant/control.py` handles private metadata and libsecret's

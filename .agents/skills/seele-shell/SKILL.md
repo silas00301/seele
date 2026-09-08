@@ -96,7 +96,9 @@ history. Keep DND, history, timestamps, and pins across QML reloads through
 
 Both views group by desktop entry (falling back to app name), show overlapping
 cards, and expand independently. Toasts have individual card material with no
-shared backdrop. A toast close hides it; panel dismissal closes it. Named
+shared backdrop. An individual toast's close hides it; panel dismissal closes it.
+The stack lead's close dismisses its whole group in either view, folded or
+expanded. Named
 actions, including Reply, invoke the sender's app interface. Verification codes
 copy explicitly without dismissal. Preserve urgency, local images, progress,
 markup, links, action icons, and replacement IDs/tags. Only advertise capabilities
