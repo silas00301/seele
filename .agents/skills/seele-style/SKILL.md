@@ -17,10 +17,12 @@ work: **token**, **ramp**, **rule**, **card**, **row**, **well**, **wash**, **ma
 
 ## Start from the block
 
-`seele-shell/projects/shell/shell.qml` opens with the whole vocabulary — palette, type
-ramp, weights, spacing ramp, control heights, elevation, edges, interaction tints,
-motion. **Read that block before drawing anything.** It is the source of truth for every
-value; this skill is the source of truth for which one to pick.
+`seele-shell/projects/shared/Theme.qml` holds the whole vocabulary — palette, type ramp,
+weights, spacing ramp, control heights, elevation, edges, interaction tints, motion.
+**Read that block before drawing anything.** It is the source of truth for every value;
+this skill is the source of truth for which one to pick. The shell and every standalone
+Seele application root at `Shared.Theme`, so they all read the same block, and a user's
+`theme.json` repaints all of them at once.
 
 If a value you need is not in the block, you have found one of two things: a step you
 should have picked, or a genuine gap in the vocabulary. Add the token to the block with
@@ -104,6 +106,14 @@ at both ends and the control reads as a smudge lifting off the surface.
 Reach for these rather than rebuilding them. Hand-assembled parts drift apart on glyph
 size, row height and baseline, and the vertical nudges that follow are the evidence, not
 the fix.
+
+They live in two places. `seele-shell/projects/shared/*.qml` is the portable set: each
+one takes `required property var theme` and is usable by the shell *and* by Seele Notes
+or any later standalone application. `shell.qml` aliases each as
+`component X: Shared.X { theme: root }` so shell code writes `X { }` unqualified, and
+defines the shell-only parts inline beside those aliases. **A part a second surface
+could want belongs in `shared/`**, with its reasoning in the file rather than at the
+alias — put it there when you add it, not after the second caller appears.
 
 | Part | What it is for |
 | --- | --- |
@@ -267,6 +277,12 @@ baseline.
 
 ## Beyond the shell
 
+Seele Notes (`projects/notes/`) is a full application built from this vocabulary: it
+imports `../shared` directly, roots at `Shared.Theme`, and is the reason a part worth
+sharing goes in `shared/`. Its package copies `projects/shared/*.qml` wholesale and
+runs `qmllint` over the result, so a new shared component is picked up automatically and
+a warning in one fails `nix build .#notes`.
+
 `projects/lock/`, `projects/greeter/` and `projects/polkit/` are separate clients that
 mirror the subset of these tokens they use. Keep a shared value identical to the shell's,
 and drop a token from their block when nothing in that client reads it. A palette colour
@@ -281,7 +297,8 @@ Before reporting a surface done, account for **every control you drew**:
 
 - Every size, weight, space, radius, height, colour and duration is a token from the
   block. No literal survives at a call site.
-- Every part that exists as a shared component is that component, not a rebuild of it.
+- Every part that exists as a shared component is that component, not a rebuild of it,
+  and a new part a second surface could want went into `projects/shared/`.
 - Every group is a rule over a card; every exclusive choice is a well; every one-shot
   action is a button.
 - Every control that answers a click reports the pointer through a `HoverWash` and shows

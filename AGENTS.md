@@ -49,9 +49,10 @@ Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
 toasts, app stacks, local images, progress, and verification-code copying.
-Notification state and DND belong to the QML store rather than Rust's hardware
-status feed. History and pins survive QML reloads in memory; notification text
-is never written to disk. See the `seele-shell` skill for the protocol and tests.
+Do Not Disturb is both a switch and a timed quiet period of 15 minutes, 1 hour,
+or 4 hours. Notification state and DND belong to the QML store rather than
+Rust's hardware status feed. History, pins, and a running quiet period survive
+QML reloads in memory; notification text is never written to disk. See the `seele-shell` skill for the protocol and tests.
 
 Seele Notes is a separate desktop app from the shell submodule's `notes`
 package, exposed as `packages.<system>.seele-notes` and installed with the shell

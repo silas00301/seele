@@ -63,8 +63,21 @@ and cleanup, while `tests/uri-picker.js` covers selection and badge geometry.
 
 Keep the September 8, 2026 11:00 CEST behavior from `b728ef05d8bd`: native
 notifications, in-place app stacks, and the Current/History view selector.
-Notification search, title/message copying and timed DND were added later and
-have been reverted. Verification-code copying remains.
+Notification search and title/message copying were added later and have been
+reverted; `tests/feature-integrations.js` fails if `notificationSearch` or
+`notificationClipboard` returns. Verification-code copying remains, and timed
+DND was restored on request.
+
+Do Not Disturb has two forms. The header switch silences the shell until it is
+thrown back, and the quiet presets — 15 minutes, 1 hour, 4 hours — silence it
+until a deadline. `snooze()` stores an absolute `dndUntil` plus the
+`dndMinutes` that asked for it, so suspending does not extend the period and
+the panel lights the preset that started it rather than guessing from a
+deadline that keeps moving. `advance()` ends an expired period without
+replaying the toasts it suppressed, `setDnd()` clears both fields because a
+manual choice replaces a timed one, and `restore()` drops a period that ran out
+while the shell was down. `seele-shellctl notification snooze <minutes>`
+reaches the same store; the minute count travels in the `id` argument.
 
 `NotificationStore.qml` owns the desktop notification service through
 Quickshell, with lifecycle and presentation helpers in `notifications.js`.
@@ -155,10 +168,17 @@ Keep ISO week arithmetic in UTC and local clock display in the system timezone.
 
 `projects/shared/Theme.qml` owns the shell and Notes visual vocabulary. Both
 entrypoints inherit it, and shared components receive it as `theme`. The shell
-keeps thin inline aliases for its existing instances. Quickshell rejects local
-imports that escape a packaged config root, so each package installs its own
-`shared/` directory below that root and rewrites the source tree's sibling
-import to `import "shared" as Shared`; keep an install check for that layout.
+keeps thin inline aliases for its existing instances — `component X:
+Shared.X { theme: root }` — so shell code writes `X { }` unqualified while the
+component itself, and its reasoning, live in `shared/`. Put a part there as
+soon as a standalone application could want it; `SectionRule`, `SegmentWell`,
+`Segment`, `IconButton` and `MeterBar` moved out of `shell.qml` for exactly
+that reason. Quickshell rejects local imports that escape a packaged config
+root, so each package installs its own `shared/` directory below that root and
+rewrites the source tree's sibling import to `import "shared" as Shared`; keep
+an install check for that layout. The Notes package globs
+`projects/shared/*.qml`, so a new component needs no packaging change but must
+pass that package's `qmllint`.
 Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
@@ -193,7 +213,8 @@ Assemble a surface from the shared components rather than repeating their
 parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
 detail, trailing slot), `SectionLabel`, `SectionRule` (that label with the
 group's live summary at the far end and, where the group folds, the chevron and
-the click target that fold it), `MeterBar`, `CardEdge`, `PanelSurface`,
+the click target that fold it), `SegmentWell` with `Segment`, `IconButton`,
+`HoverWash`, `MeterBar`, `CardEdge`, `PanelSurface`,
 `SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
 `RefreshGlyph`, `CenteredGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
 `ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
