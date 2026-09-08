@@ -83,6 +83,8 @@ nix flake show --no-write-lock-file
 nix flake check --no-build --no-write-lock-file
 ```
 
+See [shell integrations and controls](references/shell-integrations.md) for GitHub, Home Assistant, local timers, notification actions and their focused validation.
+
 Changes under `seele-shell/` live in a separate Jujutsu repository. Read the [`seele-shell` skill](../seele-shell/SKILL.md) before editing the submodule or synchronizing it into the parent flake.
 
 Evaluate the native host:

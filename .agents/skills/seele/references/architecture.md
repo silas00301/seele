@@ -384,3 +384,7 @@ editor state, never a flake asset. Validate persistence, permissions and exclusi
 with `python3 modules/packages/_nixvim/test-undo.py` using Neovim, or its existing
 Vim compatibility mode when Neovim is unavailable.
 
+
+## Shell integrations and controls
+
+See [shell integrations](shell-integrations.md) for GitHub/Home Assistant runtime boundaries, local focus/DND timers, notification search/copying, calendar and clock clipboard actions, media transport/volume/speed controls and network address copying. These remain owned by the shell source; the parent needs only its gitlink update and existing package wiring. Their source changes add no flake inputs.

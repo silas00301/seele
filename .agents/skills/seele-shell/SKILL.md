@@ -19,6 +19,17 @@ jj -R seele-shell log -r '@ | @- | main | main@origin' --no-graph
 
 Record pre-existing changes in each repository. Keep unrelated paths out of commits. A detached submodule HEAD is normal.
 
+For independent feature PRs, create isolated workspaces on the shell's
+`main@origin` and push named feature bookmarks. Keep `main` and unrelated working
+copies unchanged. A parent preview may pin a published integration of those
+feature heads while each source PR remains independently reviewable. Do not run
+the helper that advances `main` for such a preview. Inspect the gitlink and input
+lock explicitly, and report unavailable build validation rather than installing
+Nix when the user has forbidden it.
+
+See [shell integrations and controls](../seele/references/shell-integrations.md)
+for the current runtime ownership, private configuration and focused tests.
+
 ## Work and validate inside the submodule
 
 Keep UI and runtime behavior in `seele-shell/`. Put parent-side service, package, theme, or Home Manager integration in the parent flake.

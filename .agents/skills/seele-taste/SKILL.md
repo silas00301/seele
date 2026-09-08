@@ -24,6 +24,7 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 
 - Prefer declarative, reproducible configuration through Nix and Home Manager. Centralize shared values and derive generated configuration rather than creating mutable setup steps.
 - Keep credentials, account identifiers, hardware identity, and other private state outside the Nix store and repository.
+- Keep shell integrations optional when they need account setup. Reuse an existing CLI login or a private local connection file, show stale/error state explicitly, and require an explicit action before changing a connected device or opening a remote item.
 - Reuse an existing tool or integration before adding an adjacent one. An inactive alternative in the tree is not a reason to replace an active tool.
 - Prefer user-facing packages from nixpkgs. When a narrow hardware protocol belongs inside an existing Seele component, keep that glue in the component instead of installing a separately pinned companion application.
 - Keep Linux and macOS behavior consistent in muscle memory and visual language while using platform-native implementations.
