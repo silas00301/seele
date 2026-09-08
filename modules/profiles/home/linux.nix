@@ -24,6 +24,7 @@ let
       modules.hypr
       modules.voxtype
       modules.pi
+      modules.shell-ai
       modules.spicetify
       modules.stylix-linux
       modules.vicinae

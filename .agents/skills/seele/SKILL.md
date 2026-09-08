@@ -84,6 +84,7 @@ nix flake check --no-build --no-write-lock-file
 ```
 
 See [shell integrations and controls](references/shell-integrations.md) for GitHub, Home Assistant, local timers, notification actions and their focused validation.
+For `shell-ai` changes, first run `PYTHONDONTWRITEBYTECODE=1 python3 modules/packages/_shell-ai/test_shell_ai.py modules/packages/_shell-ai/shell_ai.py modules/features/programs/shell-ai.nix`; then build `packages.x86_64-linux.shell-ai` with the normal Nix validation.
 
 Changes under `seele-shell/` live in a separate Jujutsu repository. Read the [`seele-shell` skill](../seele-shell/SKILL.md) before editing the submodule or synchronizing it into the parent flake.
 
