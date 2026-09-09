@@ -73,6 +73,22 @@ captures. No new flake input or Cargo dependency is needed. The shell package
 runs deterministic exact-source fakes, real OCR/code fixtures, and numeric
 action tests in its install checks.
 
+The quick AI prompt is a third shell IPC workflow. Its parent-owned
+`Super + Space` binding calls `seele-shellctl prompt`; the submodule owns
+`AiPrompt.qml`, `ai-prompt.js`, and the resident Python
+`seele-ai-prompt-worker`. Opening maps a centered surface on the captured
+focused output without reading context or starting Codex. Typed `@window` and
+`@dir` controls expose narrow metadata; `@clip` and `@select` are one-time
+permission gates; and `@screen` hides the panel before capturing only its
+pinned output and displaying the exact private runtime image. Context request
+tokens reject late callbacks. Send starts `codex exec` in read-only mode from
+an empty private workspace, JSON-quotes approved context as reference data,
+and keeps one in-memory UUID for follow-ups. Copy uses stdin to `wl-copy`.
+Insert hides the panel, focuses the original validated Hyprland address,
+rechecks its pid, and types with `wtype --`; it never moves the pointer.
+Closing or shell termination kills an active model process group, deletes the
+Codex session, and removes every capture.
+
 ## Host assembly
 
 `modules/hosts/nerv.nix` constructs `nixosConfigurations.nerv` from:
