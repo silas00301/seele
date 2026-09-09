@@ -12,7 +12,7 @@ The flake exposes:
 - `packages.<system>.{nixvim,spt-st}` for all four declared Linux/Darwin systems
 - `packages.<system>.<command>` for each `seele.portable` entry: a configured application that carries its own Seele configuration onto a machine this flake does not manage
 - `packages.<system>.seele-shell` on Linux, Seele's native Quickshell desktop shell
-- `packages.<system>.seele-notes` on Linux, the standalone Notes and voice memo application, sharing the shell's theme and QML components
+- `packages.<system>.seele-notes` on Linux, the standalone quick-capture application for an Obsidian vault, sharing the shell's theme and QML components
 - `packages.<system>.{seele-greeter,seele-lock,seele-polkit}` on Linux, re-exported from the external shell repository
 - `packages.x86_64-linux.{codexbar,t3code-nightly}`, the packaged CodexBar CLI and T3 Code nightly AppImage
 - `packages.x86_64-linux.shell-ai`, the private Fish `how` and `debug` command generator
@@ -270,8 +270,15 @@ They activate live state and are not validation commands. Use direct `nix flake`
 Evaluating this flake at all now needs `flakehub.com` and `install.determinate.systems` reachable, because the `determinate` input and its own inputs resolve from there. A sandbox that allows GitHub but not those hosts cannot lock or evaluate the flake; report that boundary instead of dropping the input.
 
 Seele Notes is exported beside the shell in `modules/packages/seele-shell.nix`
-and installed by the shell Home Manager feature. The submodule owns its
-standalone window, launcher entry, private XDG data library, and audio lifecycle.
-`projects/shared/Theme.qml` and its sibling components are the common design
-system for Notes and the shell. Dictation's bottom waveform uses Voxtype's
-native status and audio socket without capturing a second microphone stream.
+and installed by its own `modules/features/programs/seele-notes.nix` feature,
+which the `nerv` home profile imports. That leaf declares
+`seele.notes.{vault,directory,attachments}` and writes
+`~/.config/seele-notes/config.json` only when `vault` is set, so an unset
+option ships no file and the application opens on its own directory picker
+instead of on a path this flake guessed. The picker's choice lands in the
+app's private settings file and takes precedence over the declarative default.
+The submodule owns the standalone window, the launcher entry, the vault-backed
+store, and the audio lifecycle. `projects/shared/Theme.qml` and its sibling
+components are the common design system for Notes and the shell. Dictation's
+bottom waveform uses Voxtype's native status and audio socket without capturing
+a second microphone stream.

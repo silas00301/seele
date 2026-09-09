@@ -99,12 +99,22 @@ stdin. The `rebuild` Fish abbreviation and Seele OS session use
 consent path. `systemctl start seele-failure-test` deliberately exercises it.
 
 Seele Notes is a separate desktop app from the shell submodule's `notes`
-package, exposed as `packages.<system>.seele-notes` and installed with the shell
-on Linux. It shares `projects/shared/Theme.qml` and the same QML components with
-Seele Shell. Keep text and voice memos local in the app's private XDG data
-library; saves are atomic and Trash is reversible. Dictation uses Voxtype's
-native status and audio socket, with a non-interactive bottom waveform on the
-output where recording began. See the `seele-shell` skill for validation.
+package, exposed as `packages.<system>.seele-notes` and installed on Linux by
+its own `flake.modules.homeManager.seele-notes` feature. It is a quick-capture
+front end for an Obsidian vault, not a second library: notes are ordinary
+Markdown files in one configured folder of that vault, and Obsidian owns
+everything else. `modules/features/programs/seele-notes.nix` declares the
+optional `seele.notes.{vault,directory,attachments}` options and writes them to
+`seele-notes/config.json` only when a vault is named; the app's own directory
+picker writes the user's choice to its private settings file, and that choice
+wins. Recordings are vault files in an attachment folder referenced by Obsidian
+embeds, so removing an embed never deletes audio another note may reference.
+Trash moves a note into the vault's `.trash`, keeping the restore path in
+private state. Never write Seele's own state into the vault. It shares
+`projects/shared/Theme.qml` and the same QML components with Seele Shell.
+Dictation uses Voxtype's native status and audio socket, with a
+non-interactive bottom waveform on the output where recording began. See the
+`seele-shell` skill for the protocol, the editor, and validation.
 
 Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
 live controls, audio device selection, window/workspace search, keybindings,

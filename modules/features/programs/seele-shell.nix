@@ -23,7 +23,6 @@ let
     in
     {
       home.packages = [
-        selfPackages.seele-notes
         package
         lockPackage
         polkitPackage

@@ -133,6 +133,9 @@ alias — put it there when you add it, not after the second caller appears.
 | `CenteredGlyph` | A font glyph centred by its visible ink rather than its advance width. |
 | `BarLabel` | A menu bar label carrying arbitrary text, baseline-anchored to the primary font. |
 | `SeeleListView` / `SeeleFlickable` | Every scrollable, so one spring governs them all. |
+| `SearchField` | The one input that filters a list. A well, because it holds a query rather than content. |
+| `EmptyState` | What a surface says when it has nothing to show, with its own mark, sentence and way out. |
+| `StatusBanner` | A surface's own bad news, carrying the actions that answer it. |
 | `SlimScrollBar` | The scroll indicator, shown only while the pointer is over the popup. |
 | `RoundedSource` | An Image rounded on the shell's radius through `MultiEffect` masking. |
 | `AgentMark` | A harness or vendor drawn as its own vendored SVG. |
@@ -281,7 +284,17 @@ Seele Notes (`projects/notes/`) is a full application built from this vocabulary
 imports `../shared` directly, roots at `Shared.Theme`, and is the reason a part worth
 sharing goes in `shared/`. Its package copies `projects/shared/*.qml` wholesale and
 runs `qmllint` over the result, so a new shared component is picked up automatically and
-a warning in one fails `nix build .#notes`.
+a warning in one fails `nix build .#notes`. `SearchField`, `EmptyState` and
+`StatusBanner` moved there when Notes needed them, because a query, a nothing-to-show
+state and a surface's own bad news are not particular to one application.
+
+An application that is not a panel still keeps the panel's shape. Notes leads with a
+`PanelHeader` carrying no `detail` line — a header explaining what the window is for is
+chrome that earns nothing after the first launch — and puts every state that is not a
+note into a `StatusBanner` above the split: the write that failed, the file that changed
+underneath, the folder that cannot be written to. Each one carries its own way out.
+`EmptyState` covers the rest: nothing here yet, nothing matches, the trash is empty. A
+state without an action is a state the reader can do nothing about.
 
 `projects/lock/`, `projects/greeter/` and `projects/polkit/` are separate clients that
 mirror the subset of non-palette tokens they use. Their roots take fallback palette values

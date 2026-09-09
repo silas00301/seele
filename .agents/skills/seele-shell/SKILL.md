@@ -214,24 +214,87 @@ year, and locale, but computes times, offsets, and pins on every `refresh` line.
 Both workers exit on stdin EOF. Clock's timezone conversions remain in its own
 single-threaded process because libc's `TZ` state is process-global.
 
-## Standalone Notes and dictation
+## Notes captures into a vault it does not own
 
-`projects/notes/` is a separate desktop app, not a shell panel. The `notes`
-output provides `seele-notes` and `seele-notes-store`; the parent exports
-`seele-notes`. Reopen its existing process through IPC. The shellctl/Vicinae
-launch must detach so a launcher's command timeout cannot kill the app.
+`projects/notes/` is a separate desktop app, not a shell panel, and it is a
+quick-capture front end for Obsidian rather than a second library. The
+configured folder of the vault **is** the store: a note is an ordinary Markdown
+file there, and there is no index, database or mirror beside it that could
+disagree with the bytes on disk. Obsidian keeps the knowledge base, the graph,
+the plugins and vault-wide moves; this owns the thirty seconds between having a
+thought and having it written down. Leave vault-wide renaming and backlink
+maintenance to Obsidian.
 
-Keep notes and WAV memos in the private XDG data library. Text uses atomic JSON
-writes and request/version acknowledgements; retain newer drafts after stale
-responses or worker reconnection. A failed save must block a pending move to
-Trash. Trash remains recoverable. The recorder owns its `parecord` child and
-must finalize on Stop, EOF, and SIGTERM, reap the child, and prevent a recording
-note from being trashed. Playback lives in a separately loaded QtMultimedia
-component. Build both `default` and `notes` when shared QML changes.
+The `notes` output provides `seele-notes` and `seele-notes-store`; the parent
+exports `seele-notes` and installs it through its own
+`flake.modules.homeManager.seele-notes` feature. Reopen the existing process
+through IPC. The shellctl/Vicinae launch must detach so a launcher's command
+timeout cannot kill the app.
 
-Run `tests/notes.py` with the raw `seele-notes-store` helper, plus
-`tests/notes.js` and `tests/notes-store.js`. The latter exercises production QML
-save callbacks. `tests/dictation.py` checks the native audio bridge against a
+Nothing Seele needs for itself goes into the vault. The user's chosen vault and
+folder live in `$XDG_CONFIG_HOME/seele-notes/settings.json`, written by the
+app's own directory picker; the parent flake may install a read-only
+`config.json` beside it as a default, and the picker's choice wins. Trash
+metadata, recovery drafts and the migration index live under
+`$XDG_STATE_HOME/seele-notes/`. Trashed notes move into the vault's own
+`.trash`, and restore is collision-safe against whatever took the name.
+
+`Library::save` takes the digest the draft was loaded from. A digest, not an
+mtime: filesystems differ in granularity and sync tools rewrite timestamps, but
+the bytes either changed or they did not. A stale digest is a conflict, never an
+overwrite, and the three ways out — save a copy, keep mine, use theirs — each
+keep both versions. A file that vanished elsewhere answers `gone` rather than
+being recreated by an autosave already in flight. Text the filesystem refused is
+kept as a recovery draft; a request that was never valid is not. Saving text
+identical to what is on disk rewrites nothing, so opening and closing a note
+leaves its mtime alone.
+
+A new capture is a document, not a file. Nothing is written until there is
+something to write, so an abandoned empty draft leaves nothing behind, and the
+filename is earned once from the first meaningful line and never changed by a
+later body edit. Recordings are vault files in the attachment folder, referenced
+by Obsidian embeds on their own block — a line directly under a paragraph is a
+lazy continuation of it and renders inside the sentence. Removing an embed edits
+text and never deletes audio another note may reference.
+
+The worker watches the folder with inotify and coalesces a refresh. A reply that
+already carried the listing clears the pending refresh, so the watcher's echo of
+our own write is not replayed as an external edit; a reply that did not carry
+one leaves it alone. A clean note follows the file, a note being typed into is
+never reloaded under the caret, and re-reading the note already on screen keeps
+the caret and the scroll position.
+
+The editor is live Markdown over the exact bytes. `Seele.Markdown` is a small
+Qt QML module in `projects/markdown/`: `MarkdownHighlighter` applies character
+formats to the `TextArea`'s document without touching its text, so frontmatter,
+wikilinks, embeds and anything it does not model survive being edited around,
+and the caret, the selection and the undo stack survive every autosave, search
+update and syntax repaint. Qt's `MarkdownText` mode is not an option — it parses
+into rich text and re-serializes on the way out. Syntax characters are dimmed
+rather than hidden, which is what keeps them editable at the caret. Source mode
+detaches the highlighter, and only the highlighter: the same bytes, set
+uniformly. Detaching opens an empty edit block that Qt reports as a content
+change, so the editor only reports an edit when the text actually differs.
+
+`MarkdownEdit::replace` applies an editing command inside one `QTextCursor`
+edit block. Applying it through `TextArea`'s own insert and remove costs two
+undo steps and passes through a document the writer never saw. Every command in
+`notes.js` is one replacement plus a caret, so it stays testable in Node and the
+editor only has to apply it.
+
+The recorder owns its `parecord` child and must finalize on Stop, EOF, and
+SIGTERM, reap the child, and salvage whatever it captured before a failure.
+Playback lives in a separately loaded QtMultimedia component. Build both
+`default` and `notes` when shared QML changes.
+
+Run `tests/notes.py` with the raw `seele-notes-store` helper — it drives real
+Markdown files, external edits, conflicts, trash collisions, a relocated vault
+and migration idempotency — plus `tests/notes.js` and `tests/notes-store.js`,
+the latter exercising production QML store callbacks. `tests/notes-editor.sh`
+runs `tests/tst_noteseditor.qml` under `qmltestrunner`: real key presses into
+the production editor for focus, list continuation, undo, the caret across a
+refresh, and a pixel comparison proving the highlighter draws something the
+source does not. `tests/dictation.py` checks the native audio bridge against a
 fragmented/reconnecting Voxtype socket. Dictation follows the daemon's JSON
 status and native audio frames; never open a second capture just for levels.
 Keep the overlay on its starting output and leave focus and pointer input alone.
