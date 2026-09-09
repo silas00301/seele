@@ -165,6 +165,25 @@ The lock's surface component is instantiated once per output by `WlSessionLock`;
 
 The managed Vicinae extension also exposes a NixOS generation picker on `nerv`. It obtains build time, kernel, NixOS version, revision, and specialisations from the running system's `nixos-rebuild list-generations --json`, but identifies what is actually active by resolving `/run/current-system` and each retained profile link instead of trusting the JSON `current` flag. Selecting a row opens a review with the build time first and an `nvd` package diff against the running closure; only after the diff settles does an explicitly confirmed switch become available. The action reloads and re-resolves the selection before sending its validated integer through the running system's `run0` to a packaged root helper. That helper advances `/nix/var/nix/profiles/system` with the running system's `nix-env` and activates the exact reviewed store closure with `switch-to-configuration switch`, leaving NixOS switch inhibitors intact. Generation cleanup is absent by design: the existing `nh` cleanup policy remains the only retention mechanism.
 
+`modules/features/system/failure-analysis.nix` publishes matching NixOS and
+Home Manager modules, activated only by `nerv`. Its systemd generator adds a
+drop-in to installed service units while excluding its own handler and masked
+units. The handler asks `systemctl show` for a bounded property set and queries
+the journal by the failed unit's 32-character invocation id; it never falls
+back to a unit-wide journal query. Derivation paths found in those messages may
+be read through the running system's `nix --offline log`, so the feature does
+not add or package a second Nix. Kernel warnings are queried only when the
+invocation points there and only between that invocation's first and last
+timestamps. Root hands the bounded report to the normal user through stdin and
+a clean session environment. The user helper stores it mode `0600` below
+`$XDG_RUNTIME_DIR/seele-shell/failures`, then uses Seele Shell's native
+30-second notification actions for local view or explicit Pi analysis. Local
+view is a clean Neovim `nofile` buffer in a centered Ghostty transient service.
+Pi receives a redacted copy over stdin with tools, extensions, skills, prompt
+templates, and project context disabled. `seele-rebuild` wraps the configured
+`nh os switch`; both Fish's `rebuild` abbreviation and `seele-os-session` reach
+that wrapper. `seele-failure-test.service` stays dormant for end-to-end checks.
+
 The Audio panel's Multiple outputs switch and Vicinae's Play Here Too action
 share `seele-control audio-outputs <JSON node names>`. The shell's
 `projects/tools/src/audio_route.rs` creates a session-local PipeWire
