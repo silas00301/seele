@@ -29,6 +29,31 @@ reaches the compositor issues one `hl.dsp` call — `hl.dsp.window.close({ windo
 on the Lua error the legacy form raises, so a wrong call is invisible until the
 action is tried by hand.
 
+## Keep NixOS generation rollback reviewable and guarded
+
+The managed Vicinae command `generations` lists the retained system profile with
+the running system's `nixos-rebuild list-generations --json`. Do not trust its
+`current` field to identify the booted configuration: resolve each
+`system-<number>-link` and compare it with the canonical `/run/current-system`
+target. Put the selected build time first in the detail, followed by its kernel,
+NixOS metadata, and an `nvd diff /run/current-system <generation>` package diff.
+Do not expose the switch action until that diff has finished or failed visibly.
+
+A switch always gets a destructive confirmation naming the generation. Reload
+the generations immediately afterward and require its resolved store path to
+match the closure the user reviewed. Pass only a validated positive integer,
+through the running system's `run0`, to the packaged
+`seele-switch-generation` helper. The helper repeats the integer and symlink
+checks as root, changes `/nix/var/nix/profiles/system` with the running system's
+`nix-env --switch-generation`, and executes the already resolved closure's
+`switch-to-configuration switch`. Never pin a different `run0`, accept a caller
+path, set `NIXOS_NO_CHECK`, or bypass switch inhibitors.
+
+Rollback and cleanup stay separate. Do not add delete or garbage-collection
+actions to the picker; the parent `programs.nh.clean` policy decides retention.
+Keep subprocess errors out of toasts. `tests/vicinae-generations.mjs` covers
+generation validation, actual-running detection, and safe diff rendering.
+
 ## Keep frozen URI picking responsive
 
 `seele-shellctl uris` reaches `UriPicker.qml` and one `seele-shell-uris` layer

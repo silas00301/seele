@@ -70,10 +70,17 @@ output where recording began. See the `seele-shell` skill for validation.
 
 Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
 live controls, audio device selection, window/workspace search, keybindings,
-and direct shell commands. For extension changes, read its `README.md`; the
-shell package bundles the manifest's command entries and runs its focused
-checks. Home Manager installs it through `xdg.dataFile`. The shell Audio panel
-and Vicinae share `seele-control audio-outputs` for simultaneous playback;
+NixOS generation rollback, and direct shell commands. For extension changes,
+read its `README.md`; the shell package bundles the manifest's command entries
+and runs its focused checks. Home Manager installs it through `xdg.dataFile`.
+The generation picker identifies the running closure by resolving
+`/run/current-system`, shows an `nvd` diff before offering a switch, and
+revalidates the reviewed generation immediately before escalation. Its packaged
+root helper accepts only a positive generation number, advances the system
+profile with the running system's `nix-env`, and activates the exact resolved
+closure through the running system's `run0`. Keep garbage collection out of the
+picker; `nh` remains the sole owner of generation retention. The shell Audio
+panel and Vicinae share `seele-control audio-outputs` for simultaneous playback;
 `projects/tools/src/audio_route.rs` owns the session-local PipeWire combined
 sink and its cleanup. Test routing on the private server in
 `seele-shell/tests/audio-routing.sh`.
