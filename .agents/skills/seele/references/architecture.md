@@ -51,18 +51,27 @@ The shell submodule's `projects/shell/SystemState.qml` owns status fields and pu
 The screen-link picker is a second frozen-screen workflow. Its binding lives
 beside the other shell IPC bindings in `modules/features/programs/seele-shell.nix`:
 `Super + Ctrl + S` calls `seele-shellctl uris`. The submodule's `UriPicker.qml`
-owns lifecycle and numeric input; `shell.qml` draws one full-screen layer surface
-per output using the shared tokens and components. `projects/tools/src/uri/`
-implements the separate resident Rust worker. It captures outputs concurrently
-with nixpkgs Grim, displays and recognizes the same uncompressed PPM pixels,
-and streams numbered URIs from a bounded pool of warmed nixpkgs Tesseract
-engines. The same pool scans whole outputs with nixpkgs ZBar for QR codes and
-barcodes, alongside ordinary OCR. Code captions show decoded text below the
-code or above when space is short. Selection opens URIs or copies other text;
-Ctrl + number copies either through wl-copy. Normalized boxes map to each output's logical size. Escape, output
-changes, EOF and graceful termination retire the private runtime captures. No
-new flake input or Cargo dependency is needed. The shell package runs real OCR
-fixtures and numeric-selection tests in its install checks.
+owns lifecycle, action routing, and numeric input; `shell.qml` draws one
+full-screen layer surface per output using the shared tokens and components.
+`projects/tools/src/uri/` implements the separate resident Rust worker. It
+captures outputs concurrently with nixpkgs Grim, displays and recognizes the
+same uncompressed PPM pixels, and streams results from a bounded pool of warmed
+nixpkgs Tesseract engines.
+
+`uri/exact.rs` optionally reads visible normal tmux panes in the focused Ghostty
+window. Hyprland supplies the window/output geometry; `/proc` proves the tmux
+client descends from that window process; tmux supplies cell size, pane layout,
+working directory, and exact text. Any missing or ambiguous identity, mode,
+scale, or geometry falls back to OCR. Exact URLs, existing explicit paths, and
+Jujutsu IDs are emitted first, with open/copy actions, then only overlapping OCR
+hits are masked. GUI OCR remains active. The same pool scans whole outputs with
+nixpkgs ZBar, never masked, for QR codes and barcodes. Code captions show
+decoded text below the code or above when space is short. Ctrl + number copies
+any item through wl-copy. Normalized boxes map to each output's logical size.
+Escape, output changes, EOF, and graceful termination retire the private runtime
+captures. No new flake input or Cargo dependency is needed. The shell package
+runs deterministic exact-source fakes, real OCR/code fixtures, and numeric
+action tests in its install checks.
 
 ## Host assembly
 
