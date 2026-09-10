@@ -38,6 +38,13 @@ Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disab
 
 Fish command assistance on Linux comes from `packages.x86_64-linux.shell-ai` and the active `shell-ai` Home Manager feature. One Enter binding treats leading `how` and `debug` command lines as generation modes, then replaces the prompt for review without executing it; every other line reaches the normal Fish execute action. Both modes use the same bounded context collector and insertion path. A private per-session stderr tee retains only the last failed foreground command in the runtime directory, and `debug` sends that command, status, and stderr to a tool-less, ephemeral Pi invocation only when requested. Destructive suggestions are inserted as comments that require deliberate uncommenting.
 
+\The Hyprland screenshot helper freezes the displayed frame and uses one picker
+for window, monitor, and region captures. Every completed capture receives an
+atomically reserved timestamped path under `Pictures/Screenshots` and is copied
+after optional Satty annotation. `Super + Alt + S` adds an explicit native
+consent dialog before a 24-hour secret-link upload to the public third-party
+host 0x0.st; declining or any upload failure keeps and copies the local image.
++
 On `nerv`, `Super + Ctrl + S` invokes `seele-shellctl uris`. The shell freezes
 one image per output and globally numbers exact text from normal panes in the
 focused Ghostty/tmux client before OCR-detected URIs, QR codes, and barcodes.

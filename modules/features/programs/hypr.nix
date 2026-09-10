@@ -15,15 +15,30 @@ let
         name = "seele-screenshot";
         runtimeInputs = [
           (pkgs.uutils-coreutils.override { prefix = null; })
+          pkgs.curl
           pkgs.grim
           pkgs.hyprland
           pkgs.hyprpicker
           pkgs.jq
+          pkgs.libnotify
           pkgs.satty
           pkgs.slurp
           pkgs.wl-clipboard
+          pkgs.zenity
         ];
         text = builtins.readFile ./_hypr/screenshot.sh;
+        checkPhase = ''
+          runHook preCheck
+          ${pkgs.stdenv.shellDryRun} "$target"
+          ${lib.getExe pkgs.shellcheck-minimal} "$target"
+          ${lib.getExe pkgs.bash} ${./_hypr/test-screenshot.sh} ${./_hypr/screenshot.sh} ${
+            lib.makeBinPath [
+              pkgs.bash
+              pkgs.coreutils
+            ]
+          }
+          runHook postCheck
+        '';
       };
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
@@ -210,6 +225,7 @@ let
           hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"), { description = "Lock the session" })
           hl.bind(mod .. " + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot capture"), { description = "Capture a screenshot" })
           hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot annotate"), { description = "Capture and annotate a screenshot" })
+          hl.bind(mod .. " + ALT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot upload"), { description = "Capture and upload a screenshot" })
           hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating for the focused window" })
 
           hl.bind(
