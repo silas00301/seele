@@ -172,11 +172,15 @@ The stack lead's close dismisses its whole group in either view, folded or
 expanded. Named
 actions, including Reply, invoke the sender's app interface. Verification codes
 copy explicitly without dismissal. Preserve urgency, local images, progress,
-markup, links, action icons, and replacement IDs/tags. Only advertise capabilities
-that are rendered. At the pinned Quickshell revision, `expireTimeout` exposes
-raw D-Bus milliseconds despite its seconds documentation.
+markup, links, action icons, and replacement IDs/tags. Treat a local
+`Notification.image` as sender identity: place it in the card's leading rounded
+slot, badge the sending `appIcon` at its lower-right corner, and do not repeat
+the image as expandable body media. Keep the application icon in the leading
+slot while the image loads or if it fails. Only advertise capabilities that are
+rendered. At the pinned Quickshell revision, `expireTimeout` exposes raw D-Bus
+milliseconds despite its seconds documentation.
 
-`tests/notifications.js` exercises the state machine and grouping;
+`tests/notifications.js` exercises image roles, the state machine and grouping;
 `tests/notification-server.sh` runs a windowless Quickshell on a private D-Bus
 session to check the real API and production IPC handlers during the package
 build. `tests/control-actions.sh` checks command and clipboard failures.

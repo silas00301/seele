@@ -44,7 +44,9 @@ metadata schema and HTTP/WebSocket, store and rendered-panel validation.
   presets, pause/resume and completion. `FocusTimer.qml`/`focus.js` retain deadlines
   only in memory across QML reloads; suspension counts toward elapsed time.
 - The native notification store owns manual DND, app stacks and verification-code
-  copying. See the `seele-shell` skill for the restored 11:00 notification behavior.
+  copying. Its local associated image is the sender-identity icon, with the
+  sending application icon badged over it rather than a second body image. See
+  the `seele-shell` skill for the restored 11:00 notification behavior.
 - Calendar arrows select days/weeks, Home returns to today, and Enter copies an
   ISO date. World-clock search uses Up/Down and Enter to copy a selected zone;
   Ctrl+Enter copies local time. Timestamps carry explicit UTC offsets.

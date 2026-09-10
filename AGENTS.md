@@ -75,11 +75,15 @@ Hyprland window and inserts the answer without moving the pointer.
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
-toasts, app stacks, local images, progress, and verification-code copying.
-Do Not Disturb is both a switch and a timed quiet period of 15 minutes, 1 hour,
-or 4 hours. Notification state and DND belong to the QML store rather than
-Rust's hardware status feed. History, pins, and a running quiet period survive
-QML reloads in memory; notification text is never written to disk. See the `seele-shell` skill for the protocol and tests.
+toasts, app stacks, local images, progress, and verification-code copying. A
+local notification image leads its card as the rounded sender identity, while
+the sending application's icon moves to a lower-right badge instead of the
+image being repeated in the body. Do Not Disturb is both a switch and a timed
+quiet period of 15 minutes, 1 hour, or 4 hours. Notification state and DND
+belong to the QML store rather than Rust's hardware status feed. History,
+pins, and a running quiet period survive QML reloads in memory; notification
+text is never written to disk. See the `seele-shell` skill for the protocol
+and tests.
 
 On `nerv`, `modules/features/system/failure-analysis.nix` attaches an
 `OnFailure=` reporter to installed system services with a systemd generator.
