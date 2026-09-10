@@ -1,7 +1,12 @@
 { ... }:
 let
   module = (
-    { config, pkgs, lib, ... }:
+    {
+      config,
+      pkgs,
+      lib,
+      ...
+    }:
     let
       colors =
         (builtins.fromJSON (builtins.readFile "${config.catppuccin.sources.palette}/palette.json"))

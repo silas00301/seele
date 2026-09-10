@@ -1,7 +1,12 @@
 { ... }:
 let
   module = (
-    { config, pkgs, lib, ... }:
+    {
+      config,
+      pkgs,
+      lib,
+      ...
+    }:
     let
       tomlFormat = pkgs.formats.toml { };
     in

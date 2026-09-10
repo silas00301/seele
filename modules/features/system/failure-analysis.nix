@@ -156,8 +156,7 @@ let
     {
       environment.systemPackages = [ package ];
 
-      systemd.generators.seele-failure-analysis =
-        "${package}/lib/systemd/system-generators/seele-failure-analysis";
+      systemd.generators.seele-failure-analysis = "${package}/lib/systemd/system-generators/seele-failure-analysis";
 
       systemd.services."seele-failure-report@" = {
         description = "Offer a private report for failed unit %I";

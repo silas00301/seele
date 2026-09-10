@@ -30,12 +30,12 @@ let
           __seele_ai_accept = ''
             set -l buffer (commandline | string collect)
             if string match --quiet --regex '^[[:space:]]*how([[:space:]]|$)' -- "$buffer"
-              set -l request (string replace --regex '^[[:space:]]*how[[:space:]]*' '' -- "$buffer" | string collect)
+              set -l request (string replace --regex '^[[:space:]]*how[[:space:]]*' "" -- "$buffer" | string collect)
               __seele_ai_insert how "$request"
               return
             end
             if string match --quiet --regex '^[[:space:]]*debug([[:space:]]|$)' -- "$buffer"
-              set -l request (string replace --regex '^[[:space:]]*debug[[:space:]]*' '' -- "$buffer" | string collect)
+              set -l request (string replace --regex '^[[:space:]]*debug[[:space:]]*' "" -- "$buffer" | string collect)
               __seele_ai_insert debug "$request"
               return
             end
