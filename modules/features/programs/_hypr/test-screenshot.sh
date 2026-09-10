@@ -90,6 +90,11 @@ notify-send)
   ;;
 esac
 EOF
+{
+  printf '#!%s\n' "$bash_bin"
+  tail -n +2 "$fake_bin/seele-test-command"
+} >"$fake_bin/seele-test-command.tmp"
+mv "$fake_bin/seele-test-command.tmp" "$fake_bin/seele-test-command"
 chmod +x "$fake_bin/seele-test-command"
 
 for command in curl date grim hyprctl hyprpicker jq notify-send satty slurp wl-copy zenity; do
