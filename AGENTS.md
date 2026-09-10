@@ -58,6 +58,20 @@ Hyprland binding. Keep capture and recognition dependencies in official
 nixpkgs. Captures are private runtime files, never screenshot-library or
 persistent-cache entries.
 
+On `nerv`, `Super + Space` invokes `seele-shellctl prompt`. The shell maps a
+centered prompt on the focused output immediately through a resident Python
+controller, but starts Codex only after Send. `@window` exposes only the
+captured application name and title, and `@dir` resolves only a focused
+terminal through `/proc`. `@clip` and `@select` require one-time visible
+permission before their bounded exact text is read. `@screen` requires a
+visible Capture action, freezes only the output where the panel opened, and
+shows the exact image before sending it. Each model turn runs in Codex's
+read-only sandbox from a private empty runtime workspace; follow-ups resume one
+session only while the panel remains open. Escape or shutdown terminates any
+turn, deletes its Codex session, and removes private captures. Enter sends or
+copies according to input state; Ctrl + Enter restores the validated original
+Hyprland window and inserts the answer without moving the pointer.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned

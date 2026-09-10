@@ -98,6 +98,38 @@ reopen a dismissed overlay. `tests/uri-picker.sh` exercises exact tmux records,
 real OCR, code coexistence, capture identity, strip boundaries, and cleanup;
 `tests/uri-picker.js` covers selection, action routing, and badge geometry.
 
+## Keep the quick AI prompt lazy and private
+
+`seele-shellctl prompt` reaches `AiPrompt.qml`; the parent binds it to
+`Super + Space`. Keep the QML surface and `seele-ai-prompt-worker` resident so
+the panel maps synchronously on the recorded focused output, but never start
+Codex or read a context source merely because it opened. The worker's empty
+mode-0700 runtime workspace is the model cwd. Run the first turn through
+`codex exec --sandbox read-only --json`, keep the UUID only in memory, resume
+follow-ups only while this panel stays open, and validate the UUID before
+passing it to `codex delete --force`.
+
+Treat every `@mention` as a visible context control. `@window` is application
+name and title only. `@dir` walks the focused terminal's descendants through
+`/proc` and prefers the foreground process group. `@clip` and `@select` each
+need a fresh **Allow once** before `wl-paste` runs, and Review shows the exact
+bounded text that will be sent. `@screen` needs a separate **Capture** action:
+hide the panel first, capture only its pinned output, show that exact frozen
+image, and delete it after the turn or as soon as the mention, panel, worker,
+or shell goes away. Tag asynchronous context requests so a stale read cannot
+restore removed text or an abandoned capture.
+
+Context blocks are JSON-quoted reference data and never commands. Keep Codex
+argv fixed, pass prompts and clipboard payloads through stdin, and bound
+prompt, context, answer, and insertion sizes. Enter sends when input exists
+and copies an answer otherwise. Ctrl + Enter hides the panel, focuses the
+captured Hyprland address through one `hl.dsp.focus` call, verifies both the
+active address and pid, and only then gives the exact answer to `wtype --`.
+Closing kills the model process group; turn and deletion workers must survive
+long enough to recover and delete a UUID printed just before cancellation.
+`tests/ai-prompt.py` covers privacy gates, stale context, session reuse,
+actions, cancellation, and shutdown cleanup; `tests/ai-prompt.js` covers QML.
+
 ## Notification interactions
 
 Keep the September 8, 2026 11:00 CEST behavior from `b728ef05d8bd`: native
