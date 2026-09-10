@@ -33,31 +33,45 @@ action is tried by hand.
 
 `seele-shellctl uris` reaches `UriPicker.qml` and one `seele-shell-uris` layer
 surface per output. The separate Rust `seele-uri-worker` owns concurrent Grim
-PPM captures and a bounded pool of warmed Tesseract engines from nixpkgs. Its
-Rust grayscale and 1.5× enlargement pass preserves small URI punctuation. Keep
-OCR off the QML thread and display the exact pixels being recognized. Use
-local adaptive thresholds for dim address-bar text beside bright browser chrome.
-An empty scan or failure releases captures and keyboard focus immediately;
-a separate click-through status surface shows the result for five seconds. Capture
-open shell panels and toasts before covering them, and preserve panel state
-across dismissal. Stream results into the retained ListModel, keep numbers
-stable across outputs, and
-wait for the complete number set before auto-opening a typed number. Enter
-resolves an exact numeric prefix; never use a timeout to guess user intent.
+PPM captures, optional exact terminal text, and a bounded pool of warmed
+Tesseract engines from nixpkgs. Keep all of that work off the QML thread and
+display the exact pixels being recognized.
 
-The same pool runs nixpkgs ZBar on whole outputs for QR codes and barcodes.
-Keep ordinary OCR active alongside code detection. Code payloads use exact
-decoded text, without OCR prose cleanup. Number selects a URI or copies other
-text; Ctrl + number copies either and stays latched through multi-digit input.
+Use tmux `capture-pane` only for normal visible panes in the focused Ghostty
+window. Prove the tmux client descends from the Hyprland window PID through
+`/proc`, require nonzero cell dimensions, and accept a logical-pixel mapping
+only when the tmux grid fits the window. Copy mode, modal/floating panes, unknown
+clients, unavailable sockets, and ambiguous scale or padding must fail closed to
+OCR. Map exact boxes output-locally, not in desktop-global coordinates. Parse
+URIs, existing explicit paths (`/`, `./`, `../`, `~/`), and 12–64 character
+Jujutsu IDs only; canonical paths open and revision IDs copy. Never guess a bare
+filename or expose terminal text in diagnostics.
+
+Emit exact terminal items before starting asynchronous OCR so their global
+numbers cannot move. Mask only OCR hits whose centers overlap an emitted exact
+token. Keep GUI and unsupported terminal OCR active, and never mask the ZBar
+whole-output pass for QR codes and barcodes. The Rust grayscale and 1.5×
+enlargement pass preserves small URI punctuation; use local adaptive thresholds
+for dim address-bar text beside bright browser chrome. Code payloads use exact
+decoded text without OCR prose cleanup. Number opens a URI or canonical path and
+copies revision or non-URI code text; Ctrl + number copies any item and stays
+latched through multi-digit input. Show the default action in the hover text.
 Show code text below its box, or above when the output has insufficient room.
 Pass clipboard text through stdin to wl-copy and render it as plain text.
 
+An empty scan or failure releases captures and keyboard focus immediately; a
+separate click-through status surface shows the result for five seconds. Capture
+open shell panels and toasts before covering them, and preserve panel state
+across dismissal. Stream results into the retained ListModel, keep numbers
+stable across outputs, and wait for the complete number set before auto-opening
+a typed number. Enter resolves an exact numeric prefix; never use a timeout to
+guess user intent.
+
 Images are private runtime files and are removed on cancellation, EOF, errors,
 and graceful termination. Guard messages by generation so an old scan cannot
-reopen a dismissed overlay. Boxes are normalized within each captured output;
-never use desktop-global coordinates or assume every monitor shares a scale.
-`tests/uri-picker.sh` exercises real OCR, capture identity, strip boundaries,
-and cleanup, while `tests/uri-picker.js` covers selection and badge geometry.
+reopen a dismissed overlay. `tests/uri-picker.sh` exercises exact tmux records,
+real OCR, code coexistence, capture identity, strip boundaries, and cleanup;
+`tests/uri-picker.js` covers selection, action routing, and badge geometry.
 
 ## Notification interactions
 

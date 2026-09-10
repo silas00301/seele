@@ -39,13 +39,17 @@ Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disab
 Fish command assistance on Linux comes from `packages.x86_64-linux.shell-ai` and the active `shell-ai` Home Manager feature. One Enter binding treats leading `how` and `debug` command lines as generation modes, then replaces the prompt for review without executing it; every other line reaches the normal Fish execute action. Both modes use the same bounded context collector and insertion path. A private per-session stderr tee retains only the last failed foreground command in the runtime directory, and `debug` sends that command, status, and stderr to a tool-less, ephemeral Pi invocation only when requested. Destructive suggestions are inserted as comments that require deliberate uncommenting.
 
 On `nerv`, `Super + Ctrl + S` invokes `seele-shellctl uris`. The shell freezes
-one image per output and numbers OCR-detected URIs, QR codes and barcodes globally.
-Code captions show decoded text below the code, or above when space is short.
-Selection opens URIs or copies other text; Ctrl + number copies any selection.
-The submodule owns
-the QML overlay and resident Rust OCR worker; the parent owns the Hyprland
-binding. Keep capture and OCR dependencies in official nixpkgs. Captures are
-private runtime files, never screenshot-library or persistent-cache entries.
+one image per output and globally numbers exact text from normal panes in the
+focused Ghostty/tmux client before OCR-detected URIs, QR codes, and barcodes.
+Exact terminal URLs and canonical existing paths open; Jujutsu revision IDs and
+non-URI code payloads copy. Ctrl + number copies any selection. Unsupported or
+ambiguous terminal geometry falls back to OCR, while GUI OCR and whole-output
+code scanning remain active. Code captions show decoded text below the code, or
+above when space is short. The submodule owns the QML overlay, tmux/Hyprland
+identity checks, and resident Rust recognition worker; the parent owns the
+Hyprland binding. Keep capture and recognition dependencies in official
+nixpkgs. Captures are private runtime files, never screenshot-library or
+persistent-cache entries.
 
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
