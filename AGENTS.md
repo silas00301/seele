@@ -34,6 +34,13 @@ Active profiles are `common`, `linux`/`darwin`, and `nerv`/`asuka`. Host constru
 
 Both hosts run Determinate Nix. `modules/features/system/determinate.nix` publishes `flake.modules.nixos.determinate` and `flake.modules.darwin.determinate` around the `determinate` input's modules, and the NixOS and Darwin `common` profiles import them. How Nix is configured then differs by platform. The NixOS module keeps `nix.settings` and `nix.registry` working by redirecting the generated `/etc/nix/nix.conf` to `/etc/nix/nix.custom.conf`. The nix-darwin module forces `nix.enable` off, so a Darwin leaf that configures Nix writes `determinateNix.customSettings` and `determinateNix.registry` instead; anything left in `nix.settings` there is silently dropped. Keep the `determinate` input free of a nixpkgs `follows`. On `asuka`, Determinate Nix itself comes from Determinate's macOS installer, because the nix-darwin module only configures an existing installation. `flake.modules.homeManager.determinate` covers every machine rather than only the two hosts: the Home Manager `common` profile imports it, and the portable builder adds it to every standalone evaluation. It forces `nix.package = null` because Home Manager's NixOS integration otherwise supplies its own package, ensuring no user profile carries a second Nix onto a managed or unmanaged machine.
 
+The `middle-click` Home Manager feature on `nerv` disables primary-selection
+paste in GTK 3/4 widgets and enables Zen's native autoscroll with primary paste
+and selection-URL loading disabled. This is partial SIL-49 support: it does not
+provide global input interception, a shared indicator, or autoscroll for Seele,
+Qt, or terminals. See the Seele skill's `middle-click.md` reference for the
+remaining platform boundary and validation matrix.
+
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
 On `nerv`, `seele-codex call` and `seele-codex request` reach the private,
