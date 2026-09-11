@@ -114,6 +114,9 @@ When the request does not select a tool, preserve these active defaults:
 
 Use Vicinae's standard launcher layout; Seele Shell carries the compact native desktop UI. Prefer explicit package paths in generated services and bindings when execution must be independent of `PATH`. Preserve interoperability rather than forcing every tool into one implementation.
 
+On `nerv`, the Power panel's Windows action starts the existing reboot service
+immediately; do not restore the ten-second countdown.
+
 ## Performance defaults
 
 - On `nerv`, favor CPU performance over idle power savings. Keep Hyprland's animation styles and visual effects, with transitions at half their previous duration. Prefer faster animations over removing them.
