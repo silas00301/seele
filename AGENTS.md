@@ -151,6 +151,16 @@ panel and Vicinae share `seele-control audio-outputs` for simultaneous playback;
 sink and its cleanup. Test routing on the private server in
 `seele-shell/tests/audio-routing.sh`.
 
+On `nerv`, the `seele-transfers` user service automatically receives Taildrop
+files into the configured XDG Downloads folder with exclusive numbered names
+and user-owned mode-0600 files. The shell owns the Transfers panel, Control
+Center module, conditional progress bar item, and provider-neutral contract.
+The service selects only currently available targets owned by the logged-in
+Tailscale user. It retains seven days of metadata, never file contents; clearing
+history never deletes files. `asuka` has no transfer service. See the submodule's
+`projects/transfers/README.md` for protocol, tests and Taildrop's incoming
+identity/cancellation limitations.
+
 Home Assistant's house icon stays visible before setup. Its panel stores the token
 through the standard Secret Service interface and keeps only connection metadata
 and display preferences in its private JSON file. See the Seele skill's

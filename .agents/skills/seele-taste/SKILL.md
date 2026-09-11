@@ -165,3 +165,9 @@ mouse-button remap as equivalent: browser links must retain their action.
 - **Cross-platform vs uniform:** reproduce intent and muscle memory, not necessarily the same application.
 
 When a completed change clearly establishes, reverses, or corrects one of these preferences, update this skill from active evidence. Do not promote a single host-specific necessity into a general preference.
+
+Personal device transfers use Taildrop for `nerv`, iPhone and iPad; `asuka` is
+outside this personal flow. Preserve original files, avoid upload links and
+persistent content queues, and receive directly into Downloads. Keep Transfers
+available in the Control Center but show its bar item only for activity, new
+incoming files or unresolved failure. Successful outgoing transfers stay quiet.
