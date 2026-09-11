@@ -25,23 +25,51 @@ let
       options.seele.health.providers = lib.mkOption {
         default = { };
         description = "Explicit integration-owned health registrations; disabled entries disappear.";
-        type = lib.types.attrsOf (lib.types.submodule {
-          options = {
-            enable = lib.mkEnableOption "integration health registration";
-            name = lib.mkOption { type = lib.types.str; };
-            deadline = lib.mkOption { type = lib.types.ints.between 5000 3600000; default = 90000; };
-            setup = lib.mkOption { type = lib.types.str; default = ""; };
-            service = lib.mkOption { type = lib.types.str; default = ""; };
-            actions = lib.mkOption {
-              type = lib.types.listOf (lib.types.enum [ "retry" "restart" "reconnect" "settings" "diagnostics" ]);
-              default = [ "settings" "diagnostics" ];
+        type = lib.types.attrsOf (
+          lib.types.submodule {
+            options = {
+              enable = lib.mkEnableOption "integration health registration";
+              name = lib.mkOption { type = lib.types.str; };
+              deadline = lib.mkOption {
+                type = lib.types.ints.between 5000 3600000;
+                default = 90000;
+              };
+              setup = lib.mkOption {
+                type = lib.types.str;
+                default = "";
+              };
+              service = lib.mkOption {
+                type = lib.types.str;
+                default = "";
+              };
+              actions = lib.mkOption {
+                type = lib.types.listOf (
+                  lib.types.enum [
+                    "retry"
+                    "restart"
+                    "reconnect"
+                    "settings"
+                    "diagnostics"
+                  ]
+                );
+                default = [
+                  "settings"
+                  "diagnostics"
+                ];
+              };
+              disruptive = lib.mkOption {
+                type = lib.types.listOf (
+                  lib.types.enum [
+                    "retry"
+                    "restart"
+                    "reconnect"
+                  ]
+                );
+                default = [ ];
+              };
             };
-            disruptive = lib.mkOption {
-              type = lib.types.listOf (lib.types.enum [ "retry" "restart" "reconnect" ]);
-              default = [ ];
-            };
-          };
-        });
+          }
+        );
       };
 
       config = {
@@ -51,19 +79,26 @@ let
             name = "GitHub";
             deadline = 360000;
             setup = "github";
-            actions = [ "retry" "settings" ];
+            actions = [
+              "retry"
+              "settings"
+            ];
           };
           home-assistant = {
             enable = lib.mkDefault true;
             name = "Home Assistant";
             setup = "home-assistant";
-            actions = [ "reconnect" "settings" ];
+            actions = [
+              "reconnect"
+              "settings"
+            ];
             disruptive = [ "reconnect" ];
           };
         };
         xdg.configFile."seele-shell/health.json".text = builtins.toJSON (
-          lib.mapAttrsToList (id: provider: (builtins.removeAttrs provider [ "enable" ]) // { inherit id; })
-            (lib.filterAttrs (_: provider: provider.enable) config.seele.health.providers)
+          lib.mapAttrsToList (id: provider: (builtins.removeAttrs provider [ "enable" ]) // { inherit id; }) (
+            lib.filterAttrs (_: provider: provider.enable) config.seele.health.providers
+          )
         );
 
         home.packages = [

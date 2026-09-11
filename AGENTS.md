@@ -240,3 +240,12 @@ Existing GitHub, Home Assistant and Tailscale source callbacks publish bounded
 semantic metadata, and `IntegrationHealthStore` derives stale state centrally.
 External configured providers publish through the `health` IPC target. See
 `seele-shell/projects/shell/HEALTH.md` for the versioned contract and typed actions.
+
+System Health combines Integration Health and Maintenance. The maintenance user
+service owns persistent sanitized finding metadata and seven-day resolved history;
+diagnostic bundles and AI results stay only in memory. Publishers deduplicate by
+source/key and alone resolve ongoing conditions. Snooze escalation, typed actions
+and explicit repair confirmation are enforced by the service as well as the UI.
+AI analysis is explicit and goes through the shared Codex broker, with repair IDs
+restricted to the finding's registered actions. It never executes a proposal.
+See `modules/packages/_maintenance/README.md` for source policy and validation.
