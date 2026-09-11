@@ -286,7 +286,7 @@ class PrivacyTests(unittest.TestCase):
 class RebuildTests(unittest.TestCase):
     class FakeProcess:
         def __init__(self, output: str, returncode: int):
-            self.stdout = io.StringIO(output)
+            self.stdout = io.BytesIO(output.encode("utf-8"))
             self.returncode = returncode
 
         def wait(self):
@@ -296,7 +296,7 @@ class RebuildTests(unittest.TestCase):
         process = self.FakeProcess("evaluating\nbuild failed\n", 4)
         with mock.patch.object(reporter.subprocess, "Popen", return_value=process) as popen:
             with mock.patch.object(reporter, "store_offer", return_value=0) as offer:
-                with mock.patch.object(sys, "stdout", io.StringIO()):
+                with mock.patch.object(sys, "stdout", io.TextIOWrapper(io.BytesIO())):
                     result = reporter.rebuild(["os", "switch", "--dry"])
         self.assertEqual(result, 4)
         self.assertEqual(popen.call_args.args[0][1:], ["os", "switch", "--dry"])
@@ -307,9 +307,30 @@ class RebuildTests(unittest.TestCase):
         process = self.FakeProcess("done\n", 0)
         with mock.patch.object(reporter.subprocess, "Popen", return_value=process):
             with mock.patch.object(reporter, "store_offer") as offer:
-                with mock.patch.object(sys, "stdout", io.StringIO()):
+                with mock.patch.object(sys, "stdout", io.TextIOWrapper(io.BytesIO())):
                     self.assertEqual(reporter.rebuild([]), 0)
         offer.assert_not_called()
+
+
+    def test_progress_bytes_are_not_translated_or_line_buffered(self):
+        frames = "\r\x1b[2Kbuilding 1/2\r\x1b[2Kbuilding 2/2 ✓\r\n"
+        process = self.FakeProcess(frames, 0)
+        sink = io.BytesIO()
+        stdout = io.TextIOWrapper(sink)
+        with mock.patch.object(reporter.subprocess, "Popen", return_value=process) as popen:
+            with mock.patch.object(sys, "stdout", stdout):
+                self.assertEqual(reporter.rebuild([]), 0)
+        self.assertEqual(sink.getvalue(), frames.encode("utf-8"))
+        self.assertFalse(popen.call_args.kwargs.get("text", False))
+
+    def test_unterminated_failure_output_has_a_bounded_tail(self):
+        process = self.FakeProcess("x" * (reporter.MAX_COMMAND_OUTPUT * 3) + " final failure", 1)
+        with mock.patch.object(reporter.subprocess, "Popen", return_value=process):
+            with mock.patch.object(reporter, "store_offer") as offer:
+                with mock.patch.object(sys, "stdout", io.TextIOWrapper(io.BytesIO())):
+                    self.assertEqual(reporter.rebuild([]), 1)
+        self.assertIn("final failure", offer.call_args.args[0])
+        self.assertLess(len(offer.call_args.args[0]), reporter.MAX_COMMAND_OUTPUT + 1000)
 
 
 class GeneratorTests(unittest.TestCase):
