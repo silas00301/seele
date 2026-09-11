@@ -78,10 +78,10 @@ The quick AI prompt is a third shell IPC workflow. Its parent-owned
 `AiPrompt.qml`, `ai-prompt.js`, and the resident Python
 `seele-ai-prompt-worker`. Opening maps a centered surface on the captured
 focused output without reading context or starting Codex. Typed `@window` and
-`@dir` controls expose narrow metadata; `@clip` and `@select` are one-time
-permission gates; and `@screen` hides the panel before capturing only its
-pinned output and displaying the exact private runtime image. Context request
-tokens reject late callbacks. Send starts `codex exec` in read-only mode from
+`@dir` controls expose narrow metadata. Explicit mentions resolve together only
+on Send; `@screen` hides the panel before capturing its pinned output. A failed
+source prevents submission. Model-requested context retains one-time approval
+and screen preview gates. Context request tokens reject late callbacks. Send starts `codex exec` in read-only mode from
 an empty private workspace, JSON-quotes approved context as reference data,
 and keeps one in-memory UUID for follow-ups. Copy uses stdin to `wl-copy`.
 Insert hides the panel, focuses the original validated Hyprland address,
