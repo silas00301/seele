@@ -282,3 +282,9 @@ store, and the audio lifecycle. `projects/shared/Theme.qml` and its sibling
 components are the common design system for Notes and the shell. Dictation's
 bottom waveform uses Voxtype's native status and audio socket without capturing
 a second microphone stream.
+
+The `codex-broker` package and Home Manager feature expose one private user
+socket to independent integrations on `nerv`. The package's README owns its
+protocol and testing details. Model policy and concurrency live in
+`seele.codexBroker`, not consumer requests. Validate the Python lifecycle suite
+and the real-Codex loopback fixture before changing broker or Codex integration.
