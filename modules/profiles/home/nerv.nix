@@ -5,6 +5,7 @@
     config.flake.modules.homeManager.claude-code
     config.flake.modules.homeManager.proton-vpn
     config.flake.modules.homeManager.openlogi
+    config.flake.modules.homeManager.middle-click
     config.flake.modules.homeManager.seele-notes
     config.flake.modules.homeManager.codex-broker
     config.flake.modules.homeManager.seele-shell

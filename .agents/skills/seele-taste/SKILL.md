@@ -117,6 +117,12 @@ Use Vicinae's standard launcher layout; Seele Shell carries the compact native d
 On `nerv`, the Power panel's Windows action starts the existing reboot service
 immediately; do not restore the ten-second countdown.
 
+On `nerv`, middle-click should scroll or perform an application's semantic
+action, never paste selected text. GTK primary-paste suppression and Zen native
+autoscroll currently cover only part of that preference. Do not treat a blanket
+mouse-button remap as equivalent: browser links must retain their action.
+
+
 ## Performance defaults
 
 - On `nerv`, favor CPU performance over idle power savings. Keep Hyprland's animation styles and visual effects, with transitions at half their previous duration. Prefer faster animations over removing them.

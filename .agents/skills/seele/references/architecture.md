@@ -48,6 +48,12 @@ The shell submodule's `projects/shell/SystemState.qml` owns status fields and pu
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and packages its private helpers from `_hypr/`. It sets `configType = "lua"`, and that choice reaches every caller rather than only the config file: Hyprland evaluates `hyprctl dispatch` as Lua, so a dispatch is one `hl.dsp` call — `hl.dsp.exit()`, `hl.dsp.focus({ workspace = "9" })`, `hl.dsp.window.close({ window = "address:0x…" })` — and the legacy `hyprctl dispatch <name> <args>` form resolves to an undefined global. hyprctl still exits zero on that error, so a stale call fails in silence; `hyprctl repl` evaluates a candidate without dispatching it. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it. Each completed capture gets a collision-safe timestamped path under `Pictures/Screenshots` and is copied after optional Satty annotation. The upload variant uses a native consent dialog before sending the saved image to 0x0.st with a secret URL and 24-hour expiry; declining or a failed upload copies the image locally. Its focused stub harness runs from the helper's `writeShellApplication` check phase.
 
+`modules/features/programs/middle-click.nix` contributes the host-scoped
+`middle-click` Home Manager module, imported only by `nerv`. It owns GTK
+primary-paste suppression and Zen's native autoscroll preferences. Read
+[middle-click compatibility](middle-click.md) before extending this partial
+implementation; application settings do not establish a global input boundary.
+
 The screen-link picker is a second frozen-screen workflow. Its binding lives
 beside the other shell IPC bindings in `modules/features/programs/seele-shell.nix`:
 `Super + Ctrl + S` calls `seele-shellctl uris`. The submodule's `UriPicker.qml`
