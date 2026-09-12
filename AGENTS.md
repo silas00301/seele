@@ -36,6 +36,13 @@ Both hosts run Determinate Nix. `modules/features/system/determinate.nix` publis
 
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
+On `nerv`, `seele-codex call` and `seele-codex request` reach the private,
+socket-activated Codex broker. It owns model selection, schema validation,
+concurrency, retries, cancellation and supersession. Integrations retain their
+own durable source data; broker payloads and results are memory-only. See
+`modules/packages/_codex-broker/README.md` for the versioned protocol and the
+local fake-model check proving the Codex request exposes no tools.
+
 Fish command assistance on Linux comes from `packages.x86_64-linux.shell-ai` and the active `shell-ai` Home Manager feature. One Enter binding treats leading `how` and `debug` command lines as generation modes, then replaces the prompt for review without executing it; every other line reaches the normal Fish execute action. Both modes use the same bounded context collector and insertion path. A private per-session stderr tee retains only the last failed foreground command in the runtime directory, and `debug` sends that command, status, and stderr to a tool-less, ephemeral Pi invocation only when requested. Destructive suggestions are inserted as comments that require deliberate uncommenting.
 
 \The Hyprland screenshot helper freezes the displayed frame and uses one picker
