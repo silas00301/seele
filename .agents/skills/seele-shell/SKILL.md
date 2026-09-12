@@ -452,7 +452,9 @@ nix build .#lock --no-link --no-write-lock-file
 nix build .#polkit --no-link --no-write-lock-file
 ```
 
-The default package build compiles the Rust tools, runs `qmllint`, bundles the extensions, and runs the focused shell tests. `tests/shell-load.sh` also compiles the complete production QML through Quickshell on a private headless Sway compositor. It does not instantiate the desktop, start workers, or access the session bus. Keep this runtime check: `qmllint` missed a nonexistent property assigned through an inline shared-component alias, and the built shell could not start. `tests/feature-integrations.js` also proves that independently tested feature helpers remain wired into production `shell.qml`, installed by the package, and covered by its install checks; extend it when a feature adds another production seam. Build every affected output when shared code changes. Use `nix develop -c test-shell` for a faster Rust and JavaScript loop, but finish with the relevant package build.
+The default package build compiles the Rust tools, runs `qmllint`, bundles the extensions, and runs the focused shell tests. `tests/shell-load.sh` also compiles the complete production QML through Quickshell on a private headless Sway compositor. It does not instantiate the desktop, start workers, or access the session bus. The lock package runs the same compile check. Keep its startup timer beside
+`WlSessionLock`: the lock's default property is its single surface component,
+not a container for arbitrary objects. Keep this runtime check: `qmllint` missed a nonexistent property assigned through an inline shared-component alias, and the built shell could not start. `tests/feature-integrations.js` also proves that independently tested feature helpers remain wired into production `shell.qml`, installed by the package, and covered by its install checks; extend it when a feature adds another production seam. Build every affected output when shared code changes. Use `nix develop -c test-shell` for a faster Rust and JavaScript loop, but finish with the relevant package build.
 
 Inspect the submodule diff before crossing back into the parent:
 
