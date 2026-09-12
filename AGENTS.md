@@ -222,3 +222,11 @@ Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Li
 Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
 
 Known baseline warnings include the nixvim/nixpkgs `follows` warning and upstream option/deprecation warnings. Compare with the baseline before attributing warnings to a change.
+
+Integration Health is a Control Center module and a conditional bar warning,
+with no health notifications or transition history. Integration owners explicitly
+register through `seele.health.providers`; disabling a registration removes it.
+Existing GitHub, Home Assistant and Tailscale source callbacks publish bounded
+semantic metadata, and `IntegrationHealthStore` derives stale state centrally.
+External configured providers publish through the `health` IPC target. See
+`seele-shell/projects/shell/HEALTH.md` for the versioned contract and typed actions.

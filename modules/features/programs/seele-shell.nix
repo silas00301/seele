@@ -22,177 +22,222 @@ let
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
-      home.packages = [
-        package
-        lockPackage
-        polkitPackage
-        librepodsPackage
-      ];
-      home.file = {
-        "${config.programs.pi-coding-agent.configDir}/extensions/seele-shell-status.ts".source =
-          "${package}/share/seele-shell/pi-status.ts";
+      options.seele.health.providers = lib.mkOption {
+        default = { };
+        description = "Explicit integration-owned health registrations; disabled entries disappear.";
+        type = lib.types.attrsOf (lib.types.submodule {
+          options = {
+            enable = lib.mkEnableOption "integration health registration";
+            name = lib.mkOption { type = lib.types.str; };
+            deadline = lib.mkOption { type = lib.types.ints.between 5000 3600000; default = 90000; };
+            setup = lib.mkOption { type = lib.types.str; default = ""; };
+            service = lib.mkOption { type = lib.types.str; default = ""; };
+            actions = lib.mkOption {
+              type = lib.types.listOf (lib.types.enum [ "retry" "restart" "reconnect" "settings" "diagnostics" ]);
+              default = [ "settings" "diagnostics" ];
+            };
+            disruptive = lib.mkOption {
+              type = lib.types.listOf (lib.types.enum [ "retry" "restart" "reconnect" ]);
+              default = [ ];
+            };
+          };
+        });
       };
 
-      xdg.dataFile."vicinae/extensions/seele-shell".source =
-        "${package}/share/vicinae/extensions/seele-shell";
+      config = {
+        seele.health.providers = {
+          github = {
+            enable = lib.mkDefault config.programs.gh.enable;
+            name = "GitHub";
+            deadline = 360000;
+            setup = "github";
+            actions = [ "retry" "settings" ];
+          };
+          home-assistant = {
+            enable = lib.mkDefault true;
+            name = "Home Assistant";
+            setup = "home-assistant";
+            actions = [ "reconnect" "settings" ];
+            disruptive = [ "reconnect" ];
+          };
+        };
+        xdg.configFile."seele-shell/health.json".text = builtins.toJSON (
+          lib.mapAttrsToList (id: provider: (builtins.removeAttrs provider [ "enable" ]) // { inherit id; })
+            (lib.filterAttrs (_: provider: provider.enable) config.seele.health.providers)
+        );
 
-      xdg.configFile."opencode/plugins/seele-shell-status.ts".source =
-        "${package}/share/seele-shell/opencode-status.ts";
-      xdg.configFile."seele-shell/theme.json".text = builtins.toJSON {
-        inherit wallpaper;
-        fontFamily = config.stylix.fonts.monospace.name;
-        base = colors.base.hex;
-        mantle = colors.mantle.hex;
-        crust = colors.crust.hex;
-        surface = colors.surface0.hex;
-        overlay = colors.overlay0.hex;
-        text = colors.text.hex;
-        subtext = colors.subtext0.hex;
-        accent = colors.${catppuccin.accent}.hex;
-        red = colors.red.hex;
-        green = colors.green.hex;
-        yellow = colors.yellow.hex;
-      };
+        home.packages = [
+          package
+          lockPackage
+          polkitPackage
+          librepodsPackage
+        ];
+        home.file = {
+          "${config.programs.pi-coding-agent.configDir}/extensions/seele-shell-status.ts".source =
+            "${package}/share/seele-shell/pi-status.ts";
+        };
 
-      # librepods writes its own XDG autostart entry, which starts a second
-      # instance next to the user service and duplicates its tray icon. Keep a
-      # disabled entry in place so the desktop ignores it.
-      xdg.configFile."autostart/librepods.desktop" = {
-        force = true;
-        text = ''
-          [Desktop Entry]
-          Type=Application
-          Name=librepods
-          Comment=Managed by the librepods user service
-          Exec=true
-          Hidden=true
-          NoDisplay=true
-          X-GNOME-Autostart-enabled=false
-          Terminal=false
+        xdg.dataFile."vicinae/extensions/seele-shell".source =
+          "${package}/share/vicinae/extensions/seele-shell";
+
+        xdg.configFile."opencode/plugins/seele-shell-status.ts".source =
+          "${package}/share/seele-shell/opencode-status.ts";
+        xdg.configFile."seele-shell/theme.json".text = builtins.toJSON {
+          inherit wallpaper;
+          fontFamily = config.stylix.fonts.monospace.name;
+          base = colors.base.hex;
+          mantle = colors.mantle.hex;
+          crust = colors.crust.hex;
+          surface = colors.surface0.hex;
+          overlay = colors.overlay0.hex;
+          text = colors.text.hex;
+          subtext = colors.subtext0.hex;
+          accent = colors.${catppuccin.accent}.hex;
+          red = colors.red.hex;
+          green = colors.green.hex;
+          yellow = colors.yellow.hex;
+        };
+
+        # librepods writes its own XDG autostart entry, which starts a second
+        # instance next to the user service and duplicates its tray icon. Keep a
+        # disabled entry in place so the desktop ignores it.
+        xdg.configFile."autostart/librepods.desktop" = {
+          force = true;
+          text = ''
+            [Desktop Entry]
+            Type=Application
+            Name=librepods
+            Comment=Managed by the librepods user service
+            Exec=true
+            Hidden=true
+            NoDisplay=true
+            X-GNOME-Autostart-enabled=false
+            Terminal=false
+          '';
+        };
+
+        services = {
+          hypridle.enable = lib.mkForce true;
+          # Seele Shell owns org.freedesktop.Notifications through Quickshell.
+          mako.enable = false;
+        };
+
+        systemd.user.services = {
+          seele-shell = {
+            Unit = {
+              Description = "Seele desktop shell";
+              PartOf = [ "graphical-session.target" ];
+              After = [ "graphical-session.target" ];
+            };
+            Service = {
+              Environment = [
+                "QT_QPA_PLATFORMTHEME=gtk3"
+                "SEELE_SHELL_WALLPAPER=${wallpaper}"
+                "SEELE_SHELL_CODEXBAR=${lib.getExe selfPackages.codexbar}"
+                "SEELE_SHELL_PI=${lib.getExe config.programs.pi-coding-agent.package}"
+                "SEELE_SHELL_OPENCODE=${lib.getExe config.programs.opencode.package}"
+                "SEELE_SHELL_CODEX=${lib.getExe pkgs.codex}"
+                "SEELE_SHELL_CLAUDE=${lib.getExe pkgs.claude-code}"
+                "SEELE_SHELL_GHOSTTY=${lib.getExe pkgs.ghostty}"
+                "SEELE_SHELL_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
+                "SEELE_LOCK=${lib.getExe lockPackage}"
+                "SEELE_SHELL_NH=${lib.getExe config.programs.nh.package}"
+                "SEELE_SHELL_REPO=${config.programs.nh.flake}"
+              ];
+              ExecStart = lib.getExe package;
+              Restart = "on-failure";
+              RestartSec = 1;
+            };
+            Install.WantedBy = [ "graphical-session.target" ];
+          };
+
+          # PipeWire's mute is a software gate inside the graph and never
+          # reaches the microphone's own, so the panel and the desktop each held
+          # half of one state: a tap silenced a call the desktop still showed as
+          # live, and unmuting here could not bring a panel-muted microphone back.
+          # This makes the two one state in both directions, LED included.
+          seele-mic-sync = {
+            Unit = {
+              Description = "Microphone mute sync";
+              PartOf = [ "graphical-session.target" ];
+              After = [
+                "graphical-session.target"
+                "pipewire.service"
+              ];
+            };
+            Service = {
+              ExecStart = "${package}/bin/seele-mic-sync ${microphone}";
+              Restart = "on-failure";
+              RestartSec = 2;
+            };
+            Install.WantedBy = [ "graphical-session.target" ];
+          };
+
+          librepods = {
+            Unit = {
+              Description = "AirPods controls and ear detection";
+              PartOf = [ "graphical-session.target" ];
+              After = [ "graphical-session.target" ];
+            };
+            Service = {
+              ExecStart = "${librepodsPackage}/bin/librepods --hide";
+              Restart = "on-failure";
+              RestartSec = 2;
+            };
+            Install.WantedBy = [ "graphical-session.target" ];
+          };
+
+          tailscale-systray = {
+            Unit = {
+              Description = "Tailscale system tray";
+              PartOf = [ "graphical-session.target" ];
+              After = [
+                "graphical-session.target"
+                "seele-shell.service"
+              ];
+            };
+            Service = {
+              ExecStart = "${pkgs.tailscale}/bin/tailscale systray";
+              Restart = "on-failure";
+              RestartSec = 2;
+            };
+            Install.WantedBy = [ "graphical-session.target" ];
+          };
+
+          # Replaces hyprpolkitagent, which drew polkit's prompt but dropped the
+          # one message that matters here: its `showInfo` handler only printed to
+          # stdout, so pam_u2f's touch request never reached the dialog and the
+          # `polkit-1` stack's `u2f sufficient` looked like it did nothing.
+          # Quickshell's PolkitAgent surfaces the same text as
+          # `supplementaryMessage`, so the password field and the token are both
+          # visible routes through one PAM conversation.
+          seele-polkit = {
+            Unit = {
+              Description = "Seele PolicyKit authentication agent";
+              PartOf = [ "graphical-session.target" ];
+              After = [ "graphical-session.target" ];
+            };
+            Service = {
+              ExecStart = lib.getExe polkitPackage;
+              Restart = "on-failure";
+              RestartSec = 1;
+            };
+            Install.WantedBy = [ "graphical-session.target" ];
+          };
+        };
+
+        wayland.windowManager.hyprland.extraConfig = lib.mkAfter ''
+          hl.bind("ALT + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl menu apps"), { description = "Open the Vicinae application launcher" })
+          hl.bind("SUPER + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agents"), { description = "Open the AI cockpit" })
+          hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl prompt"), { description = "Open the quick AI prompt" })
+          hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agent pi"), { description = "Launch Pi" })
+          hl.bind("SUPER + CTRL + S", hl.dsp.exec_cmd("${package}/bin/seele-shellctl uris"), { description = "Open a visible URI from the frozen screens" })
+          hl.bind("SUPER + C", hl.dsp.exec_cmd("${package}/bin/seele-shellctl center"), { description = "Open the Control Center" })
+          hl.bind("SUPER + N", hl.dsp.exec_cmd("${package}/bin/seele-shellctl control notifications"), { description = "Open notifications" })
+          hl.bind("SUPER + ESCAPE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl controls"), { description = "Open session controls" })
+          hl.bind("SUPER + K", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae cmd launch @seele/seele-shell:keybindings"), { description = "Search Hyprland keybindings" })
         '';
       };
-
-      services = {
-        hypridle.enable = lib.mkForce true;
-        # Seele Shell owns org.freedesktop.Notifications through Quickshell.
-        mako.enable = false;
-      };
-
-      systemd.user.services = {
-        seele-shell = {
-          Unit = {
-            Description = "Seele desktop shell";
-            PartOf = [ "graphical-session.target" ];
-            After = [ "graphical-session.target" ];
-          };
-          Service = {
-            Environment = [
-              "QT_QPA_PLATFORMTHEME=gtk3"
-              "SEELE_SHELL_WALLPAPER=${wallpaper}"
-              "SEELE_SHELL_CODEXBAR=${lib.getExe selfPackages.codexbar}"
-              "SEELE_SHELL_PI=${lib.getExe config.programs.pi-coding-agent.package}"
-              "SEELE_SHELL_OPENCODE=${lib.getExe config.programs.opencode.package}"
-              "SEELE_SHELL_CODEX=${lib.getExe pkgs.codex}"
-              "SEELE_SHELL_CLAUDE=${lib.getExe pkgs.claude-code}"
-              "SEELE_SHELL_GHOSTTY=${lib.getExe pkgs.ghostty}"
-              "SEELE_SHELL_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
-              "SEELE_LOCK=${lib.getExe lockPackage}"
-              "SEELE_SHELL_NH=${lib.getExe config.programs.nh.package}"
-              "SEELE_SHELL_REPO=${config.programs.nh.flake}"
-            ];
-            ExecStart = lib.getExe package;
-            Restart = "on-failure";
-            RestartSec = 1;
-          };
-          Install.WantedBy = [ "graphical-session.target" ];
-        };
-
-        # PipeWire's mute is a software gate inside the graph and never
-        # reaches the microphone's own, so the panel and the desktop each held
-        # half of one state: a tap silenced a call the desktop still showed as
-        # live, and unmuting here could not bring a panel-muted microphone back.
-        # This makes the two one state in both directions, LED included.
-        seele-mic-sync = {
-          Unit = {
-            Description = "Microphone mute sync";
-            PartOf = [ "graphical-session.target" ];
-            After = [
-              "graphical-session.target"
-              "pipewire.service"
-            ];
-          };
-          Service = {
-            ExecStart = "${package}/bin/seele-mic-sync ${microphone}";
-            Restart = "on-failure";
-            RestartSec = 2;
-          };
-          Install.WantedBy = [ "graphical-session.target" ];
-        };
-
-        librepods = {
-          Unit = {
-            Description = "AirPods controls and ear detection";
-            PartOf = [ "graphical-session.target" ];
-            After = [ "graphical-session.target" ];
-          };
-          Service = {
-            ExecStart = "${librepodsPackage}/bin/librepods --hide";
-            Restart = "on-failure";
-            RestartSec = 2;
-          };
-          Install.WantedBy = [ "graphical-session.target" ];
-        };
-
-        tailscale-systray = {
-          Unit = {
-            Description = "Tailscale system tray";
-            PartOf = [ "graphical-session.target" ];
-            After = [
-              "graphical-session.target"
-              "seele-shell.service"
-            ];
-          };
-          Service = {
-            ExecStart = "${pkgs.tailscale}/bin/tailscale systray";
-            Restart = "on-failure";
-            RestartSec = 2;
-          };
-          Install.WantedBy = [ "graphical-session.target" ];
-        };
-
-        # Replaces hyprpolkitagent, which drew polkit's prompt but dropped the
-        # one message that matters here: its `showInfo` handler only printed to
-        # stdout, so pam_u2f's touch request never reached the dialog and the
-        # `polkit-1` stack's `u2f sufficient` looked like it did nothing.
-        # Quickshell's PolkitAgent surfaces the same text as
-        # `supplementaryMessage`, so the password field and the token are both
-        # visible routes through one PAM conversation.
-        seele-polkit = {
-          Unit = {
-            Description = "Seele PolicyKit authentication agent";
-            PartOf = [ "graphical-session.target" ];
-            After = [ "graphical-session.target" ];
-          };
-          Service = {
-            ExecStart = lib.getExe polkitPackage;
-            Restart = "on-failure";
-            RestartSec = 1;
-          };
-          Install.WantedBy = [ "graphical-session.target" ];
-        };
-      };
-
-      wayland.windowManager.hyprland.extraConfig = lib.mkAfter ''
-        hl.bind("ALT + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl menu apps"), { description = "Open the Vicinae application launcher" })
-        hl.bind("SUPER + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agents"), { description = "Open the AI cockpit" })
-        hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl prompt"), { description = "Open the quick AI prompt" })
-        hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agent pi"), { description = "Launch Pi" })
-        hl.bind("SUPER + CTRL + S", hl.dsp.exec_cmd("${package}/bin/seele-shellctl uris"), { description = "Open a visible URI from the frozen screens" })
-        hl.bind("SUPER + C", hl.dsp.exec_cmd("${package}/bin/seele-shellctl center"), { description = "Open the Control Center" })
-        hl.bind("SUPER + N", hl.dsp.exec_cmd("${package}/bin/seele-shellctl control notifications"), { description = "Open notifications" })
-        hl.bind("SUPER + ESCAPE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl controls"), { description = "Open session controls" })
-        hl.bind("SUPER + K", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae cmd launch @seele/seele-shell:keybindings"), { description = "Search Hyprland keybindings" })
-      '';
     };
   # Pi and OpenCode publish session state from extensions the Home Manager
   # profile installs. Claude Code and Codex have no extension API but expose the

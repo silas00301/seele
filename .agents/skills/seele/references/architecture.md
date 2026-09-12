@@ -299,3 +299,15 @@ The AI panel Activity tab consumes broker metadata through `seele-codex request`
 `AiActivityStore.qml` retains rows by job ID and rejects stale action responses
 after an epoch or state change. `tests/ai-activity.js` checks privacy projection,
 queue order, terminal expiry, controls, row identity, and restart handling.
+
+### Integration Health
+
+`seele.health.providers` in the shell Home Manager feature declares configured
+integration identities, freshness deadlines, setup destinations and typed recovery
+actions. The owning integration enables its registration; installed executables
+and running processes never create rows. Source callbacks publish current
+sanitized metadata through `IntegrationHealthStore` or the `health` IPC target.
+The store derives stale state and holds no history. The System Health surface
+reserves a component slot for Maintenance. Validate its contract with
+`node seele-shell/tests/health.js seele-shell/projects/shell/health.js` and the
+existing GitHub/Home Assistant source suites, then build the shell and host.
