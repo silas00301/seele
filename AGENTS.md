@@ -95,8 +95,8 @@ runtime directory. The Seele notification offers local viewing in a centered
 Neovim scratch buffer or explicit AI analysis; doing nothing sends nothing.
 Only the AI action passes a redacted report to a no-tools Pi process over
 stdin. The `rebuild` Fish abbreviation and Seele OS session use
-`seele-rebuild`, which puts failed `nh os switch` output through the same
-consent path. `systemctl start seele-failure-test` deliberately exercises it.
+`seele-rebuild`, which forwards progress bytes unchanged and retains a bounded
+failure tail for the same consent path. `systemctl start seele-failure-test` deliberately exercises it.
 
 Seele Notes is a separate desktop app from the shell submodule's `notes`
 package, exposed as `packages.<system>.seele-notes` and installed on Linux by

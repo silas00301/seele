@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-from collections import deque
 from datetime import datetime, timezone
 import json
 import math
@@ -585,27 +584,29 @@ def offer_as_user(username: str, report: str, subject: str, summary: str) -> int
 def rebuild(arguments: Sequence[str]) -> int:
     nh_arguments = list(arguments) if list(arguments[:2]) == ["os", "switch"] else ["os", "switch", *arguments]
     command = [executable("SEELE_FAILURE_NH", "nh"), *nh_arguments]
-    tail: deque[str] = deque(maxlen=180)
+    tail = bytearray()
     try:
         process = subprocess.Popen(
             command,
             stdin=None,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
         )
     except OSError as error:
         output = str(error)
         returncode = 127
     else:
         assert process.stdout is not None
-        for line in process.stdout:
-            sys.stdout.write(line)
-            sys.stdout.flush()
-            tail.append(line)
+        # Forward terminal bytes unchanged: text mode turns carriage-return
+        # progress frames into newlines, and line iteration waits for a newline.
+        while chunk := process.stdout.read1(8192):
+            sys.stdout.buffer.write(chunk)
+            sys.stdout.buffer.flush()
+            tail.extend(chunk)
+            del tail[:-MAX_COMMAND_OUTPUT]
+        process.stdout.close()
         returncode = process.wait()
-        output = bounded("".join(tail), MAX_COMMAND_OUTPUT, tail=True)
+        output = tail.decode("utf-8", "replace")
     if returncode == 0:
         return 0
 
@@ -617,7 +618,7 @@ def rebuild(arguments: Sequence[str]) -> int:
         "[Output from failed rebuild]\n"
         f"{clean_text(output, MAX_COMMAND_OUTPUT)}\n"
     )
-    last_line = next((clean_text(line, 300) for line in reversed(tail) if line.strip()), f"Exit status: {returncode}")
+    last_line = next((clean_text(line, 300) for line in reversed(output.splitlines()) if line.strip()), f"Exit status: {returncode}")
     store_offer(report, "NixOS rebuild", f"Exit {returncode}\n{last_line}")
     return returncode
 
