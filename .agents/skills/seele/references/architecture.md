@@ -288,3 +288,8 @@ socket to independent integrations on `nerv`. The package's README owns its
 protocol and testing details. Model policy and concurrency live in
 `seele.codexBroker`, not consumer requests. Validate the Python lifecycle suite
 and the real-Codex loopback fixture before changing broker or Codex integration.
+
+The AI panel Activity tab consumes broker metadata through `seele-codex request`.
+`AiActivityStore.qml` retains rows by job ID and rejects stale action responses
+after an epoch or state change. `tests/ai-activity.js` checks privacy projection,
+queue order, terminal expiry, controls, row identity, and restart handling.

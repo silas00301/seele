@@ -9,7 +9,7 @@ consumer credentials are needed. The `nerv` profile installs it.
 The CLI reads one JSON value on stdin and writes one JSON value on stdout:
 
 - `seele-codex request`: low-level asynchronous protocol.
-- `seele-codex call`: submit, wait for the same job lifecycle, then release.
+- `seele-codex call`: submit, wait for the same job lifecycle, then release nonfailed work.
 
 A request example:
 
@@ -43,7 +43,9 @@ a submitter does not cancel work. Cancel also stops schema retries. Transient
 failures retry twice with bounded backoff; invalid output regenerates until valid,
 cancelled, or superseded. Retry reuses a failed request unchanged. Next promotes
 one queued job without interrupting active work or changing its scheduling class.
-Release discards a terminal request and result. Consumers must release completed
+Release discards a terminal request and result. A bounded metadata-only tail
+keeps successful, cancelled, and superseded confirmations visible for five seconds;
+dismissing a failure removes it immediately. Consumers must release completed
 jobs to recover capacity; failures remain available for an explicit retry.
 
 Codex owns authentication. Each attempt runs `codex exec --ignore-user-config

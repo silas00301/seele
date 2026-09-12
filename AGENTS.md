@@ -39,7 +39,10 @@ Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disab
 On `nerv`, `seele-codex call` and `seele-codex request` reach the private,
 socket-activated Codex broker. It owns model selection, schema validation,
 concurrency, retries, cancellation and supersession. Integrations retain their
-own durable source data; broker payloads and results are memory-only. See
+own durable source data; broker payloads and results are memory-only. The AI
+panel Activity tab reads metadata only, preserves actual queue order, and offers
+cancel, retry, do-next, and dismiss. Failures stay until resolved; other terminal
+states disappear after five seconds. Activity never creates notifications. See
 `modules/packages/_codex-broker/README.md` for the versioned protocol and the
 local fake-model check proving the Codex request exposes no tools.
 

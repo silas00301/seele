@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from broker import Broker, Failure, connection, rpc
 
 
@@ -98,6 +99,19 @@ class Tests(unittest.IsolatedAsyncioTestCase):
         await self.call('release',j)
         self.assertEqual(j.payload,{})
         self.assertNotIn(j.id,self.b.jobs)
+
+    async def test_released_completion_is_brief_metadata_only(self):
+        self.gate.set()
+        job = self.b.submit(payload())
+        await asyncio.wait_for(job.done.wait(), 1)
+        await self.call('release', job)
+        listing = await self.b.call({'op':'list'})
+        self.assertEqual(listing['jobs'][0]['state'], 'succeeded')
+        self.assertNotIn('Private prompt', json.dumps(listing))
+        self.assertNotIn('result', json.dumps(listing))
+        self.assertEqual(job.payload, {})
+        with patch('broker.time.time', return_value=job.updated + 6):
+            self.assertEqual((await self.b.call({'op':'list'}))['jobs'], [])
 
     async def test_two_socket_clients_disconnect_and_restart(self):
         with tempfile.TemporaryDirectory() as temp:

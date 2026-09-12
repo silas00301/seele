@@ -111,6 +111,7 @@ class Broker:
         self.runner, self.model = runner, model
         self.capacity, self.retry_limit, self.backoff = capacity, retry_limit, backoff
         self.jobs, self.workers = {}, []
+        self.retired = []
         self.epoch = str(uuid.uuid4())
         self.sequence = 0
         self.changed = asyncio.Event()
@@ -226,7 +227,8 @@ class Broker:
         if operation == 'list':
             running = sorted((j for j in self.jobs.values() if j.state in ('running', 'retrying')), key=lambda j:j.sequence)
             terminal = sorted((j for j in self.jobs.values() if j.state in TERMINAL), key=lambda j:j.updated, reverse=True)
-            return {'jobs': [j.metadata() for j in [*running, *self.queue(), *terminal]]}
+            self.retired = [j for j in self.retired if time.time() - j['updated'] < 5]
+            return {'jobs': [j.metadata() for j in [*running, *self.queue(), *terminal]] + self.retired}
         if message.get('epoch') != self.epoch:
             raise Failure('broker_restarted')
         job = self.jobs.get(message.get('id'))
@@ -254,6 +256,9 @@ class Broker:
         elif operation == 'release':
             if job.state not in TERMINAL:
                 raise Failure('invalid_state')
+            if job.state != 'failed':
+                self.retired.append(job.metadata())
+                self.retired = self.retired[-128:]
             del self.jobs[job.id]
             job.payload.clear()
             job.result = None
@@ -275,6 +280,7 @@ class Broker:
             worker.cancel()
         await asyncio.gather(*self.workers, *(j.task for j in self.jobs.values() if j.task), return_exceptions=True)
         self.jobs.clear()
+        self.retired.clear()
 
 
 async def connection(broker, reader, writer):
@@ -340,7 +346,8 @@ async def main():
             if result.get('ok'):
                 identity = {'id':result['job']['id'], 'epoch':result['epoch']}
                 result = await rpc(args.socket, {'op':'wait', **identity})
-                await rpc(args.socket, {'op':'release', **identity})
+                if result.get('job', {}).get('state') != 'failed':
+                    await rpc(args.socket, {'op':'release', **identity})
         else:
             result = await rpc(args.socket, message)
         print(json.dumps(result))
