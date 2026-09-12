@@ -307,10 +307,19 @@ integration identities, freshness deadlines, setup destinations and typed recove
 actions. The owning integration enables its registration; installed executables
 and running processes never create rows. Source callbacks publish current
 sanitized metadata through `IntegrationHealthStore` or the `health` IPC target.
-The store derives stale state and holds no history. The System Health surface
-reserves a component slot for Maintenance. Validate its contract with
+The store derives stale state and holds no history. Validate its contract with
 `node seele-shell/tests/health.js seele-shell/projects/shell/health.js` and the
 existing GitHub/Home Assistant source suites, then build the shell and host.
+
+### Maintenance
+
+The System Health Maintenance tab reads the private `seele-maintenance` user
+socket. `modules/packages/_maintenance/` owns the typed lifecycle, seven-day
+metadata history, source adapters and explicit Codex analysis. Each registered
+source publishes complete snapshots; a failed probe retains prior findings.
+`seele.maintenance` declares per-host disk, backup-age, certificate, flake-check
+and critical-input policy. No source probes live in QML. The package runs model,
+server and publisher tests; `tests/maintenance.js` exercises actual QML methods.
 
 ## Personal transfers
 
