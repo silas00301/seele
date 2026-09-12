@@ -109,15 +109,17 @@ mode-0700 runtime workspace is the model cwd. Run the first turn through
 follow-ups only while this panel stays open, and validate the UUID before
 passing it to `codex delete --force`.
 
-Treat every `@mention` as a visible context control. `@window` is application
-name and title only. `@dir` walks the focused terminal's descendants through
-`/proc` and prefers the foreground process group. `@clip` and `@select` each
-need a fresh **Allow once** before `wl-paste` runs, and Review shows the exact
-bounded text that will be sent. `@screen` needs a separate **Capture** action:
-hide the panel first, capture only its pinned output, show that exact frozen
-image, and delete it after the turn or as soon as the mention, panel, worker,
-or shell goes away. Tag asynchronous context requests so a stale read cannot
-restore removed text or an abandoned capture.
+Explicit user `@mentions` authorize their sources for one Send. Opening or typing
+must not read sources, including `@dir`. The QML coordinator collects every
+mention before starting one model turn, displays Collecting, and rejects duplicate
+Send inputs. `@window` carries only the pinned app/title; `@dir` resolves the
+focused terminal. Clipboard and selection use bounded exact text. `@screen`
+hides the panel and captures its pinned output, then restores it and submits
+without a separate preview step. Keep source-specific one-time approval and
+Capture/preview controls for context requested by the model. Failed collection
+preserves the prompt and identifies the mention; edits, closing, and reopening
+invalidate tokens and remove captures. The production-function tests in
+`tests/ai-prompt.js` cover collection, duplicate sends, failures and stale replies.
 
 Context blocks are JSON-quoted reference data and never commands. Keep Codex
 argv fixed, pass prompts and clipboard payloads through stdin, and bound
