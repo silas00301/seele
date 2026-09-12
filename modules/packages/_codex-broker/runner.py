@@ -21,7 +21,12 @@ def feature_flags(binary):
         if result.returncode:
             raise Failure('runtime_failure')
         names = [line.split()[0] for line in result.stdout.splitlines() if line.strip()]
-        if not names or any(not name.replace('_', '').isalnum() for name in names):
+        valid_names = all(
+            part and part.replace('_', '').isalnum()
+            for name in names
+            for part in name.split('.')
+        )
+        if not names or not valid_names:
             raise Failure('runtime_failure')
         # Disable the complete installed capability set, including new features.
         flags = [part for name in names if name != 'skip_host_skill_discovery' for part in ('--disable', name)]

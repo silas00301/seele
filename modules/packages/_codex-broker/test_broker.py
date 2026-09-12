@@ -4,10 +4,12 @@ import copy
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
 from broker import Broker, Failure, connection, rpc
+import runner
 
 
 def payload(consumer='one', **kw):
@@ -130,6 +132,31 @@ class Tests(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn('context',json.dumps(listing))
                 result=await rpc(path,{'op':'status','id':a['job']['id'],'epoch':'old'})
                 self.assertEqual(result['error'],'broker_restarted')
+
+
+class FeatureFlagTests(unittest.TestCase):
+    def setUp(self):
+        runner.feature_flags.cache_clear()
+
+    @patch('runner.subprocess.run')
+    def test_accepts_namespaced_feature(self, run):
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=(
+                'guardianv2.thread_context under development false\n'
+                'skip_host_skill_discovery under development false\n'
+            ),
+        )
+        self.assertEqual(
+            runner.feature_flags('codex-fixture'),
+            [
+                '--disable',
+                'guardianv2.thread_context',
+                '--enable',
+                'skip_host_skill_discovery',
+            ],
+        )
 
 
 if __name__=='__main__': unittest.main()
