@@ -320,7 +320,11 @@ root, so each package installs its own `shared/` directory below that root and
 rewrites the source tree's sibling import to `import "shared" as Shared`; keep
 an install check for that layout. The Notes package globs
 `projects/shared/*.qml`, so a new component needs no packaging change but must
-pass that package's `qmllint`.
+pass that package's `qmllint`. The shell package instead names each file twice,
+once to install it and once in its `qmllint` line, and the two lists drift apart
+silently: `MaintenancePanel.qml` and `MaintenanceStore.qml` shipped unlinted long
+enough for that surface to grow its own formatting and rebuild parts the
+vocabulary already had. Add a new shell QML file to both lists.
 Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
