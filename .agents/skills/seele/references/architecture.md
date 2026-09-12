@@ -311,3 +311,14 @@ The store derives stale state and holds no history. The System Health surface
 reserves a component slot for Maintenance. Validate its contract with
 `node seele-shell/tests/health.js seele-shell/projects/shell/health.js` and the
 existing GitHub/Home Assistant source suites, then build the shell and host.
+
+## Personal transfers
+
+`modules/features/programs/seele-transfers.nix` publishes the nerv-only Home
+Manager service and file-manager send entries. It uses the shell package's
+`seele-transfers` binary and passes `xdg.userDirs.download`; the existing
+nerv Tailscale operator configuration supplies daemon access. Source-only
+shell updates still require a published gitlink refresh. No new flake input,
+root receiver, private content inbox or mobile client is involved. The shell
+submodule's `projects/transfers/README.md` owns the provider contract and focused
+Python/JavaScript validation, including the Linux Taildrop API limitations.
