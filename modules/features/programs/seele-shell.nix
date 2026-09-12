@@ -180,6 +180,7 @@ let
                 "SEELE_SHELL_REPO=${config.programs.nh.flake}"
               ];
               ExecStart = lib.getExe package;
+              LimitCORE = 0;
               Restart = "on-failure";
               RestartSec = 1;
             };
@@ -254,6 +255,7 @@ let
             };
             Service = {
               ExecStart = lib.getExe polkitPackage;
+              LimitCORE = 0;
               Restart = "on-failure";
               RestartSec = 1;
             };

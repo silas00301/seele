@@ -2,7 +2,7 @@
 {
   perSystem = { system, ... }: {
     packages = lib.optionalAttrs (lib.hasSuffix "-linux" system) {
-      maintenance = inputs.seele-shell.packages.${system}.maintenance;
+      failure-analysis = inputs.seele-shell.packages.${system}.failure-analysis;
     };
   };
 }

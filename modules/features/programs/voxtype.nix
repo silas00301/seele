@@ -15,6 +15,7 @@ let
       };
       configFile = (pkgs.formats.toml { }).generate "voxtype-config.toml" {
         engine = "whisper";
+        # Hyprland owns the press/release binding; do not grant raw input access.
         hotkey.enabled = false;
         audio = {
           device = "default";
@@ -53,6 +54,8 @@ let
           ExecStart = "${package}/bin/voxtype daemon";
           Restart = "on-failure";
           RestartSec = 5;
+          UMask = "0077";
+          LimitCORE = 0;
         };
         Install.WantedBy = [ "graphical-session.target" ];
       };
@@ -75,14 +78,7 @@ let
       '';
     }
   );
-  nixosModule = (
-    { username, ... }:
-    {
-      users.users.${username}.extraGroups = [ "input" ];
-    }
-  );
 in
 {
   flake.modules.homeManager.voxtype = homeModule;
-  flake.modules.nixos.voxtype = nixosModule;
 }

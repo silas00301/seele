@@ -4,31 +4,16 @@ let
     {
       lib,
       nhPackage,
-      piPackage,
       pkgs,
-      repository,
       selfPackages,
     }:
-    pkgs.stdenvNoCC.mkDerivation {
-      pname = "seele-failure-analysis";
-      version = "1.0.0";
+    pkgs.runCommand "seele-failure-analysis" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+      mkdir -p "$out/bin" "$out/lib/systemd/system-generators"
+      install -Dm644 ${./_failure-analysis/view.lua} \
+        "$out/share/seele-failure-analysis/view.lua"
 
-      dontUnpack = true;
-      nativeBuildInputs = [ pkgs.makeWrapper ];
-
-      installPhase = ''
-        runHook preInstall
-
-        mkdir -p "$out/bin" "$out/lib/systemd/system-generators"
-        install -Dm755 ${./_failure-analysis/reporter.py} \
-          "$out/libexec/seele-failure-analysis/reporter.py"
-        install -Dm755 ${./_failure-analysis/generator.py} \
-          "$out/libexec/seele-failure-analysis/generator.py"
-        install -Dm644 ${./_failure-analysis/view.lua} \
-          "$out/share/seele-failure-analysis/view.lua"
-
-        makeWrapper ${pkgs.python3}/bin/python3 "$out/bin/seele-failure-report" \
-          --add-flags "$out/libexec/seele-failure-analysis/reporter.py" \
+      for binary in seele-failure-report seele-rebuild; do
+        makeWrapper "${selfPackages.failure-analysis}/bin/$binary" "$out/bin/$binary" \
           --set SEELE_FAILURE_SELF "$out/bin/seele-failure-report" \
           --set SEELE_FAILURE_ENV "${pkgs.coreutils}/bin/env" \
           --set SEELE_FAILURE_GHOSTTY "${pkgs.ghostty}/bin/ghostty" \
@@ -36,56 +21,14 @@ let
           --set SEELE_FAILURE_NH "${lib.getExe nhPackage}" \
           --set SEELE_FAILURE_NOTIFY "${pkgs.libnotify}/bin/notify-send" \
           --set SEELE_FAILURE_NVIM "${selfPackages.nixvim}/bin/nvim" \
-          --set SEELE_FAILURE_PI "${piPackage}/bin/pi" \
           --set SEELE_FAILURE_RUNUSER "${pkgs.util-linux}/bin/runuser" \
           --set SEELE_FAILURE_SYSTEMCTL "${pkgs.systemd}/bin/systemctl" \
           --set SEELE_FAILURE_SYSTEMD_RUN "${pkgs.systemd}/bin/systemd-run" \
-          --set SEELE_FAILURE_VIEW_LUA "$out/share/seele-failure-analysis/view.lua" \
-          --set SEELE_FAILURE_CONFIG_REPO "${repository}"
-
-        makeWrapper ${pkgs.python3}/bin/python3 "$out/bin/seele-rebuild" \
-          --add-flags "$out/libexec/seele-failure-analysis/reporter.py" \
-          --add-flags "rebuild" \
-          --set SEELE_FAILURE_SELF "$out/bin/seele-failure-report" \
-          --set SEELE_FAILURE_ENV "${pkgs.coreutils}/bin/env" \
-          --set SEELE_FAILURE_GHOSTTY "${pkgs.ghostty}/bin/ghostty" \
-          --set SEELE_FAILURE_JOURNALCTL "${pkgs.systemd}/bin/journalctl" \
-          --set SEELE_FAILURE_NH "${lib.getExe nhPackage}" \
-          --set SEELE_FAILURE_NOTIFY "${pkgs.libnotify}/bin/notify-send" \
-          --set SEELE_FAILURE_NVIM "${selfPackages.nixvim}/bin/nvim" \
-          --set SEELE_FAILURE_PI "${piPackage}/bin/pi" \
-          --set SEELE_FAILURE_RUNUSER "${pkgs.util-linux}/bin/runuser" \
-          --set SEELE_FAILURE_SYSTEMCTL "${pkgs.systemd}/bin/systemctl" \
-          --set SEELE_FAILURE_SYSTEMD_RUN "${pkgs.systemd}/bin/systemd-run" \
-          --set SEELE_FAILURE_VIEW_LUA "$out/share/seele-failure-analysis/view.lua" \
-          --set SEELE_FAILURE_CONFIG_REPO "${repository}"
-
-        makeWrapper ${pkgs.python3}/bin/python3 \
-          "$out/lib/systemd/system-generators/seele-failure-analysis" \
-          --add-flags "$out/libexec/seele-failure-analysis/generator.py"
-
-        runHook postInstall
-      '';
-
-      doInstallCheck = true;
-      installCheckPhase = ''
-        runHook preInstallCheck
-
-        PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 \
-          ${./_failure-analysis/test_reporter.py} \
-          "$out/libexec/seele-failure-analysis/reporter.py" \
-          "$out/libexec/seele-failure-analysis/generator.py"
-
-        runHook postInstallCheck
-      '';
-
-      meta = {
-        description = "Private, opt-in analysis for failed system operations";
-        license = lib.licenses.mit;
-        mainProgram = "seele-failure-report";
-        platforms = lib.platforms.linux;
-      };
-    };
+          --set SEELE_FAILURE_VIEW_LUA "$out/share/seele-failure-analysis/view.lua"
+      done
+      ln -s ${selfPackages.failure-analysis}/bin/seele-failure-generator \
+        "$out/lib/systemd/system-generators/seele-failure-analysis"
+    '';
 
   homeModule =
     {
@@ -99,8 +42,6 @@ let
       package = mkFailureAnalysis {
         inherit lib pkgs selfPackages;
         nhPackage = config.programs.nh.package;
-        piPackage = config.programs.pi-coding-agent.package;
-        repository = config.programs.nh.flake;
       };
     in
     {
@@ -149,8 +90,6 @@ let
       package = mkFailureAnalysis {
         inherit lib pkgs selfPackages;
         nhPackage = userHome.programs.nh.package;
-        piPackage = userHome.programs.pi-coding-agent.package;
-        repository = userHome.programs.nh.flake;
       };
     in
     {
@@ -167,6 +106,8 @@ let
           PrivateTmp = true;
           TimeoutStartSec = "11min";
           UMask = "0077";
+          NoNewPrivileges = true;
+          LimitCORE = 0;
         };
       };
 

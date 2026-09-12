@@ -2,7 +2,7 @@
 let
   modules = config.flake.modules.darwin;
   module =
-    { config, pkgs, ... }:
+    { config, ... }:
     {
       imports = [
         modules.stylix
@@ -26,11 +26,6 @@ let
           allowUnfree = true;
           allowUnfreePredicate = (_: true);
         };
-      };
-
-      nix = {
-        enable = true;
-        package = pkgs.nix;
       };
 
       system = {

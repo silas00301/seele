@@ -1,33 +1,31 @@
-{ ... }:
+{ inputs, ... }:
 let
   module =
-    { config, pkgs, ... }:
+    {
+      config,
+      pkgs,
+      lib,
+      ...
+    }:
     let
-      rebootWindowsService = pkgs.writeShellScript "reboot-windows" ''
-        set -o errexit -o nounset -o pipefail
-
-        boot_number="$(
-          LC_ALL=C ${pkgs.efibootmgr}/bin/efibootmgr |
-            ${pkgs.gawk}/bin/awk '
-              match($0, /^Boot([[:xdigit:]]{4})\*?[[:space:]]+Windows Boot Manager([[:space:]]|$)/, fields) {
-                print fields[1]
-                exit
-              }
-            '
-        )"
-
-        if [[ -z "$boot_number" ]]; then
-          echo "Windows Boot Manager EFI entry not found" >&2
-          exit 1
-        fi
-
-        ${pkgs.efibootmgr}/bin/efibootmgr --bootnext "$boot_number"
-        exec ${pkgs.systemd}/bin/systemctl --no-block reboot
-      '';
-
-      rebootWindows = pkgs.writeShellScriptBin "reboot-windows" ''
-        exec ${pkgs.systemd}/bin/systemctl --no-block start reboot-windows.service
-      '';
+      desktopTools = inputs.seele-shell.lib.mkNativePackage {
+        inherit pkgs;
+        name = "desktop-tools";
+      };
+      windowsTools =
+        pkgs.runCommand "seele-windows-boot"
+          {
+            nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
+          }
+          ''
+            mkdir -p "$out/bin"
+            makeBinaryWrapper ${desktopTools}/bin/reboot-windows "$out/bin/reboot-windows" \
+              --set SEELE_SYSTEMCTL ${lib.getExe' pkgs.systemd "systemctl"}
+            makeBinaryWrapper ${desktopTools}/bin/reboot-windows-service "$out/bin/reboot-windows-service" \
+              --set SEELE_SYSTEMCTL ${lib.getExe' pkgs.systemd "systemctl"} \
+              --set SEELE_EFIBOOTMGR ${lib.getExe pkgs.efibootmgr}
+          '';
+      rebootWindowsService = "${windowsTools}/bin/reboot-windows-service";
     in
     {
       boot.loader = {
@@ -48,7 +46,7 @@ let
         };
       };
 
-      environment.systemPackages = [ rebootWindows ];
+      environment.systemPackages = [ windowsTools ];
 
       security.polkit = {
         enable = true;
@@ -69,6 +67,7 @@ let
         serviceConfig = {
           Type = "oneshot";
           ExecStart = rebootWindowsService;
+          TimeoutStartSec = 30;
         };
       };
     };

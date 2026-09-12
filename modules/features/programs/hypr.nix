@@ -11,35 +11,25 @@ let
     let
       seeleShell = selfPackages.seele-shell;
       seeleLock = selfPackages.seele-lock;
-      screenshot = pkgs.writeShellApplication {
-        name = "seele-screenshot";
-        runtimeInputs = [
-          (pkgs.uutils-coreutils.override { prefix = null; })
-          pkgs.curl
-          pkgs.grim
-          pkgs.hyprland
-          pkgs.hyprpicker
-          pkgs.jq
-          pkgs.libnotify
-          pkgs.satty
-          pkgs.slurp
-          pkgs.wl-clipboard
-          pkgs.zenity
-        ];
-        text = builtins.readFile ./_hypr/screenshot.sh;
-        checkPhase = ''
-          runHook preCheck
-          ${pkgs.stdenv.shellDryRun} "$target"
-          ${lib.getExe pkgs.shellcheck-minimal} "$target"
-          ${lib.getExe pkgs.bash} ${./_hypr/test-screenshot.sh} ${./_hypr/screenshot.sh} ${
-            lib.makeBinPath [
-              pkgs.bash
-              pkgs.coreutils
-            ]
-          }
-          runHook postCheck
-        '';
-      };
+      screenshot =
+        pkgs.runCommand "seele-screenshot" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; }
+          ''
+            mkdir -p "$out/bin"
+            makeWrapper ${selfPackages.desktop-tools}/bin/seele-screenshot "$out/bin/seele-screenshot" \
+              --prefix PATH : ${
+                lib.makeBinPath [
+                  pkgs.curl
+                  pkgs.grim
+                  pkgs.hyprland
+                  pkgs.hyprpicker
+                  pkgs.libnotify
+                  pkgs.satty
+                  pkgs.slurp
+                  pkgs.wl-clipboard
+                  pkgs.zenity
+                ]
+              }
+          '';
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
@@ -594,6 +584,9 @@ let
           general = {
             lock_cmd = "${seeleLock}/bin/seele-lock";
             before_sleep_cmd = "loginctl lock-session";
+            # Auto mode recognizes hyprlock by name, not Seele Lock. Keep the
+            # sleep inhibitor until Hyprland confirms the session is locked.
+            inhibit_sleep = 3;
             after_sleep_cmd = "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'";
           };
 

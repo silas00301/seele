@@ -57,8 +57,21 @@ Backups/certificates default to no items because no such systems are configured
 in this flake. Flake/input probes use the existing host Nix executable; the package
 does not install another Nix. No check activates a system or repairs automatically.
 
-Run `test_model.py`, `test_server.py`, and `test_publishers.py` with Python3 plus
-jsonschema. Run `node seele-shell/tests/maintenance.js
-seele-shell/projects/shell/MaintenanceStore.qml`. Package checks run these same
-backend suites; shell checks run the QML-method suite. Native Nix and compositor
-validation remain required before deployment.
+The runtime is the Rust `seele-maintenance` crate in
+`seele-shell/projects/maintenance/`, exported by the submodule's `maintenance`
+package. The parent package consumes that output; it contains no Python runtime.
+Run `cargo test --manifest-path seele-shell/projects/maintenance/Cargo.toml` and
+`cargo clippy --manifest-path seele-shell/projects/maintenance/Cargo.toml
+--all-targets -- -D warnings`. Tests include all source policies and real
+socket-activated daemon/client fixtures. The unchanged QML contract remains
+covered by `node seele-shell/tests/maintenance.js
+seele-shell/projects/shell/MaintenanceStore.qml`.
+
+All six sources run independently on bounded scheduler threads; requests and
+explicit actions have separate fixed admission limits. Unchanged snapshots avoid
+persistence writes. Metadata is typed, secret/link-redacted and atomically
+published through the shared Rust runtime. Diagnostic and inference payloads
+remain memory-only. Both socket peers verify the UID, and absolute I/O deadlines
+bound fragmented clients. Existing stored metadata and fingerprints remain
+compatible. See the Rust crate README for resource budgets and security limits.
+Native Nix and compositor validation remain required before deployment.
