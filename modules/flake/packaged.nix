@@ -1,19 +1,20 @@
 { ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { config, pkgs, ... }:
     let
-      updatePackaged = pkgs.writeShellApplication {
-        name = "update-packaged";
-        runtimeInputs = [
-          pkgs.coreutils
-          pkgs.curl
-          pkgs.gnused
-          pkgs.jq
-          pkgs.nix
-        ];
-        text = builtins.readFile ./_packaged/update.sh;
-      };
+      updatePackaged =
+        pkgs.runCommand "update-packaged" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; }
+          ''
+            mkdir -p "$out/bin"
+            makeWrapper ${config.packages.repo-tools}/bin/update-packaged "$out/bin/update-packaged" \
+              --prefix PATH : ${
+                pkgs.lib.makeBinPath [
+                  pkgs.git
+                  pkgs.curl
+                ]
+              }
+          '';
     in
     {
       apps.update-packaged = {

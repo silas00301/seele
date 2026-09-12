@@ -1,19 +1,20 @@
 { ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { config, pkgs, ... }:
     let
-      updateSubmodule = pkgs.writeShellApplication {
-        name = "update-submodule";
-        runtimeInputs = [
-          pkgs.coreutils
-          pkgs.git
-          pkgs.gawk
-          pkgs.jujutsu
-          pkgs.nix
-        ];
-        text = builtins.readFile ./_submodule/update.sh;
-      };
+      updateSubmodule =
+        pkgs.runCommand "update-submodule" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; }
+          ''
+            mkdir -p "$out/bin"
+            makeWrapper ${config.packages.repo-tools}/bin/update-submodule "$out/bin/update-submodule" \
+              --prefix PATH : ${
+                pkgs.lib.makeBinPath [
+                  pkgs.git
+                  pkgs.jujutsu
+                ]
+              }
+          '';
     in
     {
       apps.update-submodule = {

@@ -5,6 +5,7 @@ let
       pkgs,
       lib,
       config,
+      selfPackages,
       ...
     }:
     {
@@ -72,22 +73,19 @@ let
         };
       };
       home.packages = [
-        (pkgs.writeShellApplication {
-          name = "jj-flip";
-          runtimeInputs = [ pkgs.jujutsu ];
-          text = builtins.readFile ./_jujutsu/flip.sh;
-        })
-        (pkgs.writeShellApplication {
-          name = "jj-pr";
-          runtimeInputs = [
-            pkgs.jujutsu
-            pkgs.gh
-            pkgs.jq
-            pkgs.gum
-            pkgs.coreutils
-          ];
-          text = builtins.readFile ./_jujutsu/pr.sh;
-        })
+        (pkgs.runCommand "seele-jj-helpers" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+          mkdir -p "$out/bin"
+          for binary in jj-flip jj-pr; do
+            makeWrapper "${selfPackages.repo-tools}/bin/$binary" "$out/bin/$binary" \
+              --prefix PATH : ${
+                lib.makeBinPath [
+                  pkgs.jujutsu
+                  pkgs.gh
+                  pkgs.gum
+                ]
+              }
+          done
+        '')
       ];
     }
   );

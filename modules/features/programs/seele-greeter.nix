@@ -116,6 +116,7 @@ let
         before = [ "graphical-session.target" ];
         serviceConfig = {
           ExecStart = "${pkgs.kdePackages.kwallet-pam}/libexec/pam_kwallet_init";
+          LimitCORE = 0;
           Type = "simple";
           Slice = "background.slice";
           Restart = "no";

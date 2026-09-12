@@ -38,7 +38,7 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Focus a searchable popup's query field when it opens and select any retained query so typing starts a fresh search immediately.
 - Keep frequent actions fast and reversible. Automate routine cleanup, session setup, refetching, and integration work.
 - Give Atuin Ctrl-R for global fuzzy history and Up for prefix history in the current directory. Return selections to the prompt for editing, and keep Television on Ctrl-T for file search.
-- Treat `how` and `debug` as Fish prompt modes rather than ordinary commands: Enter replaces the live buffer for review and never executes a generated command. Use one bounded collector for both, retain only the latest failure in private runtime state, keep Pi tool-less and ephemeral, offer genuinely ambiguous commands through fzf, and insert destructive suggestions as comments that must be deliberately uncommented.
+- Treat `how` and `debug` as Fish prompt modes rather than ordinary commands: Enter replaces the live buffer for review and never executes a generated command. Use one bounded collector for both, retain only the latest failure in private session memory, send explicit requests through the shared no-tools Codex broker, offer genuinely ambiguous commands through fzf, and insert destructive suggestions as comments that must be deliberately uncommented.
 - Let the desktop change itself: a session that edits this flake should open in the repository, rebuild on its own when the work is done, and then ask before recording it. Generate the commit message from the repository's own history and keep the decision to commit with the user.
 - Retain explicit gates for trust decisions, destructive operations, credentials, and live-machine activation.
 - Keep automated failure diagnosis local by default. Show the narrowly collected error first, let doing nothing do nothing, and require an explicit Analyze with AI action before a redacted report can leave the machine. Transfer report contents over private files or stdin rather than process arguments.
@@ -68,6 +68,7 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Let the user hide chrome they did not ask for, such as individual tray icons, and keep the hidden set reachable behind one affordance rather than dropping it. Expand that set only on click; hovering the affordance must not move neighboring menu bar items.
 - Prefer a shell-native surface over a third-party one when the third party structurally cannot show something the design depends on — a polkit agent that logs PAM info messages instead of drawing them cannot present a hardware-token prompt, however well themed it is. Check that the replacement API actually exposes the missing signal before committing to the rewrite.
 - Reuse a running helper application instead of spawning another instance, and keep a companion app's own autostart entry disabled when a managed service already runs it.
+- Keep first-party services and command helpers in Rust, sharing bounded infrastructure and inference policy through `seele-runtime`. Use concurrency where work is independent and measure performance before claiming hardware speedups. Retain QML bindings and extension language adapters only where their existing host APIs require them, preserving the established UI and consent flow. Share pure UI policy through `qml-core` and minimal in-process Qt/Node bridges rather than duplicating it in adapters or spawning a process per render. Keep actual host theme, width, locale, object identity and animation bindings in their existing engine. Cache only complete results whose lifecycle/inputs are validated, and compare rendered output before claiming UI parity.
 - Integrate with a tool through its own lifecycle hooks or extension API before inferring state by observation, and declare those hooks in a layer that does not own the mutable file the tool writes itself, such as a managed drop-in or a system config layer. Keep the observational fallback for harnesses that expose nothing.
 
 ## Visual defaults
@@ -144,6 +145,9 @@ mouse-button remap as equivalent: browser links must retain their action.
 
 ## Privacy and security defaults
 
+- Give a feature only the device permissions its configured path uses: compositor-bound dictation needs no raw `input` group. Keep OpenLogi's separate input-injection requirement scoped to its own feature.
+- Require confirmation when a Bluetooth peer replaces an existing bond; preserve ordinary bonded reconnects and fast connectability.
+- Prevent sensitive services from retaining crash memory by default; preserve a separate explicit development launch for crash debugging.
 - Disable telemetry, analytics, studies, and install tracking when the option exists and functionality does not depend on them.
 - Keep persistent editor undo in private local state, exclude temporary and common secret paths, and preserve a buffer-local opt-out for other sensitive edits.
 - Prefer tracking protection, content blocking, privacy-oriented search, and role-separated browser containers/spaces.

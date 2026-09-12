@@ -1,33 +1,18 @@
 # Fish command assistance
 
-The `shell-ai` package backs two modes in the managed Linux Fish prompt:
+The parent package consumes `inputs.seele-shell.packages.<system>.shell-ai`.
+The Rust implementation, tests and runtime/security contract live in
+`seele-shell/projects/shell-ai/`.
 
-```text
-how "delete Nix generations older than 30 days"
-debug
-```
+`modules/features/programs/shell-ai.nix` keeps the existing Enter interception,
+private capture hooks, and one prompt replacement path for both `how` and `debug`.
+The resident Rust wrapper now keeps the last failure exclusively in memory and
+serves it over a private per-session socket; terminal output no longer triggers
+filesystem writes. Explicit generation uses the common Codex broker, removing
+Pi, Node and Python from this package. No command is automatically executed.
 
-Pressing Enter on either line asks Pi for one or more commands. One result replaces
-the current Fish buffer. Several reasonable interpretations open in fzf first.
-Nothing is executed automatically. A destructive result is inserted as a comment,
-so running it requires reviewing the command and deliberately removing the comment
-marker.
-
-`how` sends the request plus a bounded view of the current directory, available
-commands, repository type, platform, and development-shell presence. `debug` adds
-the last failed foreground command, its exit code, and its stderr. The collector
-does not read project files, the clipboard, environment values, or shell history.
-
-Ordinary interactive Fish sessions run behind a stderr pseudo-terminal so programs
-keep terminal behavior and color. Pre/post-exec events delimit the current command.
-Only the latest failure is retained, under a mode-0700 directory in
-`$XDG_RUNTIME_DIR`, and the whole session directory is removed when Fish exits. Pi
-runs without tools, a saved session, extensions, skills, prompt templates, or
-project context files.
-
-Run the source checks without a Nix build:
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 python3 test_shell_ai.py shell_ai.py \
-  ../../features/programs/shell-ai.nix
-```
+Run `cargo test --manifest-path seele-shell/projects/shell-ai/Cargo.toml` and
+`cargo clippy --manifest-path seele-shell/projects/shell-ai/Cargo.toml
+--all-targets -- -D warnings`. The parent `shell-ai` check builds the submodule
+package and its Rust tests. Native Nix/Fish terminal validation remains required
+before activation; this migration neither installs Nix nor activates the host.

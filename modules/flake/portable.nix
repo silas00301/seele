@@ -110,33 +110,37 @@ let
       files = hm.config.home-files;
       profile = hm.config.home.path;
 
-      # Exported the way Home Manager writes its own session-variable file, so a
-      # value that was written to be expanded by a shell still is.
-      environment =
-        hm.config.home.sessionVariables
-        // lib.optionalAttrs (writesConfig hm) { XDG_CONFIG_HOME = configDirectory; };
-
-      exports = lib.concatMapStringsSep "\n" (
-        variable: ''export ${variable}="${toString environment.${variable}}"''
-      ) (lib.attrNames environment);
-
-      searchPath = lib.concatStringsSep ":" (hm.config.home.sessionPath ++ [ "${profile}/bin" ]);
-
       configDirectory = "\${SEELE_PORTABLE_HOME:-\${XDG_CACHE_HOME:-$HOME/.cache}/seele/portable}/${name}";
+      manifest = pkgs.writeText "seele-${name}-launch.json" (
+        builtins.toJSON {
+          version = 1;
+          program = "${profile}/bin/${app.binary}";
+          path = hm.config.home.sessionPath ++ [ "${profile}/bin" ];
+          environment = lib.mapAttrs (_: value: toString value) (
+            hm.config.home.sessionVariables
+            // lib.optionalAttrs (writesConfig hm) { XDG_CONFIG_HOME = configDirectory; }
+          );
+          configuration =
+            if writesConfig hm then
+              {
+                source = "${files}/.config";
+                destination = configDirectory;
+              }
+            else
+              null;
+        }
+      );
     in
-    pkgs.writeShellScriptBin app.binary ''
-      set -euo pipefail
-
-      ${lib.optionalString (writesConfig hm) ''
-        configuration="${configDirectory}"
-        ${pkgs.python3}/bin/python3 ${./_portable/materialize.py} "${files}/.config" "$configuration"
-      ''}
-
-      export PATH="${searchPath}''${PATH:+:$PATH}"
-      ${exports}
-
-      exec ${profile}/bin/${app.binary} "$@"
-    '';
+    pkgs.runCommand "seele-portable-${name}"
+      {
+        nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
+        meta.mainProgram = app.binary;
+      }
+      ''
+        mkdir -p "$out/bin"
+        makeWrapper ${args.selfPackages.config-tools}/bin/seele-launch "$out/bin/${app.binary}" \
+          --add-flags ${lib.escapeShellArg (toString manifest)}
+      '';
 
   packagesFor =
     system:
@@ -166,11 +170,8 @@ in
     '';
   };
 
-  config.perSystem = { pkgs, ... }: {
-    checks.portable-config = pkgs.runCommand "portable-config-check" { } ''
-      ${pkgs.python3}/bin/python3 ${./_portable/test-materialize.py} ${./_portable/materialize.py}
-      touch "$out"
-    '';
+  config.perSystem = { config, ... }: {
+    checks.portable-config = config.packages.config-tools;
   };
 
   config.flake.packages = lib.genAttrs config.systems packagesFor;
