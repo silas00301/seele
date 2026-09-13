@@ -41,7 +41,11 @@
             Install.WantedBy = [ "sockets.target" ];
           };
           systemd.user.services.seele-codex = {
-            Unit.Description = "Seele Codex inference broker";
+            Unit = {
+              Description = "Seele Codex inference broker";
+              Requires = [ "seele-codex.socket" ];
+              After = [ "seele-codex.socket" ];
+            };
             Service = {
               ExecStart = "${lib.getExe package} serve --model ${lib.escapeShellArg cfg.model} --concurrency ${toString cfg.concurrency} --idle ${toString cfg.idleSeconds}";
               Restart = "on-failure";
