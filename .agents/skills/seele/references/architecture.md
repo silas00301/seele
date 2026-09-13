@@ -127,7 +127,10 @@ The quick AI prompt is a third shell IPC workflow. Its parent-owned
 `Super + Space` binding calls `seele-shellctl prompt`; the submodule owns
 `AiPrompt.qml`, `ai-prompt.js`, and the resident Rust
 `seele-ai-prompt-worker`. Opening maps a centered surface on the captured
-focused output without reading context or starting Codex. Typed `@window` and
+focused output without reading context or starting Codex. That surface stays
+mapped, so the panel takes exclusive keyboard focus while it is active rather
+than waiting for a map the compositor would hand on-demand focus to, and it
+holds that focus until it is dismissed by hand. Typed `@window` and
 `@dir` controls expose narrow metadata. Explicit mentions resolve together only
 on Send; `@screen` hides the panel before capturing its pinned output. A failed
 source prevents submission. Model-requested context retains one-time approval
