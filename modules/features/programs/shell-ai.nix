@@ -10,23 +10,15 @@ let
       home.packages = [ package ];
 
       programs.fish = {
-        # A normal typed function runs after Fish has accepted its command line,
-        # when replacing the next prompt is unsupported. Intercept only these
-        # two leading modes and otherwise hand Enter back to Fish unchanged.
-        binds = {
-          shell-ai-enter-default = {
-            name = "\\r";
-            mode = "default";
-            command = "__seele_ai_accept";
-          };
-          shell-ai-enter-insert = {
-            name = "\\r";
-            mode = "insert";
-            command = "__seele_ai_accept";
-          };
-        };
-
         functions = {
+          # A normal typed function runs after Fish has accepted its command
+          # line, when replacing the next prompt is unsupported. Intercept only
+          # these two leading modes and otherwise hand Enter back unchanged.
+          fish_user_key_bindings = lib.mkBefore ''
+            bind --mode default \r __seele_ai_accept
+            bind --mode insert \r __seele_ai_accept
+          '';
+
           __seele_ai_accept = ''
             set -l buffer (commandline | string collect)
             if string match --quiet --regex '^[[:space:]]*how([[:space:]]|$)' -- "$buffer"

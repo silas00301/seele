@@ -19,19 +19,14 @@ let
       programs.fish =
         lib.mkIf (config.programs.atuin.enable && config.programs.atuin.enableFishIntegration)
           {
-            # Home Manager emits these through Fish's standard user binding hook,
-            # which Fish also reapplies when switching between vi and Emacs keys.
-            binds = {
-              "ctrl-r" = {
-                mode = "default";
-                command = "_atuin_search";
-              };
-              "ctrl-r-insert" = {
-                name = "ctrl-r";
-                mode = "insert";
-                command = "_atuin_search";
-              };
-            };
+            # Define Fish's standard hook directly. Fish reapplies it when
+            # switching between vi and Emacs keys. This also avoids Home
+            # Manager's binds command type, which is incompatible with the
+            # nixpkgs v2 module merge mechanism until home-manager#9939 lands.
+            functions.fish_user_key_bindings = ''
+              bind --mode default ctrl-r _atuin_search
+              bind --mode insert ctrl-r _atuin_search
+            '';
 
             # Television's packaged integration also binds Ctrl-R. Apply the
             # declared owner after all integrations have loaded.

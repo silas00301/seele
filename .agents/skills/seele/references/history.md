@@ -15,9 +15,13 @@ their existing Home Manager integrations.
 The pinned Television integration binds Ctrl-T and Ctrl-R. FZF yields Ctrl-R
 through `historyWidget.command = ""`, but that does not disable Television's
 history binding. Atuin therefore declares Ctrl-R in Fish's `default` and
-`insert` maps with `programs.fish.binds`. Home Manager renders these into the
-standard `fish_user_key_bindings` function, preserving the module-level merge
-of other declared bindings.
+`insert` maps through `programs.fish.functions.fish_user_key_bindings`. Shell AI
+prepends its Enter bindings to the same `types.lines` function body, preserving
+the module-level merge.
+
+Use the standard hook directly while Home Manager PR #9939 remains unmerged.
+The current `programs.fish.binds` command type uses an ad-hoc check that nixpkgs'
+v2 module merge mechanism rejects during host evaluation.
 
 `programs.fish.shellInitLast` invokes that same function after the integrations
 have loaded, only in an interactive shell. Fish also calls the standard user
@@ -53,6 +57,6 @@ that its first-line history search is directory-scoped and prefix-based, and
 that Enter restores the selection to the prompt.
 
 The settings and hook behavior were checked against the pinned Home Manager
-`2c0350c7`, Fish 4.9.2, Television 0.15.9, and Atuin 18.19.0 sources. In an
+`fdc36b12`, Fish 4.9.3, Television 0.15.9, and Atuin 18.21.0 sources. In an
 environment without Nix/Fish/Atuin, source inspection does not replace these
 runtime checks; report that validation boundary explicitly.
