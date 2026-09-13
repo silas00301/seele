@@ -6,16 +6,26 @@ changes do not change `flake.lock` when the shell's inputs and lock are unchange
 
 ## GitHub
 
-`seele-shellctl control github` opens requested reviews and authored open pull
-requests, with CI rollups and review decisions. `projects/runtime/src/github.rs` uses
-the existing `gh` login and projects bounded, read-only API responses.
-`GitHubStore.qml` owns Qt request lifecycle and in-memory snapshots; `github.js`
-forwards pure snapshot/refresh/label policy to `projects/qml-core/src/github.rs`.
-The UI and native collector share `seele_runtime::github::safe_url`.
-Keep credentials out of QML, logs, command arguments and the store; never initiate
-login from the panel. Results refresh only while open. Use fixture/fake-gh tests,
-not a real account, when validating request logic. See the submodule's
-`projects/github/README.md` for optional enterprise-host setup and keyboard keys.
+`seele-shellctl control github` opens Notifications, Reviews and My pull requests.
+The resident `seele-github-inbox` worker in `projects/integrations/src/github/`
+paginates all API notifications in the background, collects thread/comments and
+review/CI metadata without changed files or diffs, and submits automatic triage to
+the shared Codex broker. The broker owns model choice. Raw entries remain usable
+while triage is pending or failed; only the two urgent priority classes produce
+desktop notifications, whose action opens the internal detail view.
+
+Done is explicit and optimistic, with rollback on GitHub failure. Public APIs
+expose no saved state, Save/Unsave or Undo-Done; Silas approved deferring those to
+the web inbox for SIL-40. Never pretend a local-only action synchronized them.
+Source text and triage stay in memory; only account-scoped IDs/revision
+fingerprints persist privately for Done and alert reconciliation. Opening an
+internal detail never marks read. QML retains model identity and keyboard focus.
+
+The PR tabs retain `projects/runtime/src/github.rs`, `GitHubStore.qml` and their
+bounded read-only collector/display policy. Keep credentials out of QML, broker
+payloads, logs and arguments. Reuse the existing `gh` login and fixture/fake-gh
+tests rather than a real account. See `projects/github/README.md` for public API
+boundaries, account settings, native tests and the rendered Qt inbox fixture.
 
 ## Home Assistant
 
