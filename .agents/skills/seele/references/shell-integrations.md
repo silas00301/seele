@@ -23,7 +23,10 @@ not a real account, when validating request logic. See the submodule's
 panel. `HomeAssistantPanel.qml` owns setup, selected devices, room groups,
 favorites, light sliders, fan power/speed and the optional menu bar reading.
 Every selected sensor has a named readout in its room card or Favorites,
-including unavailable readings. The picker separates Your devices and Add devices;
+including unavailable readings. Supported control domains keep their rows while
+unavailable; current controllability only gates actions. The worker preserves
+the sanitized device classes consumed by the presenter. The picker separates
+Your devices and Add devices;
 names and rooms save together. Preserve nested list identity across live updates,
 and keep an active slider drag independent of incoming state. Focused controls
 scroll into view; the panel body is bounded by its opening output.
