@@ -266,6 +266,9 @@ Each of these has been hit at least once. The symptom is what to watch for.
   one glyph the primary font lacks pulls in a fallback with a taller line box.
 - **A ragged numeric column.** Symptom: bars in a list stop being comparable because
   each one's right edge moves. Cure: pin the column's width.
+- **A control labelled from its own state.** Symptom: everything left of a row's button
+  shifts because `Unpin` is wider than `Pin`. Cure: measure the widest label with
+  `TextMetrics` and give the control that width in every state.
 - **A tiled image on a rounded corner.** Symptom: the grain film squares off the arc.
   Cure: `SurfaceGrain`'s `inset`.
 - **A `Rectangle` asked to clip.** Symptom: content escapes the rounded corner. Cure:
