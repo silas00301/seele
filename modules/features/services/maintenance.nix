@@ -175,7 +175,7 @@
             Socket = {
               ListenStream = "%t/seele-maintenance.sock";
               SocketMode = "0600";
-              RemoveOnStop = true;
+              RemoveOnStop = false;
             };
             Install.WantedBy = [ "sockets.target" ];
           };

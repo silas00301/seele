@@ -36,7 +36,7 @@
             Socket = {
               ListenStream = "%t/seele-codex.sock";
               SocketMode = "0600";
-              RemoveOnStop = true;
+              RemoveOnStop = false;
             };
             Install.WantedBy = [ "sockets.target" ];
           };

@@ -94,10 +94,16 @@ let
           };
         };
 
-        # Wrap only ordinary terminal sessions. The child sees the private
-        # session variable and does not recurse; `-ic` and script invocations
-        # are rejected by `should-capture` and keep their original semantics.
+        # Wrap only ordinary terminal sessions. A child with a live private
+        # session does not recurse; stale inherited sessions are cleared first.
+        # `-ic` and script invocations are rejected by `should-capture` and keep
+        # their original semantics.
         interactiveShellInit = lib.mkBefore ''
+          if set -q SEELE_SHELL_AI_SESSION
+            if not ${command} capture-ready >/dev/null 2>&1
+              set -e SEELE_SHELL_AI_SESSION
+            end
+          end
           if not set -q SEELE_SHELL_AI_SESSION
             if ${command} should-capture --pid $fish_pid
               set -lx SEELE_SHELL_AI_LOGIN 0
