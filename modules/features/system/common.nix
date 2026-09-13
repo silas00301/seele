@@ -33,6 +33,7 @@ let
   nixosModule =
     moduleFor
       [
+        modules.nixos.codex
         modules.nixos.determinate
         modules.nixos.fish
         modules.nixos.vicinae

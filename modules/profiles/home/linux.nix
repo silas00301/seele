@@ -5,7 +5,6 @@ let
     xdg.mimeApps.enable = true;
 
     home.packages = [
-      pkgs.codex
       pkgs.discord
       pkgs.vesktop
       pkgs.jetbrains.idea
@@ -17,6 +16,7 @@ let
   profile = {
     imports = [
       modules."1password-linux"
+      modules.codex
       modules.comma
       modules.fastfetch
       modules.fish-linux
