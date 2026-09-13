@@ -22,9 +22,14 @@ not a real account, when validating request logic. See the submodule's
 `seele-shellctl control home-assistant` opens the always-visible house entry's
 panel. `HomeAssistantPanel.qml` owns setup, selected devices, room groups,
 favorites, light sliders, fan power/speed and the optional menu bar reading.
-Temperature and humidity appear only in their room header, including unavailable
-readings; keep them selectable in the device picker. Preserve list identity
-across live updates so an active field or slider keeps its delegate.
+Every selected sensor has a named readout in its room card or Favorites,
+including unavailable readings. Supported control domains keep their rows while
+unavailable; current controllability only gates actions. The worker preserves
+the sanitized device classes consumed by the presenter. The picker separates
+Your devices and Add devices;
+names and rooms save together. Preserve nested list identity across live updates,
+and keep an active slider drag independent of incoming state. Focused controls
+scroll into view; the panel body is bounded by its opening output.
 
 `projects/integrations/src/home_assistant/` owns private metadata, Secret Service
 access and the resident HTTP/WebSocket connection. Pure entity/service validation,

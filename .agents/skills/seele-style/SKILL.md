@@ -124,7 +124,8 @@ alias — put it there when you add it, not after the second caller appears.
 | `CardEdge` | The hairline that lifts a card off the panel behind it. |
 | `DeviceListCard` | A card sized to the list inside it. |
 | `SegmentWell` + `Segment` | A set of exclusive choices as one well with the chosen one lit. |
-| `IconButton` | The square that holds one glyph and answers a click. |
+| `IconButton` | The square material behind an icon action. |
+| `GlyphButton` | A complete icon action with the shared material, centered glyph, keyboard activation, accessible name and tooltip. |
 | `HoverWash` | The neutral light that reports the pointer, laid over whatever the control already says. |
 | `ControlSwitch` | A persistent on/off state. Off is a well, not a grey pill. |
 | `MeterBar` | Every filled track in the shell — capacity, usage, battery, volume. Graded along its length, running in a well with its own hairline. |
