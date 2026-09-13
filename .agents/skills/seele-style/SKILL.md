@@ -138,6 +138,7 @@ alias — put it there when you add it, not after the second caller appears.
 | `SearchField` | The one input that filters a list. A well, because it holds a query rather than content. |
 | `EmptyState` | What a surface says when it has nothing to show, with its own mark, sentence and way out. |
 | `StatusBanner` | A surface's own bad news, carrying the actions that answer it. |
+| `StatusChip` | A short state named in its own tint — GitHub priority, Maintenance urgency, a job, transfer or integration state, PR checks and review, notification urgency. Red for failure or act now, yellow for attention, green for done, accent for live work, overlay otherwise. A readout on the small radius, never a pill and never a control; in a dense row it takes that row's height. |
 | `SlimScrollBar` | The scroll indicator, shown only while the pointer is over the popup. |
 | `RoundedSource` | An Image rounded on the shell's radius through `MultiEffect` masking. |
 | `AgentMark` | A harness or vendor drawn as its own vendored SVG. |

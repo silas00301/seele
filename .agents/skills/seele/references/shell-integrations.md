@@ -8,18 +8,20 @@ changes do not change `flake.lock` when the shell's inputs and lock are unchange
 
 `seele-shellctl control github` opens Notifications, Reviews and My pull requests.
 The resident `seele-github-inbox` worker in `projects/integrations/src/github/`
-paginates all API notifications in the background, collects thread/comments and
+paginates unread API notifications in the background (GitHub lists web-Done
+threads among read ones and exposes no Done state), collects thread/comments and
 review/CI metadata without changed files or diffs, and submits automatic triage to
 the shared Codex broker. The broker owns model choice. Raw entries remain usable
 while triage is pending or failed; only the two urgent priority classes produce
-desktop notifications, whose action opens the internal detail view.
+desktop notifications, whose action unfolds that thread's row in the panel. Rows
+carry priority as a `StatusChip` and grow in place rather than swapping the list.
 
 Done is explicit and optimistic, with rollback on GitHub failure. Public APIs
 expose no saved state, Save/Unsave or Undo-Done; Silas approved deferring those to
 the web inbox for SIL-40. Never pretend a local-only action synchronized them.
 Source text and triage stay in memory; only account-scoped IDs/revision
-fingerprints persist privately for Done and alert reconciliation. Opening an
-internal detail never marks read. QML retains model identity and keyboard focus.
+fingerprints persist privately for Done and alert reconciliation. Opening a row
+never marks read. QML retains model identity and keyboard focus.
 
 The PR tabs retain `projects/runtime/src/github.rs`, `GitHubStore.qml` and their
 bounded read-only collector/display policy. Keep credentials out of QML, broker

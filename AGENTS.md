@@ -167,9 +167,12 @@ history never deletes files. `asuka` has no transfer service. See the submodule'
 identity/cancellation limitations.
 
 GitHub's Notifications tab is backed by the resident Rust `seele-github-inbox`
-worker. It loads all notifications the public API exposes and uses the shared
+worker. It loads unread notifications only, because GitHub keeps web-Done threads
+in its read listing and exposes no Done state, and uses the shared
 Codex broker for automatic triage without reading changed files or diffs. Raw
-notifications remain available on AI failure; internal details never mark read.
+notifications remain available on AI failure; opening a row never marks read.
+Rows carry priority as a chip and unfold in place to show actions, analysis and
+the original thread.
 Only urgent priorities produce desktop notifications. Done synchronizes explicitly
 with rollback on failure. Saved state, Save/Unsave and Undo-Done are deferred to
 GitHub's web inbox because the public API lacks them; this is the approved SIL-40
