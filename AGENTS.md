@@ -147,7 +147,9 @@ persistent-cache entries.
 
 On `nerv`, `Super + Space` invokes `seele-shellctl prompt`. The shell maps a
 centered prompt on the focused output immediately through a resident Rust
-controller, but starts Codex only after Send. `@window` exposes only the
+controller, but starts Codex only after Send. The panel takes exclusive
+keyboard focus while it is open, so typing reaches its field immediately and
+only Super + Space, Close or Escape gives the keyboard back. `@window` exposes only the
 captured application name and title, and `@dir` resolves only a focused
 terminal through `/proc`. Explicit `@clip`, `@select`, `@dir`, and `@screen` mentions resolve only on Send,
 then submit together after all sources succeed. Screen collection hides the panel
