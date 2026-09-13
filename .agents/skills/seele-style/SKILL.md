@@ -52,7 +52,8 @@ a rule.
 inset, `panelMargin` and `panelSpacing` for the panel.
 
 **Control height** — `chipHeight` (28), `controlHeight` (34), `rowHeight` (40). A chip, a
-button and a list row each take one. A card or tile still sizes to what it holds.
+button and a list row each take one; `detailRowHeight` (52) is the row that leads with a
+mark and sets a caption under its title. A card or tile still sizes to what it holds.
 
 **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a control that
 travels. Only in-surface state changes animate. Never animate a whole window, layer

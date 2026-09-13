@@ -166,6 +166,16 @@ history never deletes files. `asuka` has no transfer service. See the submodule'
 `projects/transfers/README.md` for protocol, tests and Taildrop's incoming
 identity/cancellation limitations.
 
+GitHub's Notifications tab is backed by the resident Rust `seele-github-inbox`
+worker. It loads all notifications the public API exposes and uses the shared
+Codex broker for automatic triage without reading changed files or diffs. Raw
+notifications remain available on AI failure; internal details never mark read.
+Only urgent priorities produce desktop notifications. Done synchronizes explicitly
+with rollback on failure. Saved state, Save/Unsave and Undo-Done are deferred to
+GitHub's web inbox because the public API lacks them; this is the approved SIL-40
+scope. See the Seele skill's `shell-integrations.md` and the shell's
+`projects/github/README.md` for limits, reconciliation and fixture validation.
+
 Home Assistant's house icon stays visible before setup. Its panel groups named
 sensor readouts and expandable device controls into Favorites and room cards,
 with a searchable device picker and an output-bounded viewport. It stores the token
