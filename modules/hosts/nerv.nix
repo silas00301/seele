@@ -37,9 +37,20 @@ in
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
-            backupCommand = perSystemArgs.pkgs.writeShellScript "home-manager-backup" ''
-              exec ${perSystemArgs.pkgs.coreutils}/bin/mv --backup=numbered -- "$1" "$1.bak"
-            '';
+            backupCommand =
+              let
+                backup =
+                  perSystemArgs.pkgs.runCommand "seele-home-backup"
+                    {
+                      nativeBuildInputs = [ perSystemArgs.pkgs.makeBinaryWrapper ];
+                    }
+                    ''
+                      mkdir -p "$out/bin"
+                      makeWrapper ${perSystemArgs.config.packages.config-tools}/bin/seele-home-backup "$out/bin/seele-home-backup" \
+                        --set SEELE_MV ${perSystemArgs.pkgs.coreutils}/bin/mv
+                    '';
+              in
+              "${backup}/bin/seele-home-backup";
             users.${username}.imports = [
               modules.homeManager.common
               modules.homeManager.linux

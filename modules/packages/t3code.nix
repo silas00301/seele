@@ -1,8 +1,16 @@
 { lib, ... }:
 {
   perSystem =
-    { pkgs, system, ... }:
     {
+      pkgs,
+      system,
+      self',
+      ...
+    }:
+    {
+      checks = lib.optionalAttrs (system == "x86_64-linux") {
+        t3code-sandbox-launcher = self'.packages.t3code-nightly.passthru.tests.sandbox-launcher;
+      };
       packages = lib.optionalAttrs (system == "x86_64-linux") {
         t3code-nightly =
           let
@@ -25,6 +33,7 @@
               # matching library below as the only one on that path.
               postExtract = ''
                 rm -f "$out/usr/lib/libnotify.so"*
+                ${pkgs.patch}/bin/patch -d "$out" -p1 < ${./_t3code/appimage-sandbox.patch}
               '';
             };
           in
@@ -33,16 +42,30 @@
           # the library removed above.
           pkgs.appimageTools.wrapAppImage {
             pname = "t3code";
-            inherit version contents;
+            inherit version;
+            src = contents;
 
             extraPkgs = pkgs: [ pkgs.libnotify ];
 
             extraInstallCommands = ''
               install -Dm444 ${contents}/t3code.desktop "$out/share/applications/t3code.desktop"
               substituteInPlace "$out/share/applications/t3code.desktop" \
-                --replace-fail 'Exec=AppRun --no-sandbox %U' 'Exec=t3code --no-sandbox %U'
+                --replace-fail 'Exec=AppRun --no-sandbox %U' 'Exec=t3code %U'
               cp -r ${contents}/usr/share/icons "$out/share"
             '';
+
+            passthru.tests.sandbox-launcher =
+              pkgs.runCommand "t3code-sandbox-launcher"
+                {
+                  nativeBuildInputs = [
+                    pkgs.python3
+                    pkgs.bash
+                  ];
+                }
+                ''
+                  python3 ${./_t3code/test_sandbox.py} ${contents}/AppRun ${pkgs.bash}/bin/bash
+                  touch "$out"
+                '';
 
             meta = {
               description = "Nightly T3 Code desktop AppImage";

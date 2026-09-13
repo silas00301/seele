@@ -282,7 +282,7 @@ baseline.
 
 Seele Notes (`projects/notes/`) is a full application built from this vocabulary: it
 imports `../shared` directly, roots at `Shared.Theme`, and is the reason a part worth
-sharing goes in `shared/`. Its package copies `projects/shared/*.qml` wholesale and
+sharing goes in `shared/`. Its package copies shared QML components and `Palette.js` together and
 runs `qmllint` over the result, so a new shared component is picked up automatically and
 a warning in one fails `nix build .#notes`. `SearchField`, `EmptyState` and
 `StatusBanner` moved there when Notes needed them, because a query, a nothing-to-show
@@ -303,8 +303,9 @@ a Catppuccin value or a second assignment loop back in those roots. Keep another
 token identical to the shell's, and drop it when nothing in that client reads it. A palette
 colour a client reads also has to arrive from the parent: the generated `theme.json` in
 `modules/features/programs/seele-shell.nix` and `seele-greeter.nix` carries the named
-entries, and a client reading a new one needs both the key there and the assignment in
-its own `FileView`.
+entries, and a client reading a new one needs the key there; the shared palette assignment covers every declared palette
+property. `tests/palette.js` and `tests/tst_palette.qml` preserve fallback and
+Qt color/alpha behavior, including the main shell's existing wallpaper override.
 
 ## Finish
 

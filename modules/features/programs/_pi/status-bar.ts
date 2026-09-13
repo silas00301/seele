@@ -1,214 +1,198 @@
-import type { ExtensionAPI, Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type {
+  ExtensionAPI,
+  Theme,
+  ThemeColor,
+} from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { createRequire } from "node:module";
 
+const native = createRequire("@NODE_CORE@")("@NODE_CORE@");
+function call(operation: string, ...args: unknown[]): any {
+  const reply = JSON.parse(
+    native.evaluate(
+      JSON.stringify({ operation: `pi.${operation}`, arguments: args }),
+    ),
+  );
+  if (!reply.ok) throw new Error(reply.error);
+  return reply.value;
+}
+const numeric = (value: number | null | undefined) =>
+  value == null || Number.isFinite(value) ? value : String(value);
 interface Pill {
   color: ThemeColor;
-  priority: number;
+  priority: number | null;
   text: string;
 }
-
-const REQUIRED = Number.POSITIVE_INFINITY;
-const ANSI_ESCAPE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
-const JJ = "@JJ@";
-const JJ_REVISION_TEMPLATE = 'if(self.local_bookmarks(), self.local_bookmarks().join(","), change_id.shortest(8))';
-
 interface JjState {
   revision: string;
 }
-
-function formatTokens(count: number): string {
-  if (count < 1000) return `${count}`;
-  if (count < 1_000_000) return `${(count / 1000).toFixed(count < 10_000 ? 1 : 0)}k`;
-  return `${(count / 1_000_000).toFixed(count < 10_000_000 ? 1 : 0)}M`;
-}
-
-function formatPath(path: string): string {
-  const home = process.env.HOME ?? process.env.USERPROFILE;
-  if (!home) return path;
-  if (path === home) return "~";
-  return path.startsWith(`${home}/`) ? `~/${path.slice(home.length + 1)}` : path;
-}
-
-function sanitize(text: string): string {
-  return text.replace(ANSI_ESCAPE, "").replace(/[\r\n\t]/g, " ").replace(/ +/g, " ").trim();
-}
-
-function pillWidth(pill: Pill): number {
-  return visibleWidth(pill.text) + 4;
-}
-
+const JJ = "@JJ@";
+const JJ_READER = "@JJ_READER@";
 function renderPill(theme: Theme, pill: Pill): string {
   const edge = (text: string) => theme.fg(pill.color, text);
-  const body = theme.inverse(theme.fg(pill.color, theme.bold(` ${pill.text} `)));
+  const body = theme.inverse(
+    theme.fg(pill.color, theme.bold(` ${pill.text} `)),
+  );
   return edge("") + body + edge("");
 }
-
-function groupWidth(pills: Pill[]): number {
-  return pills.reduce((width, pill, index) => width + pillWidth(pill) + (index === 0 ? 0 : 1), 0);
+async function readJj(
+  pi: ExtensionAPI,
+  cwd: string,
+  mode: "detect" | "revision",
+  signal: AbortSignal,
+): Promise<JjState | null> {
+  const result = await pi.exec(JJ_READER, [JJ, mode], {
+    cwd,
+    timeout: 5000,
+    signal,
+  });
+  if (result.code !== 0) return mode === "detect" ? null : { revision: "?" };
+  const metadata = JSON.parse(result.stdout);
+  return metadata.repository
+    ? { revision: call("sanitize", metadata.revision) || "?" }
+    : null;
 }
-
-function totalWidth(left: Pill[], right: Pill[]): number {
-  const gap = left.length > 0 && right.length > 0 ? 1 : 0;
-  return groupWidth(left) + gap + groupWidth(right);
-}
-
-function removeLowestPriority(left: Pill[], right: Pill[]): boolean {
-  const removable = [...left, ...right]
-    .filter((pill) => pill.priority !== REQUIRED)
-    .sort((a, b) => a.priority - b.priority)[0];
-
-  if (!removable) return false;
-  const group = left.includes(removable) ? left : right;
-  group.splice(group.indexOf(removable), 1);
-  return true;
-}
-
-function shrinkPill(pill: Pill, columns: number): void {
-  const current = visibleWidth(pill.text);
-  const target = Math.max(4, current - columns);
-  pill.text = truncateToWidth(pill.text, target, "…");
-}
-
-async function readJjRevision(pi: ExtensionAPI, cwd: string): Promise<string> {
-  const result = await pi.exec(
-    JJ,
-    ["log", "--no-graph", "--no-pager", "--color=never", "-r", "@", "-T", JJ_REVISION_TEMPLATE],
-    { cwd, timeout: 2000 },
-  );
-  return result.code === 0 ? sanitize(result.stdout) || "?" : "?";
-}
-
-async function detectJj(pi: ExtensionAPI, cwd: string): Promise<JjState | null> {
-  const result = await pi.exec(JJ, ["root"], { cwd, timeout: 2000 });
-  if (result.code !== 0) return null;
-  return { revision: await readJjRevision(pi, cwd) };
-}
-
 export default function (pi: ExtensionAPI) {
   let refreshJj: (() => Promise<void>) | undefined;
-
+  let generation = 0;
+  let pending: AbortController | undefined;
   pi.on("session_start", async (_event, ctx) => {
+    const current = ++generation;
+    pending?.abort();
+    const controller = new AbortController();
+    pending = controller;
+    refreshJj = undefined;
     if (ctx.mode !== "tui") return;
-
     const cwd = ctx.sessionManager.getCwd();
-    let jjState = await detectJj(pi, cwd);
+    let jjState = await readJj(pi, cwd, "detect", controller.signal);
+    if (generation !== current) return;
     let requestRender = () => {};
-
+    let disposed = false;
+    let refreshing = false;
+    let refreshPending = false;
     refreshJj = async () => {
-      if (!jjState) return;
-      const revision = await readJjRevision(pi, cwd);
-      if (revision === jjState.revision) return;
-      jjState = { revision };
-      requestRender();
+      if (!jjState || disposed || generation !== current) return;
+      if (refreshing) {
+        refreshPending = true;
+        return;
+      }
+      refreshing = true;
+      try {
+        do {
+          refreshPending = false;
+          const revision =
+            (await readJj(pi, cwd, "revision", controller.signal))?.revision ??
+            "?";
+          if (disposed || generation !== current) return;
+          if (revision !== jjState.revision) {
+            jjState = { revision };
+            requestRender();
+          }
+        } while (refreshPending);
+      } finally {
+        refreshing = false;
+      }
     };
-
     ctx.ui.setFooter((tui, theme, footerData) => {
       requestRender = () => tui.requestRender();
       let tokenSessionId: string | undefined;
       let tokenLeafId: string | null | undefined;
-      let inputTokens = 0;
-      let outputTokens = 0;
+      let usage = { input: 0, output: 0 };
+      let renderedKey: string | undefined;
+      let renderedLine = "";
       const unsubscribe = footerData.onBranchChange(() => {
         if (jjState) void refreshJj?.();
         else tui.requestRender();
       });
-
       return {
-        dispose: unsubscribe,
-        invalidate() { tokenSessionId = undefined; },
+        dispose() {
+          disposed = true;
+          controller.abort();
+          unsubscribe();
+        },
+        invalidate() {
+          tokenSessionId = undefined;
+          renderedKey = undefined;
+        },
         render(width: number): string[] {
-          // Pi persists completed messages as append-only session entries.
-          // Streaming redraws do not change that branch; switches, appends and
-          // compaction move its leaf or replace the session.
+          // Only metadata crosses the in-process ABI; completed branch identity
+          // controls usage collection, so streaming redraws never scan history.
           const sessionId = ctx.sessionManager.getSessionId();
           const leafId = ctx.sessionManager.getLeafId();
           if (sessionId !== tokenSessionId || leafId !== tokenLeafId) {
-            inputTokens = 0;
-            outputTokens = 0;
-            for (const entry of ctx.sessionManager.getBranch()) {
-              if (entry.type === "message" && entry.message.role === "assistant") {
-                const usage = (entry.message as AssistantMessage).usage;
-                inputTokens += usage.input;
-                outputTokens += usage.output;
-              }
-            }
+            usage = call(
+              "usage",
+              ctx.sessionManager.getBranch().map((entry: any) => ({
+                type: entry.type,
+                role: entry.message?.role,
+                input: numeric(entry.message?.usage?.input),
+                output: numeric(entry.message?.usage?.output),
+              })),
+            );
             tokenSessionId = sessionId;
             tokenLeafId = leafId;
           }
-
-          const context = ctx.getContextUsage();
-          const contextPercent = context?.percent;
-          const contextColor: ThemeColor =
-            contextPercent !== null && contextPercent !== undefined && contextPercent > 90
-              ? "error"
-              : contextPercent !== null && contextPercent !== undefined && contextPercent > 70
-                ? "warning"
-                : "success";
-          const contextText = contextPercent === null || contextPercent === undefined ? "󰍛 ?" : `󰍛 ${contextPercent.toFixed(0)}%`;
-
-          const left: Pill[] = [
-            { color: "accent", priority: REQUIRED, text: ` ${formatPath(ctx.sessionManager.getCwd())}` },
-          ];
-
-          if (jjState) {
-            left.push({ color: "success", priority: 2, text: `jj ${jjState.revision}` });
-          } else {
-            const branch = footerData.getGitBranch();
-            if (branch) left.push({ color: "success", priority: 2, text: ` ${branch}` });
+          const snapshot = {
+            cwd: ctx.sessionManager.getCwd(),
+            home: process.env.HOME ?? process.env.USERPROFILE,
+            jj: jjState?.revision ?? null,
+            branch: footerData.getGitBranch(),
+            sessionName: ctx.sessionManager.getSessionName(),
+            statuses: [...footerData.getExtensionStatuses().values()],
+            inputTokens: usage.input,
+            outputTokens: usage.output,
+            contextPercent: numeric(ctx.getContextUsage()?.percent),
+            reasoning: ctx.model?.reasoning,
+            thinkingLevel: ctx.thinkingLevel,
+            modelId: ctx.model?.id,
+          };
+          // The host owns invalidation of opaque theme rendering. Keep one
+          // completed line so unchanged streaming redraws do no native/layout work.
+          const key = JSON.stringify([width, snapshot]);
+          if (key === renderedKey) return [renderedLine];
+          let { left, right }: { left: Pill[]; right: Pill[] } = call(
+            "pills",
+            snapshot,
+          );
+          // Pi owns terminal-cell measurement and truncation. Rust requests at
+          // most two truncations and receives actual resulting widths each time.
+          let stage = 0;
+          let padding = 0;
+          for (;;) {
+            const measured = (pills: Pill[]) =>
+              pills.map((pill) => ({
+                priority: pill.priority,
+                width: visibleWidth(pill.text),
+              }));
+            const layout = call(
+              "layout",
+              measured(left),
+              measured(right),
+              width,
+              stage,
+            );
+            left = layout.left.map((index: number) => left[index]!);
+            right = layout.right.map((index: number) => right[index]!);
+            if (!layout.shrink) {
+              padding = layout.padding;
+              break;
+            }
+            const group = layout.shrink.side === "left" ? left : right;
+            const pill = group[layout.shrink.index]!;
+            pill.text = truncateToWidth(pill.text, layout.shrink.width, "…");
+            stage = layout.nextStage;
           }
-
-          const sessionName = ctx.sessionManager.getSessionName();
-          if (sessionName) left.push({ color: "syntaxString", priority: 0, text: sessionName });
-
-          for (const status of footerData.getExtensionStatuses().values()) {
-            const text = sanitize(status);
-            if (text) left.push({ color: "muted", priority: 0, text });
-          }
-
-          const right: Pill[] = [];
-          if (inputTokens > 0 || outputTokens > 0) {
-            right.push({
-              color: "muted",
-              priority: 0,
-              text: `↑${formatTokens(inputTokens)} ↓${formatTokens(outputTokens)}`,
-            });
-          }
-          right.push({ color: contextColor, priority: REQUIRED, text: contextText });
-
-          if (ctx.model?.reasoning) {
-            const thinkingLevel = ctx.thinkingLevel ?? "off";
-            const thinkingColor = `thinking${thinkingLevel[0]!.toUpperCase()}${thinkingLevel.slice(1)}` as ThemeColor;
-            right.push({ color: thinkingColor, priority: 1, text: `󰔛 ${thinkingLevel}` });
-          }
-
-          right.push({
-            color: "mdHeading",
-            priority: REQUIRED,
-            text: `󰚩 ${ctx.model?.id ?? "no model"}`,
-          });
-
-          while (totalWidth(left, right) > width && removeLowestPriority(left, right)) {
-            // Drop optional pills before shortening the primary status.
-          }
-
-          if (totalWidth(left, right) > width) {
-            shrinkPill(left[0]!, totalWidth(left, right) - width);
-          }
-          if (totalWidth(left, right) > width) {
-            shrinkPill(right[right.length - 1]!, totalWidth(left, right) - width);
-          }
-
-          const leftLine = left.map((item) => renderPill(theme, item)).join(" ");
-          const rightLine = right.map((item) => renderPill(theme, item)).join(" ");
-          const padding = " ".repeat(Math.max(left.length > 0 && right.length > 0 ? 1 : 0, width - groupWidth(left) - groupWidth(right)));
-
-          return [truncateToWidth(leftLine + padding + rightLine, width, "")];
+          const line =
+            left.map((pill) => renderPill(theme, pill)).join(" ") +
+            " ".repeat(padding) +
+            right.map((pill) => renderPill(theme, pill)).join(" ");
+          renderedLine = truncateToWidth(line, width, "");
+          renderedKey = key;
+          return [renderedLine];
         },
       };
     });
   });
-
   pi.on("agent_settled", async () => {
     await refreshJj?.();
   });

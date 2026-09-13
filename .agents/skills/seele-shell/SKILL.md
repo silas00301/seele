@@ -29,6 +29,81 @@ reaches the compositor issues one `hl.dsp` call — `hl.dsp.window.close({ windo
 on the Lua error the legacy form raises, so a wrong call is invisible until the
 action is tried by hand.
 
+## Share native runtime and package policy
+
+All first-party service/helper crates use the root `Cargo.toml` workspace and
+`Cargo.lock`. The shared `projects/runtime` library owns bounded subprocesses,
+process groups and terminal handoff, cancellation, private atomic files,
+peer-verified framed Unix sockets, timestamps, redaction and inference lifecycle.
+Its `codex` module owns tool-free feature discovery and exec/resume policy.
+Broker, prompt and consent-driven consumers must reuse that policy. A successful
+clipboard/desktop launcher handoff may deliberately retain its background owner;
+use the explicit detaching process API only for those known launchers.
+
+`packages/core/native.nix` builds each native package and runs its fixtures
+against unwrapped binaries. Keep executable PATH wrappers at integration
+boundaries and Python/Node confined to test/build inputs. The root package map
+and the parent `mkNativePackage` export consume that builder, not independent
+Cargo locks or copied build flags. The builder derives its source entries from workspace members; add the new
+member and its package/fixture mapping once. Build/test commands run from the shell root:
+
+```sh
+cargo test --workspace --all-features --locked
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+```
+
+Use the narrower `-p seele-<crate>` during iteration. Crate READMEs under
+`projects/{broker,maintenance,prompt,integrations,failure-analysis,shell-ai,config-tools,desktop-tools,repo-tools,qml-core,markdown-core,node}`
+name protocol and terminal fixtures. Python fixtures use temporary private state
+and fake dependencies; dynamically generated shebangs must use resolved tool
+paths so the same checks work in a Nix sandbox. Run the real-Codex loopback
+fixture for changes to shared isolation, proving the wire tool list is empty
+without contacting a model account. Cargo checks do not establish compositor
+rendering or Nix packaging; finish with the affected native package and QML checks
+where those tools are available.
+
+All UI packages and development checks receive one pinned Quickshell derivation
+from `packages/core/quickshell.nix`. Keep local host fixes there: the current
+NetworkManager patch validates wire modes before narrowing and provides a
+complete fallback. Its build runs `tests/quickshell-network-mode.py` over actual
+upstream function bodies with UBSan. Override `upstream.unwrapped` and rebuild
+the outer Qt wrapper; patching only that wrapper cannot change the executable.
+See `seele-shell/docs/native-workspace.md` for the shared host and ABI contracts.
+
+Pi/OpenCode status extensions share `projects/shell/status-hook.ts`; only their
+host event bindings remain TypeScript. The package bundles each adapter with an
+explicit native `seele-agent-hook` path. Rust owns bounded hook input, lifecycle
+validation, process identity and private atomic publication. Keep
+`tests/harness-status.sh` passing when changing these events. Privileged NixOS
+generation activation belongs to `repo-tools/src/generation.rs`; its fixtures
+must never activate the test host.
+
+Native lock/greeter/Notes launchers share `projects/tools/src/launch.rs` and
+`SEELE_QUICKSHELL`/`SEELE_CONFIG` package bindings. Preserve a successful lock
+daemon handoff even if secure-ack IPC times out or the launcher is cancelled.
+The launcher only returns success after compositor confirmation; its absolute
+five-second acknowledgement deadline includes subprocess time. Run
+`cargo test -p seele-tools --test launchers` with synthetic executables after
+changing process ownership or launcher packaging.
+
+Pure UI policy lives in `qml-core`; `projects/qml` exposes it through the shared
+C ABI and `Seele.Core`. Preserve real JS arrays and own object keys on return:
+the bridge uses the engine's captured JSON parser because QVariant conversion
+breaks `Array.isArray`, filtering and list-model behavior. `Native.js` and
+`ListModels.js` retain only Qt value/object/model binding. Native notifications
+have one opaque Rust state per owning Qt object, with no retained event replay.
+
+Pi footer policy uses the same library through `projects/node` and stable
+Node-API. TypeScript retains theme painting, Pi terminal width/truncation and
+callback lifecycle; unchanged redraws reuse one completed line. The native
+`seele-pi-jj` bounds lifecycle probes. Run its process fixtures, the real-addon
+`checks.pi-footer`, and the full ANSI differential after policy changes.
+
+Keep all background work and reusable policy in Rust. Preserve UI materials,
+geometry, animations, keyboard behavior, source object identity and consent.
+Use the pinned nixpkgs Rust version for final formatting/Clippy compatibility;
+a newer local compiler is only an iteration aid.
+
 ## Keep NixOS generation rollback reviewable and guarded
 
 The managed Vicinae command `generations` lists the retained system profile with
@@ -36,18 +111,25 @@ the running system's `nixos-rebuild list-generations --json`. Do not trust its
 `current` field to identify the booted configuration: resolve each
 `system-<number>-link` and compare it with the canonical `/run/current-system`
 target. Put the selected build time first in the detail, followed by its kernel,
-NixOS metadata, and an `nvd diff /run/current-system <generation>` package diff.
-Do not expose the switch action until that diff has finished or failed visibly.
+NixOS metadata, and an `nvd diff` between the captured immutable running/target
+store paths. Show the switch action only after the current review's diff succeeds;
+a failed or stale result never authorizes activation.
 
-A switch always gets a destructive confirmation naming the generation. Reload
-the generations immediately afterward and require its resolved store path to
-match the closure the user reviewed. Pass only a validated positive integer,
-through the running system's `run0`, to the packaged
-`seele-switch-generation` helper. The helper repeats the integer and symlink
-checks as root, changes `/nix/var/nix/profiles/system` with the running system's
-`nix-env --switch-generation`, and executes the already resolved closure's
-`switch-to-configuration switch`. Never pin a different `run0`, accept a caller
-path, set `NIXOS_NO_CHECK`, or bypass switch inhibitors.
+A switch always gets a destructive confirmation naming the generation. After
+confirmation, the native checker resolves the generation and running system
+again and requires both identities to match the review. Pass the positive
+integer plus both store basenames through the running system's `run0` to
+`seele-switch-generation`. The helper repeats canonical identity/ownership
+checks after authentication, changes the system profile with the running
+`nix-env`, and activates the exact selected closure. It never executes a caller
+path, sets `NIXOS_NO_CHECK`, or bypasses switch inhibitors.
+
+The native `seele-control vicinae-*` endpoints prepare desktop/generation/keybinding
+snapshots, enforce audio/key input and format immutable diffs. React keeps its
+actual host rendering, confirmation and clipboard APIs; Intl/localeCompare keep
+host locale semantics. Rendering launches no processes. Preserve
+`tests/vicinae-generations.mjs`, `tests/vicinae-keybindings.cjs` and the native tools/repo-tools
+fixtures, plus `vicinae-generation-review.cjs` for failed/stale/duplicate confirms.
 
 Rollback and cleanup stay separate. Do not add delete or garbage-collection
 actions to the picker; the parent `programs.nh.clean` policy decides retention.
@@ -101,11 +183,13 @@ real OCR, code coexistence, capture identity, strip boundaries, and cleanup;
 ## Keep the quick AI prompt lazy and private
 
 `seele-shellctl prompt` reaches `AiPrompt.qml`; the parent binds it to
-`Super + Space`. Keep the QML surface and `seele-ai-prompt-worker` resident so
+`Super + Space`. Keep the QML surface and Rust `seele-ai-prompt-worker` resident so
 the panel maps synchronously on the recorded focused output, but never start
 Codex or read a context source merely because it opened. The worker's empty
-mode-0700 runtime workspace is the model cwd. Run the first turn through
-`codex exec --sandbox read-only --json`, keep the UUID only in memory, resume
+mode-0700 runtime workspace is the model cwd. Use the shared runtime Codex
+policy for both exec and resume: disable tools and inherited project/user
+configuration as well as selecting the read-only sandbox. Keep the UUID only
+in memory, resume
 follow-ups only while this panel stays open, and validate the UUID before
 passing it to `codex delete --force`.
 
@@ -129,8 +213,8 @@ captured Hyprland address through one `hl.dsp.focus` call, verifies both the
 active address and pid, and only then gives the exact answer to `wtype --`.
 Closing kills the model process group; turn and deletion workers must survive
 long enough to recover and delete a UUID printed just before cancellation.
-`tests/ai-prompt.py` covers privacy gates, stale context, session reuse,
-actions, cancellation, and shutdown cleanup; `tests/ai-prompt.js` covers QML.
+`projects/prompt/tests/controller.rs` covers privacy gates, stale context, session
+reuse, actions, cancellation, and shutdown cleanup against the Rust executable; `tests/ai-prompt.js` covers QML.
 
 ## Notification interactions
 
@@ -153,7 +237,12 @@ while the shell was down. `seele-shellctl notification snooze <minutes>`
 reaches the same store; the minute count travels in the `id` argument.
 
 `NotificationStore.qml` owns the desktop notification service through
-Quickshell, with lifecycle and presentation helpers in `notifications.js`.
+Quickshell. `projects/qml-core/src/notifications.rs` owns presentation and the
+complete state machine in a Rust object owned by a Qt QObject. `notifications.js`
+only projects native properties and retains/invokes actual notification objects;
+`projects/shared/Native.js` is the shared Qt bridge. Timer ticks pass a timestamp,
+not a snapshot of every notification. The engine releases the Rust object when
+its owning wrapper is collected.
 The parent disables mako; hardware status workers never publish notification
 or DND fields. `seele-shellctl notification <action>` and `notification-status`
 reach the native store over IPC, and `seele-control` keeps matching commands.
@@ -182,7 +271,12 @@ slot while the image loads or if it fails. Only advertise capabilities that are
 rendered. At the pinned Quickshell revision, `expireTimeout` exposes raw D-Bus
 milliseconds despite its seconds documentation.
 
-`tests/notifications.js` exercises image roles, the state machine and grouping;
+`tests/notifications.js` exercises image roles, the state machine and grouping
+through the native fixture CLI. Its replay transport is test-only; production
+never retains events. `tests/tst_nativefunctions.qml` exercises the real Qt/Rust
+object boundary. `projects/qml-core/README.md` documents memory bounds, Qt locale
+collation and the reproducible resident-state benchmark;
+
 `tests/notification-server.sh` runs a windowless Quickshell on a private D-Bus
 session to check the real API and production IPC handlers during the package
 build. `tests/control-actions.sh` checks command and clipboard failures.
@@ -191,7 +285,9 @@ build. `tests/control-actions.sh` checks command and clipboard failures.
 
 `projects/shell/SystemState.qml` owns the status fields and their startup
 values. Feed snapshots and optimistic patches through `apply()` so each field
-notifies independently and unchanged JSON branches retain their identity.
+notifies independently and unchanged JSON branches retain their identity. The
+Rust `system.patch` schema validates allowed fields/types; the Qt adapter retains
+actual engine object references and emits only the affected notify signals.
 Replacing the whole state object makes unrelated bindings rerun and rebuilds
 list delegates. Add new backend status fields to this component as well.
 `tests/system-state.sh` checks signal counts, delegate reuse, and unchanged
@@ -204,8 +300,9 @@ The shell reads field patches from `seele-control watch-status`. Guard callback
 side effects on the presence of their field: an audio update carries neither
 headphones nor notifications. `projects/tools/src/live.rs` owns D-Bus listener
 reconnects, a buffered PipeWire monitor, and the five-second ancillary refresh.
-NetworkManager and BlueZ signals trigger source-specific probes. Notifications
-and DND belong exclusively to the native QML store. Explicit stdin requests
+NetworkManager and BlueZ signals trigger source-specific probes. Notification
+QObjects belong to the QML store; history and DND policy belong to its resident
+Rust state object. Explicit stdin requests
 return complete source fields even when unchanged so optimistic controls can
 settle. Keep that acknowledgement separate from unsolicited deltas.
 `projects/tools/tests/live.rs` runs against a private bus and mock probes;
@@ -514,6 +611,27 @@ nix run .#update-submodule
 
 The helper verifies that the submodule is clean, commits only the parent gitlink through Git, imports that commit into Jujutsu, advances `main` to it when possible, and refreshes the shell's transitive inputs in the parent lock. Do not stage the parent gitlink manually. The `seele-shell` input is a path inside the parent flake, so the gitlink pins its source revision and source-only shell updates leave `flake.lock` unchanged.
 
+For an explicitly authorized pull request, publish the clean shell revision on
+its PR bookmark first and commit the companion parent changes. Use the native
+helper's PR mode from the parent root:
+
+```sh
+seele-shell/target/debug/update-submodule --pr --keep-lock
+jj bookmark set <parent-pr-bookmark> -r @-
+jj git push --remote origin --bookmark <parent-pr-bookmark>
+```
+
+`--pr` requires detached Git HEAD and leaves every bookmark, including `main`,
+unchanged. It still verifies that the child revision is published and commits only
+the gitlink. `--keep-lock` is permitted only with `--pr`: it checks byte-identical
+old/new child `flake.lock` blobs and an unchanged tracked parent lock in both the
+index and working tree before mutation. Review the child input declarations
+independently before choosing this option. It skips Nix entirely and explicitly
+reports that neither evaluation nor lock refresh ran; it does not prove the
+result rebuilds. Without `--keep-lock`, PR mode performs the normal lock refresh.
+Use the already built helper directly when Nix is unavailable; never install Nix
+against a user constraint. Never advance or push `main` for a PR-only request.
+
 Review the resulting parent state:
 
 ```sh
@@ -546,3 +664,10 @@ test "$lock_path" = "seele-shell"
 Then run the parent Seele validation workflow. At minimum, format the parent, evaluate the flake and native host, build `packages.<system>.seele-shell`, and build the native host closure. A rebuild-ready result has a clean pushed submodule, a matching gitlink, the relative path lock with refreshed transitive inputs, passing submodule and parent builds, and a pushed parent bookmark.
 
 Activation is separate. Run `nh os switch`, `nh darwin switch`, or an equivalent activation command only when the user explicitly asks to change the live machine.
+
+Shared palette changes must keep `projects/shared/Palette.js` beside every
+consumer. Shell/Notes packages and isolated Qt fixtures copy shared `.qml` and
+`.js` assets together; auth-client packages copy Palette.js beside shell.qml.
+Run `node tests/palette.js ...` and the offscreen `tests/palette.sh` fixture.
+Palette data/property assignment is a necessary Qt API boundary, with no service
+or background logic. Preserve existing theme and wallpaper assignment semantics.

@@ -3,18 +3,22 @@ let
   module = (
     { selfPackages, pkgs, ... }:
     let
-      projectText = pkgs.writeShellApplication {
-        name = "seele-project-text";
-        runtimeInputs = [
-          pkgs.python3
-          pkgs.ripgrep
-          pkgs.bat
-          selfPackages.nixvim
-        ];
-        text = ''
-          exec python3 ${./_television/text.py} "$@"
-        '';
-      };
+      projectText =
+        pkgs.runCommand "seele-project-text"
+          {
+            nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
+          }
+          ''
+            mkdir -p "$out/bin"
+            makeWrapper ${selfPackages.config-tools}/bin/seele-project-text "$out/bin/seele-project-text" \
+              --prefix PATH : "${
+                pkgs.lib.makeBinPath [
+                  pkgs.ripgrep
+                  pkgs.bat
+                  selfPackages.nixvim
+                ]
+              }"
+          '';
     in
     {
       programs.television = {
@@ -110,17 +114,8 @@ in
 {
   flake.modules.homeManager."television" = module;
 
-  perSystem = { pkgs, ... }: {
-    checks.television-text =
-      pkgs.runCommand "television-text-check"
-        {
-          nativeBuildInputs = [ pkgs.ripgrep ];
-        }
-        ''
-          export PYTHONDONTWRITEBYTECODE=1
-          ${pkgs.python3}/bin/python3 ${./_television}/test_text.py
-          touch "$out"
-        '';
+  perSystem = { config, ... }: {
+    checks.television-text = config.packages.config-tools;
   };
 
   seele.portable.tv = {

@@ -1,7 +1,12 @@
 { ... }:
 let
   module = (
-    { config, pkgs, ... }:
+    {
+      config,
+      pkgs,
+      selfPackages,
+      ...
+    }:
 
     let
       palette =
@@ -178,11 +183,33 @@ let
       };
 
       home.file."${config.programs.pi-coding-agent.configDir}/extensions/status-bar.ts".text =
-        builtins.replaceStrings [ "@JJ@" ] [ "${pkgs.jujutsu}/bin/jj" ]
+        builtins.replaceStrings
+          [ "@JJ@" "@NODE_CORE@" "@JJ_READER@" ]
+          [
+            "${pkgs.jujutsu}/bin/jj"
+            "${selfPackages.node-core}/lib/seele-core.node"
+            "${selfPackages.repo-tools}/bin/seele-pi-jj"
+          ]
           (builtins.readFile ./_pi/status-bar.ts);
     }
   );
 in
 {
   flake.modules.homeManager."pi" = module;
+  perSystem = { pkgs, config, ... }: {
+    checks.pi-footer =
+      pkgs.runCommand "seele-pi-footer-check"
+        {
+          nativeBuildInputs = [
+            pkgs.esbuild
+            pkgs.nodejs
+          ];
+        }
+        ''
+          esbuild ${./_pi/status-bar.ts} --bundle --platform=node --format=cjs \
+            --external:@earendil-works/pi-tui --outfile=footer.cjs
+          node ${./_pi/test-status-bar.cjs} "$PWD/footer.cjs" ${config.packages.node-core}/lib/seele-core.node
+          touch "$out"
+        '';
+  };
 }

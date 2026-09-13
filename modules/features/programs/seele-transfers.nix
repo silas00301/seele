@@ -24,6 +24,7 @@
           Restart = "on-failure";
           RestartSec = 2;
           NoNewPrivileges = true;
+          LimitCORE = 0;
         };
         Install.WantedBy = [ "graphical-session.target" ];
       };

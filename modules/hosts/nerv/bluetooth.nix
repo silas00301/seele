@@ -8,10 +8,10 @@ let
       settings = {
         General = {
           # Apple accessories that roam between devices reconnect much faster
-          # when the adapter stays connectable, and they frequently re-pair on
-          # their way back from an iPhone or Mac.
+          # when the adapter stays connectable. Replacing an existing bond
+          # requires agent confirmation, including after roaming to a phone.
           FastConnectable = true;
-          JustWorksRepairing = "always";
+          JustWorksRepairing = "confirm";
           # Exposes the BlueZ battery interfaces the shell reads for the
           # battery menu.
           Experimental = true;

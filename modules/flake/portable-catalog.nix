@@ -7,17 +7,26 @@ let
 in
 {
   perSystem =
-    { pkgs, system, ... }:
+    {
+      pkgs,
+      system,
+      config,
+      ...
+    }:
     let
       manifest = pkgs.writeText "seele-portable-apps.json" (
         builtins.toJSON { inherit system applications; }
       );
-      catalog = pkgs.writeShellApplication {
-        name = "seele-portable-apps";
-        text = ''
-          exec ${pkgs.python3}/bin/python3 ${./_portable/catalog.py} ${manifest} "$@"
-        '';
-      };
+      catalog =
+        pkgs.runCommand "seele-portable-apps"
+          {
+            nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
+          }
+          ''
+            mkdir -p "$out/bin"
+            makeWrapper ${config.packages.config-tools}/bin/seele-portable-apps "$out/bin/seele-portable-apps" \
+              --add-flags ${lib.escapeShellArg (toString manifest)}
+          '';
     in
     {
       apps.portable-apps = {
@@ -26,9 +35,6 @@ in
         meta.description = "List configured portable applications and their included features";
       };
 
-      checks.portable-catalog = pkgs.runCommand "portable-catalog-check" { } ''
-        ${pkgs.python3}/bin/python3 ${./_portable/test-catalog.py} ${./_portable/catalog.py}
-        touch "$out"
-      '';
+      checks.portable-catalog = config.packages.config-tools;
     };
 }

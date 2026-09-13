@@ -22,7 +22,8 @@ revision. Source labels omit URL user information, query strings, and fragments.
 Human-readable revisions are abbreviated to 12 characters; JSON retains the full
 pin. The JSON report is selected metadata, not a raw dump of lock nodes.
 
-The stdlib-only helper can also run as
-`python3 modules/flake/_inputs/report.py`; its fixture tests run with
-`python3 modules/flake/_inputs/test-report.py` and are exposed as
-`checks.<system>.inputs-report`.
+The Rust binary `seele-inputs` belongs to
+`seele-shell/projects/config-tools/src/inputs.rs`. Build `seele-config-tools`,
+then run `python3 seele-shell/projects/config-tools/tests/inputs.py
+seele-shell/target/debug/seele-inputs` from the parent checkout. The isolated
+fixture is also exposed through `checks.<system>.inputs-report`.

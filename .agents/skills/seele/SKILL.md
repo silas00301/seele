@@ -62,6 +62,8 @@ For repository authoring, `nix develop` provides the configured formatter, Nix
 language server and linters, ShellCheck, jq, Python, Jujutsu, and GitHub CLI. It
 adds no Nix distribution and runs no setup or activation hook.
 
+For authentication, service privileges, network exposure or device authorization changes, consult the [configuration security audit](../../../docs/security-configuration-audit.md) and its native-host validation boundaries before changing the active profile.
+
 ## 4. Format the whole repository
 
 ```sh
@@ -84,15 +86,33 @@ nix flake check --no-build --no-write-lock-file
 ```
 
 See [shell integrations and controls](references/shell-integrations.md) for GitHub, Home Assistant, local timers, notification actions and their focused validation.
-For `shell-ai` changes, first run `PYTHONDONTWRITEBYTECODE=1 python3 modules/packages/_shell-ai/test_shell_ai.py modules/packages/_shell-ai/shell_ai.py modules/features/programs/shell-ai.nix`; then build `packages.x86_64-linux.shell-ai` with the normal Nix validation.
-
-The `nerv` failure reporter has a dependency-free focused suite for its
-invocation bounds, redaction, consent paths, private files, rebuild wrapper,
-and systemd generator:
+Native services and helpers now belong to the shell's Cargo workspace. Run the
+relevant crate's Rust tests and strict Clippy with all features enabled, then its
+local fixture against the raw binary; the crate README names that fixture. Match
+the locked nixpkgs Rust toolchain for final formatting and compatibility checks;
+a newer local compiler alone does not prove the packaged build works. For example, from the parent:
 
 ```sh
-PYTHONDONTWRITEBYTECODE=1 python3 modules/features/system/_failure-analysis/test_reporter.py modules/features/system/_failure-analysis/reporter.py modules/features/system/_failure-analysis/generator.py
+cargo test --manifest-path seele-shell/Cargo.toml -p seele-shell-ai -p seele-failure-analysis
+cargo build --manifest-path seele-shell/Cargo.toml -p seele-failure-analysis
+PYTHONDONTWRITEBYTECODE=1 python3 seele-shell/projects/failure-analysis/tests/protocol.py seele-shell/target/debug/seele-failure-report
 ```
+
+The shell-ai suite exercises the real private PTY/socket capture and broker
+exchange. Failure-analysis fixtures cover invocation bounds, redaction, consent,
+private files, exact rebuild output and systemd generation. Broker and prompt fixtures also
+include optional real-Codex loopback servers proving that no tools or hostile
+home instructions are exposed, including prompt resume/image turns. They use
+synthetic private HOME/CODEX_HOME and synthetic authentication only.
+Test fixtures may use Python/Node; runtime packages must not acquire them through
+wrappers. Dynamically generated test scripts use the actual interpreter path,
+not `/usr/bin/env` or `/bin/sh`, which are absent in a Nix build sandbox. Pure UI
+policy fixtures exercise the Rust bridge and exact baseline behavior; actual Qt
+tests still establish engine arrays/object identity, rendering and animation
+contracts. Node-API and Pi footer fixtures cover the stable native ABI and
+terminal-width/theme callbacks; see `projects/{qml-core,node}/README.md` in the
+shell repository. If Nix is unavailable and installation is forbidden, use
+existing standalone tools and report flake evaluation/build checks as unrun.
 
 Changes under `seele-shell/` live in a separate Jujutsu repository. Read the [`seele-shell` skill](../seele-shell/SKILL.md) before editing the submodule or synchronizing it into the parent flake.
 
