@@ -166,7 +166,9 @@ history never deletes files. `asuka` has no transfer service. See the submodule'
 `projects/transfers/README.md` for protocol, tests and Taildrop's incoming
 identity/cancellation limitations.
 
-Home Assistant's house icon stays visible before setup. Its panel stores the token
+Home Assistant's house icon stays visible before setup. Its panel groups named
+sensor readouts and expandable device controls into Favorites and room cards,
+with a searchable device picker and an output-bounded viewport. It stores the token
 through the standard Secret Service interface and keeps only connection metadata
 and display preferences in its private JSON file. See the Seele skill's
 `shell-integrations.md` reference for live state, per-device confirmation,
