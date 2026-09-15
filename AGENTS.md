@@ -339,6 +339,27 @@ and display preferences in its private JSON file. See the Seele skill's
 `shell-integrations.md` reference for live state, per-device confirmation,
 room/favorite organization and fixture validation.
 
+On `nerv`, the Control Center's Ports tile opens a local TCP listener
+inspector. The resident `seele-ports` worker in the shell submodule's `tools`
+crate owns discovery, ownership, privilege and action policy; QML owns the
+panel and its confirmations. It reads `/proc/net/tcp` and `/proc/net/tcp6` in
+the host network namespace and lists listening sockets only, showing the actual
+binding and leaving metadata the kernel will not show explicitly unknown.
+Listing contacts no service and raises no authentication prompt. Copy and Open
+are explicit, propose only HTTP or HTTPS, and build the URL natively. Stop is
+confirmed, targets a systemd listener's service and an unmanaged listener's
+selected process, discloses reactivation conditions, and never disables a unit.
+Force stop is a separate confirmation the backend refuses until a graceful
+attempt left the listener bound. A system unit or another user's process goes
+through `run0` and the packaged `seele-stop-listener` helper, which takes a
+typed target rather than a command and revalidates it after authentication.
+Identity is the socket inode and the process start time, so a stale
+confirmation is refused rather than redirected, and a listener still bound
+afterwards is reported as remaining. The panel keeps nothing on disk and
+collects no logs. The panel's layershell namespace belongs in the Hyprland blur
+rule. See the Seele skill's `shell-integrations.md` and the submodule's
+`projects/tools/README.md`.
+
 Portable applications are the second way a feature reaches outside this flake. `modules/flake/portable.nix` declares `seele.portable.<app>`, and each program leaf worth running on an unmanaged machine contributes one entry beside its `flake.modules.homeManager` definition. An entry names the Home Manager features to evaluate, and the builder wraps the resulting binary so it materializes the generated `.config` tree as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<app>` and puts that evaluation's own `home.path` on `PATH`. The evaluation is standalone rather than host-derived, so a feature the app reads through has to be listed or its options resolve to Home Manager defaults instead of the values a host would give them.
 
 Portable and Glow launchers use the native `seele-launch` manifest contract.
