@@ -59,6 +59,36 @@ Keep network bounds, redirect rejection, sanitized responses and private fixture
 tests. See the submodule's `projects/home-assistant/README.md` for the protocol,
 metadata schema and HTTP/WebSocket, store and rendered-panel validation.
 
+## Caffeinate
+
+`seele-caffeinate serve` is a `nerv`-only user service owning one session: the
+inhibitor, the task that ends it and the snapshot both surfaces read. It takes a
+single systemd-logind `idle` block lock and nothing else. That covers automatic
+lock, display-off and idle sleep, because Hypridle honours `BlockInhibited`
+while `ignore_systemd_inhibit` stays 0 and logind's `IdleAction` obeys the same
+lock. A `sleep` lock would refuse an explicit `systemctl suspend`, so none is
+taken; the Wayland per-surface protocol and `org.freedesktop.ScreenSaver` stay
+with the windows and applications that own them. Releasing is closing the
+descriptor, so exit, logout and a crash all release it, and no other
+application's inhibitor is touched.
+
+Modes are until stopped, until an absolute wall-clock deadline, and until a
+selected process, recognized build or transfer ends. Every ending is silent and
+returns the session to the normal idle policy; nothing locks or suspends as a
+completion action. A process is tracked by its start time and pidfd, a transfer
+by its group id and terminal state, so PID reuse and the transfer service's own
+lifetime cannot extend a session, and an unreadable task ends its session rather
+than holding the machine awake. One session exists at a time and a start
+replaces it, acquiring the new lock before dropping the old one. Nothing is
+persisted.
+
+`projects/qml-core/src/caffeinate.rs` owns duration parsing and bounds, the
+labels, the bar text and the failure messages; the shell store and
+`seele-control vicinae-caffeinate` read the same projection. The launcher starts
+and stops sessions and hands typed durations to native validation verbatim. The
+shell contributes only a conditional coffee bar item and a compact panel with
+Stop. See `projects/caffeinate/README.md` for the protocol and fixtures.
+
 ## Local controls
 
 - Right-click the clock or use `seele-shellctl control focus` for focus/break
@@ -83,7 +113,8 @@ metadata schema and HTTP/WebSocket, store and rendered-panel validation.
 
 Ordinary panels use `WlrKeyboardFocus.OnDemand`, leaving the bar and click-away
 catcher available. Keep their namespaces in the blur rule in
-`modules/features/programs/hypr.nix`, including GitHub, Focus and Home Assistant.
+`modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant and
+Caffeinate.
 Changing QML alone cannot add compositor blur.
 
 ## Validation
