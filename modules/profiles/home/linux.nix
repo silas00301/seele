@@ -22,6 +22,7 @@ let
       modules.fish-linux
       modules.ghostty
       modules.hypr
+      modules.night-light
       modules.voxtype
       modules.pi
       modules.shell-ai
