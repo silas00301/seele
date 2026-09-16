@@ -125,7 +125,7 @@ When the request does not select a tool, preserve these active defaults:
 | App launchers | Seele's native unified menu with Vicinae on Linux and Raycast on macOS |
 | Containers | Rootless Podman on `nerv` only, with no daemon, no `docker` alias, and no socket group that grants root-equivalent access. Serve interoperability through a compose provider on podman's own wrapper PATH rather than a command that answers for an engine the machine does not have, and keep unattended pruning bounded by age and away from volumes and tagged images |
 
-Use Vicinae's standard launcher layout; Seele Shell carries the compact native desktop UI. Prefer explicit package paths in generated services and bindings when execution must be independent of `PATH`. Preserve interoperability rather than forcing every tool into one implementation.
+Use Vicinae's standard launcher layout; Seele Shell carries the compact native desktop UI. Inside that layout the Seele extension is a readout as well as a set of verbs: a live row states its own value with a coloured tag and a state-matched icon, a row whose subject is unavailable is left out rather than shown dead, and every panel the shell can open is reachable as its own keyword-tagged launcher command. Prefer explicit package paths in generated services and bindings when execution must be independent of `PATH`. Preserve interoperability rather than forcing every tool into one implementation.
 
 On `nerv`, the Power panel's Windows action starts the existing reboot service
 immediately; do not restore the ten-second countdown.
