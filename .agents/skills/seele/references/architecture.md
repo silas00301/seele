@@ -146,6 +146,21 @@ pins 1.3.1, and a `global:` keybind needs global-shortcut support Hyprland
 0.55.4 lacks. Retire this feature for `toggle_quick_terminal` once both pins
 move.
 
+`modules/features/desktop/default-applications.nix` is the Linux profile's only
+owner of `xdg.mimeApps` defaults. Images resolve to `imv.desktop`, video and
+audio to `mpv.desktop`, PDFs and EPUBs to `org.pwmt.zathura.desktop`, text to
+`seele-editor.desktop`, and `inode/directory` to `seele-files.desktop`. The last
+two are declared in the same leaf, because Neovim and Yazi are terminal
+applications with no entry that opens this desktop's terminal; both `Exec` lines
+name Ghostty and the target binary by store path, since a desktop entry inherits
+the `PATH` of whatever launched it. The Zen feature holds the other half of the
+same option and was narrowed to the web documents and URL schemes it handles: an
+attribute defined by both features is a merge conflict, not a fallback, so
+`text/plain` now belongs to the editor alone. `imv.nix`, `mpv.nix`, and
+`zathura.nix` carry the viewers themselves with vi-shaped bindings, and each
+publishes a Linux-only `seele.portable` entry. The Hyprland feature floats imv,
+which is why the pre-existing `mpv` rule finally has a player to apply to.
+
 `modules/features/programs/middle-click.nix` contributes the host-scoped
 `middle-click` Home Manager module, imported only by `nerv`. It owns GTK
 primary-paste suppression and Zen's native autoscroll preferences. Read
