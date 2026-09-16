@@ -34,6 +34,17 @@ Active profiles are `common`, `linux`/`darwin`, and `nerv`/`asuka`. Host constru
 
 Both hosts run Determinate Nix. `modules/features/system/determinate.nix` publishes `flake.modules.nixos.determinate` and `flake.modules.darwin.determinate` around the `determinate` input's modules, and the NixOS and Darwin `common` profiles import them. How Nix is configured then differs by platform. The NixOS module keeps `nix.settings` and `nix.registry` working by redirecting the generated `/etc/nix/nix.conf` to `/etc/nix/nix.custom.conf`. The nix-darwin module forces `nix.enable` off, so a Darwin leaf that configures Nix writes `determinateNix.customSettings` and `determinateNix.registry` instead; anything left in `nix.settings` there is silently dropped. Keep the `determinate` input free of a nixpkgs `follows`. On `asuka`, Determinate Nix itself comes from Determinate's macOS installer, because the nix-darwin module only configures an existing installation. `flake.modules.homeManager.determinate` covers every machine rather than only the two hosts: the Home Manager `common` profile imports it, and the portable builder adds it to every standalone evaluation. It forces `nix.package = null` because Home Manager's NixOS integration otherwise supplies its own package, ensuring no user profile carries a second Nix onto a managed or unmanaged machine.
 
+`modules/features/system/foreign-binaries.nix` publishes
+`flake.modules.nixos.foreign-binaries`, which the NixOS `linux` profile imports,
+so prebuilt Linux software runs on `nerv` without patchelf or a hand-built FHS
+environment. nix-ld supplies the loader and library path a foreign binary
+expects; its library list is defined in upstream's `config`, so a definition
+here merges with the systemd and Nix libraries nixpkgs already lists rather than
+replacing them, and graphical toolkits stay out of it. `programs.appimage` with
+binfmt registration makes an executable AppImage run directly. Neither replaces
+packaging: an AppImage worth keeping still gets a package leaf, as
+`t3code-nightly` has.
+
 The `middle-click` Home Manager feature on `nerv` disables primary-selection
 paste in GTK 3/4 widgets and enables Zen's native autoscroll with primary paste
 and selection-URL loading disabled. This is partial SIL-49 support: it does not
