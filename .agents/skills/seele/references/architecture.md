@@ -97,6 +97,23 @@ The shell submodule's `projects/shell/SystemState.qml` owns status fields and pu
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and wraps the native screenshot helper from `projects/desktop-tools/`. It sets `configType = "lua"`, and that choice reaches every caller rather than only the config file: Hyprland evaluates `hyprctl dispatch` as Lua, so a dispatch is one `hl.dsp` call — `hl.dsp.exit()`, `hl.dsp.focus({ workspace = "9" })`, `hl.dsp.window.close({ window = "address:0x…" })` — and the legacy `hyprctl dispatch <name> <args>` form resolves to an undefined global. hyprctl still exits zero on that error, so a stale call fails in silence; `hyprctl repl` evaluates a candidate without dispatching it. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it. Each completed capture gets a collision-safe timestamped path under `Pictures/Screenshots` and is copied after optional Satty annotation. The upload variant uses a native consent dialog before sending the saved image to 0x0.st with a secret URL and 24-hour expiry; declining or a failed upload copies the image locally. Its native package runs `projects/desktop-tools/tests/screenshot.py` against the raw Rust executable.
 
+`modules/features/programs/scratchpad.nix` publishes the `scratchpad` Home
+Manager feature, imported by the `linux` profile, and appends three Lua
+declarations to Hyprland's configuration with `lib.mkAfter`: a
+`hl.workspace_rule` whose `on_created_empty` runs a `writeShellScript` wrapper
+around `ghostty --class=org.seele.scratchpad -e tmux new-session -A -s scratch`,
+a `hl.window_rule` matching that class with `float`, an expression `size` of
+`monitor_w*0.6` by `monitor_h*0.55` and `center`, and `SUPER + GRAVE` bound to
+`hl.dsp.workspace.toggle_special("scratchpad")`. Ghostty's `-e` implies
+`gtk-single-instance = false`, which is what lets the window hold its own class
+instead of joining the running instance. Hyprland resolves binds through the US
+keymap unless `resolve_binds_by_sym` is set, so `GRAVE` names the physical key
+left of the 1 under the host's German layout. Ghostty's own quick terminal is
+unreachable here: `+toggle-quick-terminal` landed in Ghostty 1.4.0 and nixpkgs
+pins 1.3.1, and a `global:` keybind needs global-shortcut support Hyprland
+0.55.4 lacks. Retire this feature for `toggle_quick_terminal` once both pins
+move.
+
 `modules/features/programs/middle-click.nix` contributes the host-scoped
 `middle-click` Home Manager module, imported only by `nerv`. It owns GTK
 primary-paste suppression and Zen's native autoscroll preferences. Read

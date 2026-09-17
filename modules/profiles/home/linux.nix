@@ -26,6 +26,7 @@ let
       modules.voxtype
       modules.pi
       modules.removable-media
+      modules.scratchpad
       modules.shell-ai
       modules.spicetify
       modules.stylix-linux
