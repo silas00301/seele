@@ -25,6 +25,7 @@ let
       modules.night-light
       modules.voxtype
       modules.pi
+      modules.removable-media
       modules.shell-ai
       modules.spicetify
       modules.stylix-linux
