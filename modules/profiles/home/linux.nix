@@ -27,6 +27,7 @@ let
       modules.shell-ai
       modules.spicetify
       modules.stylix-linux
+      modules.trash
       modules.vicinae
       base
     ];

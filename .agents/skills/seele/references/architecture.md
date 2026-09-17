@@ -93,6 +93,38 @@ and the Codex broker. Multiple interpretations use the existing fzf picker, and
 local destructive-command detection comments the inserted line even if the model
 labels it safe. See the crate README for policy, bounds and fixtures.
 
+`modules/features/programs/trash.nix` publishes the `trash` Home Manager
+feature, imported by `modules/profiles/home/linux.nix`. It adds `pkgs.trash-cli`
+and three command-position Fish abbreviations — `tp`, `tl`, `tre` for
+`trash-put`, `trash-list`, `trash-restore`. `rm` stays unshadowed on purpose:
+an interactive abbreviation covers neither scripts nor non-interactive ssh nor
+`run0`, so it would train a habit that fails where deletion is most expensive,
+and `trash-put` has no `-r`, `-f` or `--one-file-system` to accept from an `rm`
+muscle memory. `trash-empty` is left un-abbreviated as the set's one
+irreversible command. `systemd.user.timers.trash-empty` is `OnCalendar=daily`
+with `Persistent = true` and `RandomizedDelaySec = "1h"`, triggering
+`systemd.user.services.trash-empty`, a `oneshot` running
+`${pkgs.trash-cli}/bin/trash-empty -f 30` at `Nice = 19` and idle IO priority.
+The positional day count makes it an expiry rather than an empty — trash-cli
+compares each `.trashinfo` deletion date against it — and `-f` is the documented
+inverse of `-i`, whose default is `isatty(0)`, so the unit cannot acquire a
+prompt even if it later gains a stdin. The service sets `XDG_DATA_HOME` from
+`config.xdg.dataHome`, since the user manager does not necessarily carry the
+graphical session's value and a timer pruning a different directory than the
+shell fills is worse than none. Yazi's `d` resolves the same
+`$XDG_DATA_HOME/Trash` through the Rust `trash` crate, so this is the CLI half of
+an existing trash rather than a second one. `trash-put` never moves a file across
+a mount: it tries the home trash for the home volume, then `$topdir/.Trash/$uid`,
+then creates `$topdir/.Trash-$uid`, and fails loudly with the file intact where
+it cannot; its hidden `--home-fallback` would copy through `shutil.move` and is
+deliberately unused. `trash-empty` scans those per-volume directories for the
+same uid, so the timer expires external-drive trash too. The feature is Linux
+only despite `trash-cli` being `lib.platforms.unix` in the pinned nixpkgs:
+FreeDesktop trash is not Finder's Trash, so on `asuka` it would create a
+directory macOS neither shows nor empties. There is no `seele.portable.trash`
+entry — a trash is machine state, not configuration worth carrying to a borrowed
+machine.
+
 The shell submodule's `projects/shell/SystemState.qml` owns status fields and publishes changes per field. Full snapshots and optimistic patches go through its `apply()` method: Rust's `system.patch` schema validates allowed fields/types, and the Qt adapter retains unchanged engine object references so unrelated updates leave list models and delegates alone. `tests/system-state.sh` checks change-signal counts, delegate reuse, and unchanged rendered pixels. Agent CPU sampling reuses the process name in `/proc/<pid>/stat` instead of opening each process's `comm` separately; command-line fallback discovery stays in place.
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and wraps the native screenshot helper from `projects/desktop-tools/`. It sets `configType = "lua"`, and that choice reaches every caller rather than only the config file: Hyprland evaluates `hyprctl dispatch` as Lua, so a dispatch is one `hl.dsp` call — `hl.dsp.exit()`, `hl.dsp.focus({ workspace = "9" })`, `hl.dsp.window.close({ window = "address:0x…" })` — and the legacy `hyprctl dispatch <name> <args>` form resolves to an undefined global. hyprctl still exits zero on that error, so a stale call fails in silence; `hyprctl repl` evaluates a candidate without dispatching it. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it. Each completed capture gets a collision-safe timestamped path under `Pictures/Screenshots` and is copied after optional Satty annotation. The upload variant uses a native consent dialog before sending the saved image to 0x0.st with a secret URL and 24-hour expiry; declining or a failed upload copies the image locally. Its native package runs `projects/desktop-tools/tests/screenshot.py` against the raw Rust executable.

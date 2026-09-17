@@ -166,6 +166,26 @@ history never deletes files. `asuka` has no transfer service. See the submodule'
 `projects/transfers/README.md` for protocol, tests and Taildrop's incoming
 identity/cancellation limitations.
 
+The `trash` Home Manager feature makes deletion recoverable on Linux. It installs
+`trash-cli` and abbreviates `trash-put`, `trash-list` and `trash-restore` to `tp`,
+`tl` and `tre` in Fish. `rm` is deliberately not shadowed: an interactive alias
+would not cover scripts, non-interactive ssh or `run0`, and `trash-put` accepts
+none of `rm`'s `-r`/`-f`/`--one-file-system`, so the safe path is made shorter
+than `rm` instead of replacing it. `trash-empty` gets no abbreviation, because it
+is the one irreversible command in the set. A `trash-empty.timer`/`.service` pair
+expires entries older than 30 days daily, `Persistent` so a machine that was off
+catches up, with an hour of jitter to stay off the login path; the service names
+`trash-empty` by store path, passes `-f` so it can never acquire a prompt, and
+sets `XDG_DATA_HOME` from `config.xdg.dataHome` because the user manager does not
+necessarily carry the session's value. Yazi's `d` writes the same
+`$XDG_DATA_HOME/Trash`, so the CLI and the timer cover file-manager deletions
+too. `trash-put` never crosses a mount: it uses the home trash for the home
+volume and otherwise creates `$topdir/.Trash-$uid`, failing loudly on a volume
+where it cannot, and the timer prunes those per-volume directories as well. The
+feature is Linux-only although `trash-cli` is `lib.platforms.unix`, because on
+`asuka` it would fill a `~/.local/share/Trash` that Finder neither shows nor
+empties, beside a Trash macOS already has.
+
 GitHub's Notifications tab is backed by the resident Rust `seele-github-inbox`
 worker. It loads unread notifications only, because GitHub keeps web-Done threads
 in its read listing and exposes no Done state, and uses the shared
