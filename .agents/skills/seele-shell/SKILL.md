@@ -185,7 +185,14 @@ real OCR, code coexistence, capture identity, strip boundaries, and cleanup;
 `seele-shellctl prompt` reaches `AiPrompt.qml`; the parent binds it to
 `Super + Space`. Keep the QML surface and Rust `seele-ai-prompt-worker` resident so
 the panel maps synchronously on the recorded focused output, but never start
-Codex or read a context source merely because it opened. The worker's empty
+Codex or read a context source merely because it opened. A permanently mapped
+surface never gets on-demand keyboard focus, because the compositor grants that
+on a fresh map, so the active panel takes `WlrKeyboardFocus.Exclusive` and the
+focus scope reclaims `promptField` whenever it receives active focus: the caret
+is in the field before the first keystroke. Keep that grab for the panel's whole
+lifetime. It does not close on focus loss; only Super + Space, Close and Escape
+dismiss it, and compositor keybindings still reach Hyprland through the grab the
+same way they do for the frozen URI picker. The worker's empty
 mode-0700 runtime workspace is the model cwd. Use the shared runtime Codex
 policy for both exec and resume: disable tools and inherited project/user
 configuration as well as selecting the read-only sandbox. Keep the UUID only
