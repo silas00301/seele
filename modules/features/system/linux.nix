@@ -4,6 +4,7 @@ let
     imports = [
       config.flake.modules.nixos.catppuccin
       config.flake.modules.nixos.stylix
+      config.flake.modules.nixos.foreign-binaries
     ];
   };
 in
