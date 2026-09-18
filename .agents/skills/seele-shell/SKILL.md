@@ -232,6 +232,16 @@ reverted; `tests/feature-integrations.js` fails if `notificationSearch` or
 `notificationClipboard` returns. Verification-code copying remains, and timed
 DND was restored on request.
 
+The toast stack maps whenever a notification arrives, and Hyprland focuses a
+layer surface that asks for on-demand keyboard interactivity as it maps, so the
+popup window declares `WlrKeyboardFocus.None` outright rather than binding it to
+visibility. Toasts have no field, key handler or shortcut, and layer-shell
+pointer input does not depend on keyboard interactivity, so actions, hover and
+verification-code copying are unaffected. The notification panel is opened
+deliberately and keeps its on-demand focus. `tests/feature-integrations.js`
+slices the toast window out of `shell.qml` and fails if any interactivity
+returns to it.
+
 Do Not Disturb has two forms. The header switch silences the shell until it is
 thrown back, and the quiet presets — 15 minutes, 1 hour, 4 hours — silence it
 until a deadline. `snooze()` stores an absolute `dndUntil` plus the
