@@ -64,6 +64,16 @@ provide global input interception, a shared indicator, or autoscroll for Seele,
 Qt, or terminals. See the Seele skill's `middle-click.md` reference for the
 remaining platform boundary and validation matrix.
 
+The `night-light` Home Manager feature on Linux runs hyprsunset from the
+session's `graphical-session.target` and warms the screen on a clock schedule:
+`identity` from 07:00, 5000K from 19:00, and 4000K from 22:00. Times are used
+instead of sunrise and sunset because the latter need the user's coordinates.
+It asks the compositor for a colour transform rather than drawing over the
+screen, so captures and screen shares keep true colours.
+`Super + Shift + N` toggles the filter by stopping and starting that service,
+which is also its only state: Hyprland resets every output when the client
+goes away, and the next session starts on schedule again.
+
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
 On `nerv`, `seele-codex call` and `seele-codex request` reach the private,
