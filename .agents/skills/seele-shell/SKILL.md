@@ -129,7 +129,9 @@ snapshots, enforce audio/key input and format immutable diffs. React keeps its
 actual host rendering, confirmation and clipboard APIs; Intl/localeCompare keep
 host locale semantics. Rendering launches no processes. Preserve
 `tests/vicinae-generations.mjs`, `tests/vicinae-keybindings.cjs` and the native tools/repo-tools
-fixtures, plus `vicinae-generation-review.cjs` for failed/stale/duplicate confirms.
+fixtures, plus `vicinae-generation-review.cjs` for failed/stale/duplicate confirms
+and `vicinae-views.cjs` for the rows, tags, filters and action argument vectors
+each view produces from a given status.
 
 Rollback and cleanup stay separate. Do not add delete or garbage-collection
 actions to the picker; the parent `programs.nh.clean` policy decides retention.
@@ -166,6 +168,21 @@ labels, the bar text and the failure messages; the shell store and
 `seele-control vicinae-caffeinate` read that one projection, and neither QML nor
 React keeps a clock or parses a duration. Keep `tests/caffeinate.js` and
 `tests/vicinae-caffeinate.cjs` passing, and see `projects/caffeinate/README.md`.
+
+## Keep the launcher extension a readout as well as a set of verbs
+
+Every live row in `projects/vicinae/` says what it is through a coloured tag and
+a state-matched icon; a row whose subject is unavailable is not rendered at all.
+Reuse an existing validated native endpoint for a new action instead of adding a
+`vicinae-*` twin of it, the way window closing uses `seele-control application`.
+Keep the shared scalar presentation in `ui.tsx`, and only use icon names that
+exist in both the Raycast typings and Vicinae's own enum: Vicinae resolves
+`@raycast/api` to its own icon set, so a Raycast-only alias such as `Document`
+or `Globe` silently renders nothing. A polled view sets its loading indicator
+for the first load and for an explicit refresh, never for a background tick.
+Give every manifest command its own search keywords, and add one direct command
+for each panel the shell can open; Home Manager links the whole extension
+directory, so that stays a submodule-only change.
 
 ## Keep frozen URI picking responsive
 
