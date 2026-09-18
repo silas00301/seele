@@ -119,6 +119,22 @@ wiki documents, so restoring the scheduled value through IPC would mean
 duplicating the schedule in the script, while Hyprland's CTM protocol already
 resets every output to identity when the client disconnects.
 
+`modules/features/programs/removable-media.nix` publishes both halves of the
+external-disk story from one leaf. `flake.modules.nixos.removable-media` enables
+udisks2 and the exFAT/NTFS drivers, and `modules/hosts/nerv/removable-media.nix`
+imports it into the `nerv` aggregate; udisks2 already mounts a removable device
+for the active local session's owner below `/run/media/$USER` without a polkit
+prompt, so nothing widens that. `flake.modules.homeManager.removable-media` is
+imported by the `linux` profile and runs udiskie with `automount`, `notify`, and
+`tray = "never"`, since Seele Shell owns both the bar and the notification
+server. `settings.program_options.file_manager` points udiskie's Browse
+notification action at Yazi inside Ghostty instead of `xdg-open`.
+`Super + Shift + E` runs a `writeShellScript` wrapper around
+`udiskie-umount --all --detach`; `--all` only covers the external devices
+udiskie would have mounted itself, and the wrapper raises a critical
+notification solely on failure, because the daemon already announces every
+device it releases.
+
 The screen-link picker is a second frozen-screen workflow. Its binding lives
 beside the other shell IPC bindings in `modules/features/programs/seele-shell.nix`:
 `Super + Ctrl + S` calls `seele-shellctl uris`. The submodule's `UriPicker.qml`

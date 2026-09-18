@@ -74,6 +74,16 @@ screen, so captures and screen shares keep true colours.
 which is also its only state: Hyprland resets every output when the client
 goes away, and the next session starts on schedule again.
 
+The `removable-media` feature mounts external disks on `nerv`. Its NixOS half
+enables udisks2 explicitly rather than relying on the fallback Plasma session
+that pulls it in, and adds the exFAT and NTFS drivers that foreign-formatted
+sticks need. Its Home Manager half runs udiskie in the Hyprland session with
+automounting and notifications on and no tray of its own, because Seele Shell
+already owns the bar and the notification server; udiskie's Browse action opens
+Yazi in Ghostty. `Super + Shift + E` unmounts and powers off every attached
+removable device at once and notifies only when one is still in use, since the
+daemon already reports each successful release.
+
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
 On `nerv`, `seele-codex call` and `seele-codex request` reach the private,
