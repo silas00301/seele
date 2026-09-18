@@ -45,6 +45,18 @@ binfmt registration makes an executable AppImage run directly. Neither replaces
 packaging: an AppImage worth keeping still gets a package leaf, as
 `t3code-nightly` has.
 
+`modules/features/system/disk-health.nix` publishes
+`flake.modules.nixos.disk-health`, which the NixOS `linux` profile imports, so
+SMART monitoring reaches every NixOS host rather than one machine. smartd
+autodetects devices instead of listing them, adds a nightly short and weekly
+long self-test to upstream's `-a`, and reports through systembus-notify, which
+forwards a root service's system-bus message into Seele Shell's notification
+server. Upstream derives `-M exec` from the mail, wall and X11 toggles only, so
+`wall` stays enabled deliberately; X11 notifications are off because this host
+enables `services.xserver` for its keymap but runs a Wayland session.
+`systemctl start seele-disk-health-test` sends the same message without failing
+hardware, and smartd's own failure is covered by the failure-analysis reporter.
+
 The `middle-click` Home Manager feature on `nerv` disables primary-selection
 paste in GTK 3/4 widgets and enables Zen's native autoscroll with primary paste
 and selection-URL loading disabled. This is partial SIL-49 support: it does not
