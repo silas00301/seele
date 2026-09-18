@@ -444,6 +444,41 @@ helper owns the input-to-output links while enabled; stopping it removes them.
 an isolated audio server. Loopback properties are JSON so descriptions with
 spaces remain valid PipeWire arguments.
 
+Microphone noise suppression is a second, independent contribution to the same
+audio stack, and it deliberately does not go through
+`modules/hosts/nerv/pipewire.nix`. `modules/features/system/noise-suppression.nix`
+publishes `flake.modules.nixos.noise-suppression`, a
+`services.pipewire.extraConfig.pipewire."99-seele-noise-suppression"` drop-in
+loading `libpipewire-module-filter-chain` with the RNNoise LADSPA plugin, and
+`modules/hosts/nerv/noise-suppression.nix` imports it into `nerv` with the same
+shape `nerv/failure-analysis.nix` uses. The two leaves touch different options —
+this one writes `extraConfig.pipewire`, the Bluetooth rules write
+`wireplumber.extraConfig` — so they merge rather than compete, and the reusable
+behavior stays host-independent while only the import is host-scoped. The
+`playback.props` side carries `media.class = Audio/Source`, which is what makes
+the filter an ordinary microphone to the shell's audio-device collector and to
+Vicinae's picker; no default is written anywhere, so WirePlumber keeps the
+source the user last chose and the hardware microphone is never replaced. The
+`capture.props` side is `node.passive` and carries no `target.object`: passive
+keeps the graph idle so an unselected suppressor neither holds the microphone
+open nor drives itself, and the absent target is what lets one virtual source
+track a changing default microphone instead of naming a machine-specific node.
+PipeWire automatically assigns both endpoints the same `node.link-group`,
+which WirePlumber excludes when choosing capture targets. Selecting the virtual
+source as default therefore keeps its capture linked to an eligible microphone.
+A private PipeWire/WirePlumber fixture verified this routing and passive idle
+behavior with a synthetic source. Both ends
+are pinned to 48 kHz mono with `audio.position = [ "MONO" ]`, because RNNoise is
+trained at that rate and `noise_suppressor_mono` is one instance where the
+stereo label would run two for a voice call that mixes back down anyway.
+`nixpkgs`' `rnnoise-plugin` splits its formats across outputs and leaves
+`$out/lib/ladspa` as a compatibility symlink, so the leaf names
+`pkgs.rnnoise-plugin.ladspa` by store path; naming `$out` would reference the
+LV2, LXVST and VST3 outputs and pull their JUCE and WebKitGTK closure onto the
+system for a filter with no interface. The module carries `flags = [ "nofail" ]`
+so an unloadable plugin degrades to a missing virtual source rather than
+stopping PipeWire from starting at all.
+
 Bluetooth follows the same hardware gate in both places: without a BlueZ adapter, neither its Control Center row nor its menu bar entry is shown. The hidden tray group opens only when its arrow is clicked, so moving the pointer across the arrow cannot reflow the bar. The network panel links to Allestörungen through the desktop's default URL handler.
 
 ## Portable applications

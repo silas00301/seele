@@ -249,6 +249,24 @@ panel and Vicinae share `seele-control audio-outputs` for simultaneous playback;
 sink and its cleanup. Test routing on the private server in
 `seele-shell/tests/audio-routing.sh`.
 
+On `nerv`, `modules/features/system/noise-suppression.nix` publishes
+`flake.modules.nixos.noise-suppression`, which
+`modules/hosts/nerv/noise-suppression.nix` imports into the host aggregate. It
+contributes one PipeWire `libpipewire-module-filter-chain` drop-in running the
+RNNoise LADSPA plugin and publishes the result as an ordinary `Audio/Source`
+node, so the Seele Shell Audio panel and Vicinae's audio picker select it like
+any other microphone. It is offered, never imposed: nothing here writes a
+default source, the hardware microphone keeps whatever selection WirePlumber
+already holds, and microphone selection stays exclusive. The filter's capture
+side is passive and names no `target.object`, so one virtual source follows
+an eligible microphone instead of pinning a machine-specific node name.
+PipeWire automatically groups both filter endpoints; WirePlumber excludes
+that group when linking capture, so selecting the virtual source as default
+does not feed it its own output. The plugin is referenced through the package's `ladspa` output by store
+path, and the module loads with `nofail`, so a plugin that will not load costs
+the virtual source rather than the audio server. It adds no WirePlumber rules
+and leaves the Bluetooth receiver's `bluez5.media-source-role` rules untouched.
+
 On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control
