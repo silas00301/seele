@@ -198,6 +198,18 @@ its private socket. The `rebuild` Fish abbreviation and Seele OS session use
 `seele-rebuild`, which forwards progress bytes unchanged and retains a bounded
 failure tail for the same consent path. `systemctl start seele-failure-test` deliberately exercises it.
 
+On `nerv`, `modules/hosts/nerv/memory-pressure.nix` decides who dies when
+memory runs out. NixOS starts systemd-oomd by default but places no cgroup
+under its management, so this leaf puts `system.slice` there alone and holds
+the root and user slices out on purpose: `uwsm` runs Hyprland and everything it
+launches inside one session cgroup, so managing user slices would offer oomd a
+single candidate that takes the compositor, the shell and every window with it.
+Policy is memory-pressure only, never swap, because the machine's zram is meant
+to be full. `nix-daemon.service`, which holds every build, is discounted toward
+the kernel's own killer and throttled with `MemoryHigh` rather than capped;
+logind and greetd are marked `avoid`, and the user manager is discounted away
+from system services, which only the system manager may do.
+
 Seele Notes is a separate desktop app from the shell submodule's `notes`
 package, exposed as `packages.<system>.seele-notes` and installed on Linux by
 its own `flake.modules.homeManager.seele-notes` feature. It is a quick-capture
