@@ -100,6 +100,19 @@ alone because that option only reaches the rootful configuration directory.
 Pruning is a weekly user timer bounded to resources untouched for seven days,
 never volumes and never `--all`; `nh` still owns Nix generation retention.
 
+DNS on `nerv` is a local caching `systemd-resolved` stub resolving through
+Quad9 over strict DNS-over-TLS, with each address pinned to `dns.quad9.net` so
+the certificate is actually authenticated. A global `~.` routing domain keeps
+those encrypted servers ahead of the DHCP resolver, while longer per-link
+domains still win, so Tailscale MagicDNS and the lease's own search and reverse
+zones keep resolving. Local DNSSEC validation stays off because Quad9 validates
+and the transport is already authenticated; LLMNR is off and mDNS resolves
+without responding. NetworkManager hands every link to resolved and defaults
+each profile to per-link DNS-over-TLS off, LLMNR off, and mDNS resolve-only. A
+captive portal breaks resolution rather than redirecting it, which
+`modules/hosts/nerv/dns.nix` accepts and answers with a temporary `resolvectl`
+escape.
+
 On `nerv`, `seele-codex call` and `seele-codex request` reach the private,
 socket-activated Codex broker. It owns model selection, schema validation,
 concurrency, retries, cancellation and supersession. Integrations retain their
