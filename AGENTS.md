@@ -133,6 +133,17 @@ turn, deletes its Codex session, and removes private captures. Enter sends or
 copies according to input state; Ctrl + Enter restores the validated original
 Hyprland window and inserts the answer without moving the pointer.
 
+On `nerv`, `Super + GRAVE` toggles a scratchpad terminal on Hyprland's
+`special:scratchpad` workspace. The `scratchpad` Home Manager feature owns the
+workspace rule, the window rule and the binding; the compositor spawns one
+Ghostty of its own class through `on_created_empty`, so the first summon and the
+one after the window was closed take the same path and nothing tracks whether it
+already runs. Its tmux session outlives the window, and the window floats
+centered rather than anchored to the top edge, because a window rule cannot see
+the space the shell's bar reserves. Ghostty's native quick terminal stays the
+macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
+action needs Ghostty 1.4.0 and this flake pins 1.3.1.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
