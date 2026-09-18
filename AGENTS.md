@@ -234,9 +234,18 @@ non-interactive bottom waveform on the output where recording began. See the
 
 Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
 live controls, audio device selection, window/workspace search, keybindings,
-NixOS generation rollback, Caffeinate sessions, and direct shell commands. For extension changes,
-read its `README.md`; the shell package bundles the manifest's command entries
-and runs its focused checks. Home Manager installs it through `xdg.dataFile`.
+NixOS generation rollback, Caffeinate sessions, and one direct command per Seele panel. For extension
+changes, read its `README.md`; the shell package bundles the manifest's command
+entries and runs its focused checks. Home Manager installs the whole extension
+directory through `xdg.dataFile`, so a new command needs no parent-side change.
+Every command declares its own search keywords. Live rows state what they are
+through coloured tags and state-matched icons, window rows can close or force
+quit through the desktop's existing validated `application` endpoints, and the
+windows view filters by workspace. Polled views keep their loading indicator for
+the first load and an explicit refresh only. `projects/vicinae/ui.tsx` owns the
+shared scalar presentation, and only icon names present in both the Raycast
+typings and Vicinae's own enum are used, because Vicinae resolves `@raycast/api`
+to its own icon set.
 The generation picker identifies the running closure by resolving
 `/run/current-system`, shows an `nvd` diff before offering a switch, and
 revalidates the reviewed generation immediately before escalation. Its packaged
