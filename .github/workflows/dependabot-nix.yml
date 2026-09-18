@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     if: >-
-      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
@@ -44,8 +44,8 @@ jobs:
           jj_store=$(nix build "github:NixOS/nixpkgs/${nixpkgs_rev}#jujutsu" --no-link --print-out-paths)
           echo "$jj_store/bin" >> "$GITHUB_PATH"
           "$jj_store/bin/jj" git init --colocate
-          "$jj_store/bin/jj" config set --repo user.name 'github-actions[bot]'
-          "$jj_store/bin/jj" config set --repo user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          "$jj_store/bin/jj" config set --repo user.name '"github-actions[bot]"'
+          "$jj_store/bin/jj" config set --repo user.email '"41898282+github-actions[bot]@users.noreply.github.com"'
           test "$("$jj_store/bin/jj" log -r @- --no-graph -T commit_id)" = "$HEAD_SHA"
 
       - name: Build the updated configuration
