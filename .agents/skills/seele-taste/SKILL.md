@@ -129,6 +129,7 @@ mouse-button remap as equivalent: browser links must retain their action.
 
 - On `nerv`, favor CPU performance over idle power savings. Keep Hyprland's animation styles and visual effects, with transitions at half their previous duration. Prefer faster animations over removing them.
 - Tune against the installed hardware and observed workload. Bound nested build parallelism, and distinguish memory-pressure safeguards from steady-state speedups. Shell optimizations preserve the visuals and motion timing unless a change to them is requested.
+- Watch the hardware for failure rather than waiting for it. Keep SMART monitoring enabled for whatever disks are attached, with scheduled self-tests, and deliver its warnings through the desktop notification server Seele already owns instead of mail or a terminal nobody is reading. Early warning is not durability: it says a replacement is due, and says nothing about whether the data survives.
 - Keep security mitigations, filesystem durability, and hardware thermal limits intact. Overclocking and firmware changes need a separate decision and stability testing.
 
 ## Development experience
