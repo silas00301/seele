@@ -137,6 +137,7 @@ mouse-button remap as equivalent: browser links must retain their action.
 - Tune against the installed hardware and observed workload. Bound nested build parallelism, and distinguish memory-pressure safeguards from steady-state speedups. Shell optimizations preserve the visuals and motion timing unless a change to them is requested.
 - Watch the hardware for failure rather than waiting for it. Keep SMART monitoring enabled for whatever disks are attached, with scheduled self-tests, and deliver its warnings through the desktop notification server Seele already owns instead of mail or a terminal nobody is reading. Early warning is not durability: it says a replacement is due, and says nothing about whether the data survives.
 - Keep security mitigations, filesystem durability, and hardware thermal limits intact. Overclocking and firmware changes need a separate decision and stability testing.
+- Decide who dies under memory pressure before the kernel does, and keep the session last. Trigger on PSI stall time rather than swap usage wherever zram is in use, since compressed swap is meant to fill during healthy work. Throttle a runaway build with `MemoryHigh` instead of capping it with `MemoryMax`, so it reclaims rather than failing with an opaque kill.
 
 ## Development experience
 
