@@ -161,6 +161,23 @@ attribute defined by both features is a merge conflict, not a fallback, so
 publishes a Linux-only `seele.portable` entry. The Hyprland feature floats imv,
 which is why the pre-existing `mpv` rule finally has a player to apply to.
 
+`modules/features/system/firmware-updates.nix` is the NixOS-wide hardware
+feature: the `linux` profile imports `flake.modules.nixos.firmware-updates`, so
+it follows any NixOS host rather than one machine. fwupd owns the metadata
+refresh through its own packaged timer; the leaf adds `P2pPolicy = "nothing"`
+and a `seele-firmware-check` timer that reads the refreshed cache 10 minutes
+after boot and then daily. The check derives its answer from
+`fwupdmgr get-updates --json` alone, because that form returns success whether
+or not an update is pending, and treats a payload it cannot parse as a unit
+failure so the failure-analysis reporter surfaces it. The native
+`desktop-tools` helper bounds and validates vendor data, removes controls and
+invisible direction markers through shared runtime policy, and sorts the pending
+set before sending it through `dbus-send`. Its mode-0600 runtime record holds
+only the sanitized announced set; unchanged updates stay quiet until that set
+changes, clears, or the machine reboots. Failed delivery never advances the record. `seele-firmware-test` is the dormant delivery
+check. Installation is never automatic, and a UEFI capsule needs fwupd's own EFI
+binary, which the host's Limine Secure Boot keys do not sign.
+
 `modules/features/programs/middle-click.nix` contributes the host-scoped
 `middle-click` Home Manager module, imported only by `nerv`. It owns GTK
 primary-paste suppression and Zen's native autoscroll preferences. Read

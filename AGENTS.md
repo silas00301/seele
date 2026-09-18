@@ -217,6 +217,24 @@ the kernel's own killer and throttled with `MemoryHigh` rather than capped;
 logind and greetd are marked `avoid`, and the user manager is discounted away
 from system services, which only the system manager may do.
 
+`modules/features/system/firmware-updates.nix` publishes
+`flake.modules.nixos.firmware-updates`, which the NixOS `linux` profile imports.
+It enables fwupd, whose own daily timer refreshes the LVFS metadata, and pins
+`P2pPolicy` to `nothing` so a later upstream default does not start sharing
+downloads on the local network. A separate `seele-firmware-check` timer reads
+only what that refresh left behind: `fwupdmgr get-updates --json` reports
+success whether or not anything is pending, so the pending set comes from the
+payload, and a payload that no longer parses fails the unit instead of reporting
+silence. The native `desktop-tools` helper bounds vendor data and strips control
+and invisible direction characters before announcing through systembus-notify, which forwards a root service's
+system-bus message into Seele Shell's notification server. A pending set is
+announced once, recorded under `/run`, and so announced again after a reboot
+rather than every day. Nothing installs anything:
+`fwupdmgr update` stays a deliberate decision, and a UEFI capsule is staged
+through fwupd's own EFI binary, which this host's custom Secure Boot keys do not
+sign. `systemctl start seele-firmware-test` sends the same message without a
+vendor publishing one.
+
 Seele Notes is a separate desktop app from the shell submodule's `notes`
 package, exposed as `packages.<system>.seele-notes` and installed on Linux by
 its own `flake.modules.homeManager.seele-notes` feature. It is a quick-capture
