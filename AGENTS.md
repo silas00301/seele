@@ -86,6 +86,20 @@ daemon already reports each successful release.
 
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
+Containers on `nerv` are rootless Podman only. `modules/features/system/containers.nix`
+publishes `flake.modules.nixos.podman` and a matching `homeManager.podman`; the
+`nerv` system aggregate and the `nerv` home profile import them, and `asuka`
+gets nothing, because containers on aarch64-darwin need a `podman machine`
+Linux VM with its own lifecycle. Nothing here creates a privileged daemon or a
+root-equivalent group: `dockerCompat` and `dockerSocket` stay off, and the
+rootful API socket is removed from `sockets.target` while the per-user socket
+remains. Compose works through an external provider on podman's own wrapper
+PATH rather than a `docker` command on the user's PATH. NixOS already allocates
+the subordinate UID/GID range for a normal user, and the default network is left
+alone because that option only reaches the rootful configuration directory.
+Pruning is a weekly user timer bounded to resources untouched for seven days,
+never volumes and never `--all`; `nh` still owns Nix generation retention.
+
 On `nerv`, `seele-codex call` and `seele-codex request` reach the private,
 socket-activated Codex broker. It owns model selection, schema validation,
 concurrency, retries, cancellation and supersession. Integrations retain their
