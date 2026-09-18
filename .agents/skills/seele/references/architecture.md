@@ -254,6 +254,47 @@ Login is greetd running Seele Greeter, from `modules/features/programs/seele-gre
 
 `modules/packages/seele-greeter.nix` wires the `seele-shell` submodule flake's `greeter` package into this flake. Its generated system theme carries the declared username and display name, the UWSM session command, the desktop wallpaper, Maple Mono NF CN, and the active Catppuccin palette. The package runs the same seeded grain generator as Seele Shell and applies the shell's 8px radius, translucent panel fill, accent border, vertical wash, grain, and interaction tints to the login and power cards. Its install check runs `qmllint` and asserts that the packaged QML still enumerates screens and paints the grain. A NixOS `system.checks` derivation also asks Hyprland to parse the temporary compositor config during every system build.
 
+`modules/features/system/containers.nix` publishes `flake.modules.nixos.podman`
+and `flake.modules.homeManager.podman`; `modules/hosts/nerv/containers.nix`
+imports the first into `nerv`, and `modules/profiles/home/nerv.nix` imports the
+second. `asuka` has no container runtime at all, because podman on
+aarch64-darwin means a `podman machine` Linux VM that has to be provisioned,
+started and kept in sync — a separate feature, not this one with a second
+platform in its import list. The system module enables `virtualisation.podman`
+and nothing else that would create a privileged surface. `dockerCompat` stays
+false: it only adds a `docker` symlink to podman, and a command that answers for
+an engine the machine does not have is worth less than knowing which engine
+answered. `dockerSocket.enable` stays false because its own upstream option
+description says connecting users must join the `podman` group and that members
+of that group can gain root — the group rootless podman exists to avoid. The
+upstream module also puts the rootful API socket in `sockets.target`
+unconditionally, so this module removes it with `lib.mkForce [ ]`, the same
+treatment `nerv/ssh.nix` gives sshd; the per-user socket stays, since it lives in
+`$XDG_RUNTIME_DIR`, is owned by the user, and is what `podman compose` points
+`DOCKER_HOST` at. Compose itself is an external provider podman resolves through
+`exec.LookPath`, so `docker-compose` goes into `virtualisation.podman
+.extraPackages` — podman's own wrapper PATH — rather than onto the user's PATH.
+Subordinate ids are not configured: `nixos/modules/config/users-groups.nix`
+defaults `autoSubUidGidRange` to true for an `isNormalUser`, and
+`update-users-groups.pl` allocates 65536 ids from 100000 upward and records them
+in `/var/lib/nixos/auto-subuid-map`, warning that a changed range means
+re-owning every existing rootless layer. `defaultNetwork.settings` is left empty
+because podman resolves the rootless netavark configuration directory to
+`$graphroot/networks` and only the rootful one to `/etc/containers/networks`;
+setting `dns_enabled` there would change nothing for this host while making the
+upstream module open UDP 53 on `podman0` in the firewall. Container name
+resolution comes from the aardvark-dns shipped inside the podman package on the
+user-defined networks compose projects create. `virtualisation.podman.autoPrune`
+is likewise off, because the unit it enables runs as root against
+`/var/lib/containers/storage`, which this host never writes; the Home Manager
+module owns pruning instead, as a weekly `seele-podman-prune` user timer running
+`podman system prune --force --filter until=168h` through
+`/run/current-system/sw/bin/podman` so it shares the system's wrapper and store
+view. No `--all` and no volume flag: unused tagged images and every volume
+survive, and a container stopped this morning is still there tonight. `nh clean`
+remains the only owner of Nix generation retention. The Home Manager side adds
+`podman-tui` and the `pod`, `pods` and `podc` Fish abbreviations.
+
 `modules/hosts/nerv/sddm.nix` is preserved but dormant: nothing imports `nerv-sddm`, and it carries its own `catppuccin.sddm.enable` so an inactive display manager pulls no theme into the closure and can still come back intact. Two display managers cannot both claim vt1, so restoring one means dropping the other.
 
 The greeter change is invisible to the YubiKey stacks. greetd's PAM service is `auth substack login`, exactly as SDDM's was, so it inherits `login`'s second factor with no entry of its own. Quickshell's Greetd service exposes the IPC `authMessage` fields directly, including whether PAM needs a response, so the greeter submits the pending password only when requested and renders `cue_prompt` with the same key state used by Seele Lock. The Catppuccin SDDM theme could not do this at all because it discarded PAM information messages before they reached the UI.
