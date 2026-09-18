@@ -329,6 +329,40 @@ collation and the reproducible resident-state benchmark;
 session to check the real API and production IPC handlers during the package
 build. `tests/control-actions.sh` checks command and clipboard failures.
 
+## Keep the microphone test inside the panel that owns it
+
+`seele-mic-test` is started by `MicTestStore.qml` with `running: store.panelOpen`
+and by nothing else. Closing the Audio panel ends the process, and with it the
+capture stream, the playback stream and the five-second sample, so reopening the
+panel starts idle by construction rather than by a reset path that could be
+missed. Never give the worker a longer life than the panel, never write the
+sample anywhere, and never add an export, a library or a transcription to it.
+
+The worker speaks line-delimited JSON: requests are `sample`, `live`, `replay`,
+`stop`, `discard`, `probe` and `quit`; events are a whole `mode` snapshot on
+every change, a `level` frame twenty times a second, and a `users` report.
+`projects/qml-core/src/mic_test.rs` derives everything the card draws from those
+three, so a dropped line cannot leave the surface disagreeing with the worker.
+
+Both modes reach the microphone-use gate through `mic_test.start`. Use that
+observed by the audio server requires confirmation that mutes, stops and
+reroutes nothing; detection that could not run is reported as a limitation
+rather than turned into a prompt no evidence could answer. Keep the report on
+screen while a test runs, because confirming does not make the microphone
+exclusive.
+
+The meter reads zero whenever nothing is being captured, and clipping is decided
+in the worker on linear sample values and held for 1.5 seconds — the bar is
+drawn on a square-root scale and must never be what decides. Capture and
+playback name their devices explicitly; a lost microphone or test output ends
+the test and is named, and live playback is never quietly moved elsewhere.
+
+`tests/mic-test.js` runs the store's own declared bindings and methods against
+the real native policy. `tests/mic-test.sh` drives the worker against a private
+PipeWire instance, a virtual source and synthetic audio, covering the
+five-second length, clipping, the test output selector, device loss and stream
+cleanup. Neither touches the user's microphone, outputs or default sink.
+
 ## Preserve status model identity
 
 `projects/shell/SystemState.qml` owns the status fields and their startup

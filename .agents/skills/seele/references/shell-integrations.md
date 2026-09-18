@@ -150,6 +150,14 @@ the protocol, the bounds and the synthetic `/proc` validation.
   within 0–100%, and speed presets use the player's positive minRate/maxRate range.
 - Copying network details is an explicit action. Clipboard payloads go through
   process stdin and UI success follows successful process completion.
+- The Audio panel's microphone test runs `seele-mic-test` for exactly as long as
+  the panel is open. `MicTestStore.qml` holds worker state, `MicTestCard.qml`
+  draws it, and `mic_test.rs` in `qml-core` owns device resolution, the derived
+  card state and the microphone-use gate. Keep audio lifecycle, routing and level
+  measurement in the worker: the meter rests when nothing is being captured,
+  clipping comes from the samples rather than from the bar, and a lost device is
+  named rather than replaced. Record, Listen live, Replay, Stop and the test
+  output rows are focusable buttons and wrap at narrow panel widths.
 
 ## Panel integration
 
@@ -167,7 +175,10 @@ headless compositor, catching runtime type errors without starting the desktop.
 address disclosure, and exercises focus buttons, keyboard controls and the
 notification button's shared hover tint in QtTest. `tests/focus-timer.sh` runs the real
 Quickshell timer through cold start, pause/resume and completion without touching
-the desktop or sending notifications.
+the desktop or sending notifications. `tests/mic-test.js` runs the microphone
+test's store against the real native policy, and `tests/mic-test.sh` drives the
+worker against a private PipeWire instance with synthetic audio; neither opens
+the user's microphone or outputs.
 
 Run the focused JavaScript suites in `tests/`, the native Rust tests, and the
 GitHub/Home Assistant Python fixtures against their raw Rust binaries. The
