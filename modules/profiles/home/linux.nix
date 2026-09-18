@@ -18,6 +18,7 @@ let
       modules."1password-linux"
       modules.codex
       modules.comma
+      modules.cursor
       modules.fastfetch
       modules.fish-linux
       modules.ghostty
