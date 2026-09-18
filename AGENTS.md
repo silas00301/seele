@@ -288,6 +288,21 @@ conditional coffee bar item and a compact panel with the same session and Stop.
 See `seele-shell/projects/caffeinate/README.md` for the inhibition boundary, the
 protocol and its validation.
 
+The Audio panel's microphone test is the resident `seele-mic-test` worker,
+started by the panel and ended with it. It offers a five-second sample held only
+in memory and replayed through the chosen test output, and a live monitor that
+streams through a bounded private pipe without accumulating audio. Both name
+their capture and playback devices explicitly, so neither changes the system
+default nor moves another application's stream, and the test output selector
+chooses only where this test plays. Levels and clipping are measured from the
+captured samples rather than from playback, monitor sources are refused as
+inputs, and a microphone another application is already using requires explicit
+confirmation that mutes, stops and reroutes nothing. A microphone or test output
+that disappears ends the test and is named instead of being replaced. Closing
+the panel stops capture and playback and discards the sample; nothing reaches
+disk. See `seele-shell/projects/tools/README.md` for the protocol and the
+private-PipeWire fixture.
+
 On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control
