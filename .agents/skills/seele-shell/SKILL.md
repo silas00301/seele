@@ -290,12 +290,25 @@ deliberately and keeps its on-demand focus. `tests/feature-integrations.js`
 slices the toast window out of `shell.qml` and fails if any interactivity
 returns to it.
 
-Do Not Disturb has two forms. The header switch silences the shell until it is
-thrown back, and the quiet presets — 15 minutes, 1 hour, 4 hours — silence it
-until a deadline. `snooze()` stores an absolute `dndUntil` plus the
-`dndMinutes` that asked for it, so suspending does not extend the period and
-the panel lights the preset that started it rather than guessing from a
-deadline that keeps moving. `advance()` ends an expired period without
+Do Not Disturb has two forms, and one control in the panel header sets both.
+Its button drops a menu whose rows are every way to set silence: the quiet
+presets — 15 minutes, 1 hour, 4 hours — silence the shell until a deadline,
+`Until I turn it off` holds it with no end, and `Turn off` appears only while
+something is running. The check marks whichever is on. `snooze()` stores an absolute `dndUntil`
+plus the `dndMinutes` that asked for it, so suspending does not extend the
+period and the panel lights the preset that started it rather than guessing
+from a deadline that keeps moving. The button carries the live countdown
+beside its mark, so the panel reports a running period without spending a row
+on it. The menu is a sibling of the panel's column rather than a row inside it,
+drawing over the list instead of pushing it down, with a catcher behind it that
+closes it on the next click; `suggestedHeight()` holds at least `quietMenuReach`
+while it is open, because an empty inbox is too short to show the dropdown
+without clipping it. Closing the panel closes the menu.
+`notifications.quietPeriod(dnd, until, minutes, now)` in `qml-core` owns the
+state, remaining time, label and the compact form the control shows; QML keeps
+only the wall-clock formatting and a one-second tick that runs solely while a
+period is running on the open panel's screen. Both the button and the menu rows
+answer Enter, Space and Escape. `advance()` ends an expired period without
 replaying the toasts it suppressed, `setDnd()` clears both fields because a
 manual choice replaces a timed one, and `restore()` drops a period that ran out
 while the shell was down. `seele-shellctl notification snooze <minutes>`
