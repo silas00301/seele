@@ -1,0 +1,178 @@
+name: Dependabot Nix
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+    paths:
+      - flake.nix
+      - flake.lock
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dependabot-nix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Check out the Dependabot branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v21
+
+      - name: Restore the Nix store cache
+        uses: DeterminateSystems/magic-nix-cache-action@v13
+
+      - name: Prepare Jujutsu
+        run: |
+          nixpkgs_rev=$(jq -er '.nodes[.nodes.root.inputs.nixpkgs].locked.rev | select(test("^[0-9a-f]{40}$"))' flake.lock)
+          jj_store=$(nix build "github:NixOS/nixpkgs/${nixpkgs_rev}#jujutsu" --no-link --print-out-paths)
+          echo "$jj_store/bin" >> "$GITHUB_PATH"
+          "$jj_store/bin/jj" git init --colocate
+          "$jj_store/bin/jj" config set --repo user.name 'github-actions[bot]'
+          "$jj_store/bin/jj" config set --repo user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          test "$("$jj_store/bin/jj" log -r @- --no-graph -T commit_id)" = "$HEAD_SHA"
+
+      - name: Build the updated configuration
+        id: initial-build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          {
+            nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath --no-write-lock-file
+            nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
+              --no-link \
+              --no-write-lock-file
+          } 2>&1 | tee /tmp/dependabot-nix-build.log
+
+      - name: Install GitHub Copilot CLI
+        if: steps.initial-build.outcome == 'failure'
+        run: npm install --global @github/copilot
+
+      - name: Ask GitHub Copilot to repair the flake
+        if: steps.initial-build.outcome == 'failure'
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          test -n "$COPILOT_GITHUB_TOKEN" || { echo 'COPILOT_GITHUB_TOKEN is not configured.' >&2; exit 1; }
+          copilot --allow-all-tools --prompt "$(cat <<'PROMPT'
+            A Dependabot update broke this Nix flake. Read
+            /tmp/dependabot-nix-build.log, inspect the repository, and repair the
+            build by editing the normal *.nix source files. Do not change
+            flake.lock or submodules, do not commit or change bookmarks, and do
+            not activate either host. Jujutsu is initialized in this checkout.
+
+            Keep the fix as narrow as possible. Follow AGENTS.md and the Seele
+            skill, run nix fmt, and verify the native Linux host evaluation and
+            build. Full Darwin evaluation is outside this Linux runner's scope.
+          PROMPT
+          )"
+
+      - name: Verify the repaired configuration
+        if: steps.initial-build.outcome == 'failure'
+        run: |
+          # Check the index before Jujutsu can import any staged changes.
+          git diff --cached --quiet || { echo 'Unexpected Git staging.' >&2; exit 1; }
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import subprocess
+          def paths(*args):
+              return [os.fsdecode(p) for p in subprocess.check_output(args).split(b'\0') if p]
+          changed = paths('git', 'diff', '--name-only', '--no-renames', '-z', os.environ['HEAD_SHA'])
+          added = paths('git', 'ls-files', '--others', '--exclude-standard', '-z')
+          candidates = set(changed + added)
+          if not candidates:
+              raise SystemExit('Copilot did not produce a repair.')
+          for name in candidates:
+              path = pathlib.Path(name)
+              if not name.endswith('.nix') or path.is_symlink():
+                  raise SystemExit('Repair includes files outside ordinary Nix sources.')
+          PY
+          jj status
+          test "$(jj log -r @- --no-graph -T commit_id)" = "$HEAD_SHA"
+          # A Git flake only includes tracked paths; jj status tracks new Nix files.
+          nix fmt
+          nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath --no-write-lock-file
+          nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
+            --no-link \
+            --no-write-lock-file
+          git diff --cached --quiet || { echo 'Unexpected Git staging.' >&2; exit 1; }
+          jj status
+          test "$(jj log -r @- --no-graph -T commit_id)" = "$HEAD_SHA"
+          test -z "$(jj diff --from "$HEAD_SHA" --name-only '~glob:**/*.nix')"
+          test -n "$(jj diff --from "$HEAD_SHA" --name-only)"
+          test -z "$(git ls-files --others --exclude-standard)"
+
+      - name: Publish the verified repair as a signed commit
+        if: steps.initial-build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Jujutsu owns the local change. GitHub signs the published commit;
+          # no personal SSH or signing key belongs on this hosted runner.
+          test "$(jj log -r @- --no-graph -T commit_id)" = "$HEAD_SHA"
+          jj commit -m 'fix(nix): repair dependency update'
+          REPAIR_SHA="$(jj log -r @- --no-graph -T commit_id)"
+          export REPAIR_SHA
+          python3 - <<'PYAPI'
+          import base64
+          import json
+          import os
+          import subprocess
+          paths = subprocess.check_output([
+              'git', 'diff', '--name-only', '--no-renames', '-z',
+              os.environ['HEAD_SHA'], os.environ['REPAIR_SHA'],
+          ]).split(b'\0')
+          additions, deletions = [], []
+          for raw in filter(None, paths):
+              name = os.fsdecode(raw)
+              if not name.endswith('.nix'):
+                  raise SystemExit('Repair contains an unapproved path.')
+              entry = subprocess.check_output([
+                  'git', 'ls-tree', '-z', os.environ['REPAIR_SHA'], '--', name,
+              ])
+              if entry:
+                  metadata, stored_name = entry.rstrip(b'\0').split(b'\t', 1)
+                  mode, kind, oid = metadata.split()
+                  if mode != b'100644' or kind != b'blob' or stored_name != raw:
+                      raise SystemExit('Repair contains a non-regular Nix source.')
+                  contents = subprocess.check_output(['git', 'cat-file', 'blob', oid.decode()])
+                  additions.append({'path': name, 'contents': base64.b64encode(contents).decode()})
+              else:
+                  deletions.append({'path': name})
+          if not additions and not deletions:
+              raise SystemExit('Repair is empty.')
+          payload = {
+              'query': 'mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid signature { isValid } } } }',
+              'variables': {'input': {
+                  'branch': {'repositoryNameWithOwner': os.environ['GITHUB_REPOSITORY'], 'branchName': os.environ['HEAD_REF']},
+                  'expectedHeadOid': os.environ['HEAD_SHA'],
+                  'message': {'headline': 'fix(nix): repair dependency update'},
+                  'fileChanges': {'additions': additions, 'deletions': deletions},
+              }},
+          }
+          response = json.loads(subprocess.check_output(
+              ['gh', 'api', 'graphql', '--input', '-'], input=json.dumps(payload).encode()))
+          if response.get('errors'):
+              raise SystemExit('GitHub refused the repair commit.')
+          commit = response['data']['createCommitOnBranch']['commit']
+          if not (commit.get('signature') or {}).get('isValid'):
+              raise SystemExit('GitHub did not verify the repair signature.')
+          print('Published signed repair ' + commit['oid'])
+          PYAPI
