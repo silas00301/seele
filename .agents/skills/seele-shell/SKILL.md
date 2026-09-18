@@ -136,6 +136,37 @@ actions to the picker; the parent `programs.nh.clean` policy decides retention.
 Keep subprocess errors out of toasts. `tests/vicinae-generations.mjs` covers
 generation validation, actual-running detection, and safe diff rendering.
 
+## Hold the session awake from one descriptor
+
+`seele-caffeinate serve` owns every Caffeinate session. The session *is* one
+systemd-logind `idle` block inhibitor: the descriptor logind returns is the
+inhibition and closing it is the release. Do not add a `sleep` inhibitor beside
+it — a block lock there makes logind refuse an explicit `systemctl suspend` —
+and do not add the Wayland per-surface protocol or `org.freedesktop.ScreenSaver`
+as a second owner. Hypridle honours `BlockInhibited` while the parent leaves
+`ignore_systemd_inhibit` at 0, which is what suppresses its lock and DPMS
+listeners, and logind's `IdleAction` obeys the same lock. Never stop Hypridle,
+simulate input or reset an idle timer.
+
+A start acquires the new inhibitor before installing the session and dropping
+the replaced one, so a replacement opens no gap and leaves no orphan; a failed
+acquisition leaves the previous session exactly as it was. Expiry, Stop and a
+finished task all drop the session and do nothing else: no notification, no lock,
+no suspend, and never a signal to the tracked task. A timed session holds an
+absolute epoch deadline, so suspending does not extend it. Nothing is persisted.
+
+Track a process through `daemon::Pinned`'s pidfd and its `/proc` start time,
+revalidated when the session starts, and a transfer through its group id and
+terminal state over the transfers socket. A task whose state cannot be read ends
+its session after tolerating a service restart rather than holding the machine
+awake. Rows show the program and its sub-commands, never the rest of argv.
+
+`projects/qml-core/src/caffeinate.rs` owns duration parsing, its bounds, the
+labels, the bar text and the failure messages; the shell store and
+`seele-control vicinae-caffeinate` read that one projection, and neither QML nor
+React keeps a clock or parses a duration. Keep `tests/caffeinate.js` and
+`tests/vicinae-caffeinate.cjs` passing, and see `projects/caffeinate/README.md`.
+
 ## Keep frozen URI picking responsive
 
 `seele-shellctl uris` reaches `UriPicker.qml` and one `seele-shell-uris` layer
