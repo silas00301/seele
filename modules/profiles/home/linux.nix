@@ -23,6 +23,10 @@ let
       modules.ghostty
       modules.hypr
       modules.night-light
+      modules.imv
+      modules.mpv
+      modules.zathura
+      modules.default-applications
       modules.voxtype
       modules.pi
       modules.removable-media
