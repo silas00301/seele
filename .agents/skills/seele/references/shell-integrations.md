@@ -89,6 +89,48 @@ and stops sessions and hands typed durations to native validation verbatim. The
 shell contributes only a conditional coffee bar item and a compact panel with
 Stop. See `projects/caffeinate/README.md` for the protocol and fixtures.
 
+## Ports
+
+The Control Center's Ports tile opens a local TCP listener inspector on `nerv`.
+`seele-ports` in the shell submodule's `tools` crate owns discovery, ownership,
+privilege and every action's policy; QML owns the panel, its keyboard behavior
+and its confirmations. The worker scans only while the panel is open and keeps
+nothing on disk.
+
+Discovery reads `/proc/net/tcp` and `/proc/net/tcp6` in the host network
+namespace and reports listening sockets only. UDP, remote scanning and other
+namespaces are out of scope. A row shows the actual binding, so a wildcard is
+never presented as localhost, and it keeps every owner of a shared socket.
+Metadata the kernel will not show stays explicitly unknown: another user's
+listener is listed without an owner, and an explicit, separately authenticated
+Identify owner action is the only way to resolve one. A host-side container
+proxy is named as a proxy rather than as the application behind it. Listing
+contacts no service and raises no authentication prompt.
+
+Copy address and Open in browser are explicit. Only `http` and `https` are
+proposed, the scheme stays visible and changeable because a port proves neither,
+and a typed scheme is preserved. A wildcard binding opens the loopback address
+of its own family while the row keeps the real binding, and an IPv6 URL stays
+bracketed. The URL is built natively; QML never concatenates one.
+
+Stop is always confirmed, and the confirmation names the port, the process or
+user, and the exact service. A systemd listener targets its service and
+discloses the unit's other listeners, its `Restart=` setting and anything that
+can trigger it again; those properties are read only while the plan is built.
+Nothing is ever disabled. An unmanaged listener targets the selected process,
+and a socket shared by several processes disables Stop until one is chosen.
+Force stop is a second confirmation that the backend refuses unless a graceful
+attempt on that exact target already left the listener bound; for a service it
+stays inside the unit and never falls back to a PID. A system unit or another
+user's process goes through `run0` and the packaged `seele-stop-listener`
+helper, which takes a typed target rather than a command and revalidates it
+after authentication. A cancelled prompt leaves the target running. Identity is
+the socket inode plus the process start time, so a vanished listener, a rebound
+port or a recycled PID refuses a stale action instead of redirecting it. A
+listener still bound afterwards is reported as remaining, never as removed. No
+logs are collected or shown. See the submodule's `projects/tools/README.md` for
+the protocol, the bounds and the synthetic `/proc` validation.
+
 ## Local controls
 
 - Right-click the clock or use `seele-shellctl control focus` for focus/break
@@ -113,8 +155,8 @@ Stop. See `projects/caffeinate/README.md` for the protocol and fixtures.
 
 Ordinary panels use `WlrKeyboardFocus.OnDemand`, leaving the bar and click-away
 catcher available. Keep their namespaces in the blur rule in
-`modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant and
-Caffeinate.
+`modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant,
+Caffeinate and Ports.
 Changing QML alone cannot add compositor blur.
 
 ## Validation
