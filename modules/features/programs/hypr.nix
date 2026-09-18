@@ -475,6 +475,15 @@ let
             workspace = "5 silent",
           })
 
+          -- An image opened from a file manager or a notification is a glance,
+          -- not a tile: it keeps the layout it interrupted intact.
+          hl.window_rule({
+            match = {
+              class = "^(imv)$",
+            },
+            float = true,
+          })
+
           hl.window_rule({
             match = {
               class = "^(mpv)$",

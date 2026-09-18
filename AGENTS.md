@@ -287,6 +287,17 @@ an existing backup directory cannot redirect the operation. All launch declarati
 validate before configuration publication. See
 `seele-shell/projects/config-tools/README.md` before changing these boundaries.
 
+On Linux, `modules/features/desktop/default-applications.nix` is the single
+owner of file-type defaults. It associates images with imv, video and audio with
+mpv, PDFs and EPUBs with zathura, text with the configured Neovim, and a
+directory with Yazi, and it declares the two entries those terminal
+applications lack: `seele-editor.desktop` and `seele-files.desktop` open the
+configured terminal through explicit store paths rather than the launching
+process's `PATH`. The Zen feature keeps only the web documents and URL schemes
+it owns and no longer claims `text/plain`, so the two features cannot define the
+same association twice. Each viewer keeps its own feature leaf, its own
+vi-shaped bindings, and a Linux-only portable application.
+
 Theme ownership is split deliberately. Catppuccin themes supported application ports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, fonts, and active targets without a Catppuccin module. Qt's qt5ct and qt6ct settings reuse the Catppuccin Papirus icon theme. `stylix.autoEnable` stays off, and each platform profile lists its active Stylix targets explicitly so dormant applications do not add configuration or packages. Seele QML clients receive the selected palette through generated `theme.json`; `seele-shell/projects/shared/Palette.js` is their single unmanaged fallback and shared assignment path.
 
 ## Native runtime ownership

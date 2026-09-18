@@ -159,6 +159,9 @@ let
               };
           };
         };
+
+      # Web documents and URL schemes only: a plain text file belongs to the
+      # editor, which the `default-applications` feature associates it with.
       xdg.mimeApps =
         let
           browser = "zen-beta.desktop";
@@ -183,7 +186,6 @@ let
                 "x-scheme-handler/http"
                 "application/xhtml+xml"
                 "application/json"
-                "text/plain"
                 "text/html"
               ]
           );
