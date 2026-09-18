@@ -179,10 +179,13 @@ and transient lifetimes, a 30-second default toast timeout, permanent/pinned
 toasts, app stacks, local images, progress, and verification-code copying. A
 local notification image leads its card as the rounded sender identity, while
 the sending application's icon moves to a lower-right badge instead of the
-image being repeated in the body. Toasts are a pointer-only surface and declare
-no keyboard interactivity, so an arriving notification never interrupts typing;
-only the deliberately opened notification panel takes keyboard focus. Do Not Disturb is both a switch and a timed
-quiet period of 15 minutes, 1 hour, or 4 hours. Notification state and DND
+image being repeated in the body. Toasts declare no keyboard interactivity,
+so an arriving notification never interrupts typing. Only the deliberately
+opened notification panel takes keyboard focus. Do Not Disturb is one control in the panel
+header: its mark reports silence, the time beside it counts a running period
+down, and it drops a menu of every way to set that silence -- 15 minutes, 1
+hour, 4 hours, no end, and the way out -- so no row below the title is spent
+on it. Notification state and DND
 belong to a resident Rust policy object owned by Qt; the QML store holds native
 notification objects and delivers callbacks. The hardware feed is independent. History,
 pins, and a running quiet period survive QML reloads in memory; notification
