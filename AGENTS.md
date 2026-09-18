@@ -234,7 +234,7 @@ non-interactive bottom waveform on the output where recording began. See the
 
 Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
 live controls, audio device selection, window/workspace search, keybindings,
-NixOS generation rollback, and direct shell commands. For extension changes,
+NixOS generation rollback, Caffeinate sessions, and direct shell commands. For extension changes,
 read its `README.md`; the shell package bundles the manifest's command entries
 and runs its focused checks. Home Manager installs it through `xdg.dataFile`.
 The generation picker identifies the running closure by resolving
@@ -270,6 +270,23 @@ does not feed it its own output. The plugin is referenced through the package's 
 path, and the module loads with `nofail`, so a plugin that will not load costs
 the virtual source rather than the audio server. It adds no WirePlumber rules
 and leaves the Bluetooth receiver's `bluez5.media-source-role` rules untouched.
+
+On `nerv`, Caffeinate keeps the machine awake, its displays on and its session
+unlocked while one explicitly started session is active. The `seele-caffeinate`
+user service holds a single systemd-logind `idle` block inhibitor, which
+suppresses both Hypridle listeners and logind's own idle action. It takes no
+`sleep` inhibitor, so explicit Lock and Suspend keep working, and other
+applications' inhibitors are untouched. A session runs until stopped, until an
+absolute deadline, or until a selected process, recognized build or transfer
+ends; every ending releases it silently and returns control to the normal idle
+policy without locking or suspending. A process is tracked by its start time and
+pidfd and a transfer by its group id and terminal state, so PID reuse and the
+transfer service's own lifetime cannot extend a session. One session exists at a
+time, a start replaces it, and nothing is persisted, so none survives a reboot.
+The Vicinae command starts and stops sessions; the shell contributes a
+conditional coffee bar item and a compact panel with the same session and Stop.
+See `seele-shell/projects/caffeinate/README.md` for the inhibition boundary, the
+protocol and its validation.
 
 On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names

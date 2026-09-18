@@ -560,7 +560,7 @@ let
           -- corners would otherwise sit on a squared-off pane of glass.
           hl.layer_rule({
             match = {
-              namespace = "^seele-shell-(bar|osd|agents|prompt|tray-menu|application|calendar|clock|focus|system-health|github|home-assistant|control-center|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|session|polkit)$",
+              namespace = "^seele-shell-(bar|osd|agents|prompt|tray-menu|application|calendar|clock|focus|system-health|github|home-assistant|control-center|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|caffeinate|session|polkit)$",
             },
             blur = true,
             -- HoverTip uses child PopupWindows, not separate layer surfaces.
@@ -593,6 +593,9 @@ let
           general = {
             lock_cmd = "${seeleLock}/bin/seele-lock";
             before_sleep_cmd = "loginctl lock-session";
+            # `ignore_systemd_inhibit` stays at its default of 0. Caffeinate
+            # holds one logind idle inhibitor and relies on Hypridle honouring
+            # `BlockInhibited`, which is what suppresses both listeners below.
             # Auto mode recognizes hyprlock by name, not Seele Lock. Keep the
             # sleep inhibitor until Hyprland confirms the session is locked.
             inhibit_sleep = 3;

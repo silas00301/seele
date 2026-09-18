@@ -563,6 +563,23 @@ work in flight is a spinner in place. Checks that could not run are one banner
 above the list rather than a run of loose lines. The package runs model,
 server and publisher tests; `tests/maintenance.js` exercises actual QML methods.
 
+## Caffeinate
+
+`modules/features/programs/seele-caffeinate.nix` publishes the nerv-only Home
+Manager user service behind Caffeinate. It runs the shell package's
+`seele-caffeinate serve` and needs no environment, path or privilege: the unit
+is bound to `graphical-session.target` because the session it owns is one
+systemd-logind `idle` block inhibitor, and the descriptor holding it dies with
+the process, so logging out releases it. Nothing is persisted, so a restarted
+service comes back with no session rather than restoring an indefinite one.
+`modules/features/programs/hypr.nix` contributes the other half of the parent
+side: its Hypridle settings must keep `ignore_systemd_inhibit` at its default,
+since that is what makes the 1,800-second lock and 1,860-second display-off
+listeners honour the inhibitor, and the blur rule lists the
+`seele-shell-caffeinate` namespace. No `sleep` inhibitor is taken anywhere, so
+explicit Lock and Suspend are unaffected. The shell submodule's
+`projects/caffeinate/README.md` owns the protocol, task identity and fixtures.
+
 ## Personal transfers
 
 `modules/features/programs/seele-transfers.nix` publishes the nerv-only Home
