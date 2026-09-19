@@ -7,7 +7,22 @@ let
         enable = true;
         functions = {
           gitignore = "curl -sL https://www.toptal.com/developers/gitignore/api/$argv";
-          mkcd = "mkdir -p $argv && cd $argv";
+          mkcd = {
+            description = "Create and enter one directory";
+            body = ''
+              if test (count $argv) -ne 1; or test -z "$argv[1]"
+                printf 'Usage: mkcd DIRECTORY\n' >&2
+                return 2
+              end
+              # An absolute path also keeps `cd -` and CDPATH from changing
+              # the meaning of the directory that mkdir just created.
+              set -l target "$argv[1]"
+              if not string match -q '/*' -- "$target"
+                set target "$PWD/$target"
+              end
+              command mkdir -p -- "$target"; and builtin cd -- "$target"
+            '';
+          };
           last_history_item = "echo $history[1]";
           edit = "$EDITOR $argv";
         };
