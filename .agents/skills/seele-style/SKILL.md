@@ -23,7 +23,7 @@ weights, spacing ramp, control heights, elevation, edges, interaction tints, mot
 this skill is the source of truth for which one to pick. The shell and every standalone
 Seele application root at `Shared.Theme`, so they all read the same block, and a user's
 `theme.json` repaints all of them at once. On `nerv`, the theme-switching feature
-links that file to the native switcher's saved palette; new surfaces must keep
+links that file to the native switcher's saved Base16 projection; new surfaces must keep
 consuming this shared entry point.
 
 If a value you need is not in the block, you have found one of two things: a step you
