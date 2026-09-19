@@ -81,6 +81,10 @@ Named modules are available through the flake's `modules` output but remain dorm
 
 `modules/features/` contains program, service, theme, and shared system concerns. `modules/profiles/home/` contains profile-wide Home Manager settings that do not belong to one feature. Raw Nix expressions cannot live directly in the recursive tree; place them below a path containing `/_`.
 
+fd and ripgrep exclude `.git` and `.jj` metadata during recursive hidden-file
+search. Ordinary project dotfiles remain searchable. For deliberate metadata
+inspection use `fd --no-ignore --hidden` or `rg --no-config --hidden`.
+
 `modules/features/programs/codex.nix` installs Codex through Home Manager on
 Linux and sets the spawned-agent thread limit to 64 in `/etc/codex/config.toml`.
 Codex treats that file as a system default, so the mutable user configuration
