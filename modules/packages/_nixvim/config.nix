@@ -317,7 +317,6 @@ in
       };
     };
     yazi.enable = true;
-    neocord.enable = true;
     lsp-format = {
       enable = true;
       autoLoad = true;
@@ -690,7 +689,7 @@ in
               }),
               c = cmp.mapping.confirm({ 
                 behavior = cmp.ConfirmBehavior.Replace, 
-                select = true 
+                select = false
               })
             })
           '';
@@ -742,6 +741,7 @@ in
           ];
         };
         ":" = {
+          matching.disallow_symbol_nonprefix_matching = false;
           mapping = {
             __raw = "cmp.mapping.preset.cmdline()";
           };
