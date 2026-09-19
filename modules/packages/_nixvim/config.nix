@@ -202,6 +202,7 @@ in
   ];
 
   extraConfigLua = ''
+    ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
     dofile("${./copy-reference.lua}").setup()
 
