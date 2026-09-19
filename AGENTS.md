@@ -135,6 +135,20 @@ Hyprland binding. Keep capture and recognition dependencies in official
 nixpkgs. Captures are private runtime files, never screenshot-library or
 persistent-cache entries.
 
+On `nerv`, `Super + Shift + C` invokes `seele-shellctl color`. The shell freezes
+the same way the URI picker does and samples one pixel at a time from the
+private runtime captures, so the colour under the pointer cannot change while
+it is being aimed at. A lens magnifies the frozen pixels already uploaded for
+the overlay; keys walk the point by whole captured pixels without moving the
+pointer. Enter copies, in hex by default, with RGB and the shell's own palette
+token on Tab. A token name is only ever offered where the pixel is that token
+exactly; anything merely close is reported in prose with its CIE76 distance and
+cannot be copied as a name. Recent picks stay in session memory only, bounded to
+single-digit recall through Ctrl + number, and are never written to disk. The
+submodule owns the QML surfaces, the `color_picker` policy in `qml-core`, and
+the `seele-color-worker` capture/sampling worker; the parent owns the Hyprland
+binding.
+
 On `nerv`, `Super + Space` invokes `seele-shellctl prompt`. The shell maps a
 centered prompt on the focused output immediately through a resident Rust
 controller, but starts Codex only after Send. The panel takes exclusive
