@@ -163,6 +163,7 @@ mouse-button remap as equivalent: browser links must retain their action.
 
 ## Privacy and security defaults
 
+- Dictation on `nerv` uses local full-precision Parakeet for German/English. Batch output is the accepted interim behavior; keep streaming and Japanese as explicit follow-up work rather than silently changing the model or language scope.
 - Give a feature only the device permissions its configured path uses: compositor-bound dictation needs no raw `input` group. Keep OpenLogi's separate input-injection requirement scoped to its own feature.
 - Require confirmation when a Bluetooth peer replaces an existing bond; preserve ordinary bonded reconnects and fast connectability.
 - Prevent sensitive services from retaining crash memory by default; preserve a separate explicit development launch for crash debugging.

@@ -35,6 +35,10 @@
     seele-shell.inputs.nixpkgs.follows = "nixpkgs";
     seele-shell.inputs.quickshell.follows = "quickshell";
 
+    # Upstream ONNX/CUDA build and Nix Git-dependency hash fixes after v1.0.1.
+    voxtype.url = "github:peteonrails/voxtype/320a737e5d3c8662e0ec7de95f75407baa784d82";
+    voxtype.inputs.nixpkgs.follows = "nixpkgs";
+
     vicinae.url = "github:vicinaehq/vicinae";
 
     nixvim.url = "github:nix-community/nixvim";
