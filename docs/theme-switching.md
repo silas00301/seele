@@ -1,8 +1,15 @@
 # Seele Themes
 
 On `nerv`, open **Seele Themes** in Vicinae or press **Super + Ctrl + Shift + T**.
-Search the four Catppuccin variants, inspect their palette swatches, and press
-Enter to apply one. Mocha, Macchiato and Frappé are dark; Latte is light.
+Search the curated presets, inspect their palette swatches, and press Enter to
+apply one. The catalog includes 13 presets:
+
+- Catppuccin: Mocha, Macchiato, Frappé and Latte.
+- Rosé Pine: original, Moon and Dawn.
+- Flexoki: Dark and Light.
+- Gruvbox: Dark and Light, both medium contrast.
+- Nord and Everforest (dark).
+
 The configured flavor remains the initial choice. Selecting a theme needs no
 rebuild, privileges or network access.
 
@@ -27,8 +34,19 @@ styles, browser content and other independently themed tools retain their
 configured appearance. Wallpaper and font choices stay unchanged. `asuka` and
 portable applications keep their declarative themes.
 
-`modules/features/themes/theme-switching.nix` derives the catalog from the
-existing pinned Catppuccin palette and declares application includes. It is
+`modules/features/themes/_theme-switching/presets.json` selects schemes from
+the pinned `base16-schemes` package. Its adjacent Nix helper evaluates the
+upstream Stylix NixVim and Vicinae targets for every preset: Neovim receives
+the generated `mini.base16` palette, and Vicinae receives the generated TOML.
+The runtime projects that same palette into Seele and the other app includes.
+These assets are generated during the build; switching only selects local files.
+The configured Catppuccin accent is retained for the Catppuccin presets.
+
+To add another scheme, add its ID, display name and light/dark mode to
+`presets.json`, then rebuild once to include it. No application-specific theme
+name or plugin mapping is needed.
+
+`modules/features/themes/theme-switching.nix` declares the catalog and includes. It is
 imported only by the `nerv` home profile. Home Manager owns those includes;
 `seele-theme` owns only `$XDG_STATE_HOME/seele-theme`. The palette enters the
 existing `seele-shell/theme.json` path through a managed symlink. No new inputs,
@@ -39,7 +57,9 @@ The native contract, transactional publication and fixtures are documented in
 The launcher fixture is `seele-shell/tests/vicinae-themes.cjs`.
 Run `lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua` to verify
 that the editor initializer leaves other hosts' remaining configuration running
-and applies only valid flavor changes through its watcher callback.
+and applies only complete, valid palettes through its watcher callback.
+`checks.<system>.theme-presets` on Linux exercises every actual Stylix-generated
+preset against the native switcher and checks launcher/editor palette parity.
 
 Native validation should additionally exercise repeated dark/light changes with
 an open Notes window, a notification, a lock screen, a running editor, and

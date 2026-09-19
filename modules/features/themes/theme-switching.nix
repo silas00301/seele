@@ -1,5 +1,39 @@
-{ ... }:
 {
+  inputs,
+  config,
+  lib,
+  ...
+}:
+let
+  themeSettings = config.seele.catppuccin;
+in
+{
+  perSystem =
+    { pkgs, config, ... }:
+    lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+      checks.theme-presets =
+        let
+          catalog = pkgs.writeText "seele-theme-catalog-check.json" (
+            builtins.toJSON {
+              version = 2;
+              default = "catppuccin-${themeSettings.flavor}";
+              fontFamily = "Seele";
+              wallpaper = "/etc/wallpaper/wallpaper.jpg";
+              commands = { };
+              themes = import ./_theme-switching {
+                inherit inputs pkgs;
+                catppuccin = themeSettings;
+                catppuccinPalette = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.palette;
+              };
+            }
+          );
+        in
+        pkgs.runCommand "seele-theme-presets-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          python3 ${../../../tests/theme-presets.py} ${config.packages.config-tools}/bin/seele-theme ${catalog}
+          touch "$out"
+        '';
+    };
+
   flake.modules.homeManager.theme-switching =
     {
       catppuccin,
@@ -11,62 +45,21 @@
     }:
     let
       state = "${config.xdg.stateHome}/seele-theme";
-      palette = lib.importJSON "${config.catppuccin.sources.palette}/palette.json";
-      theme =
-        flavor:
-        let
-          c = palette.${flavor}.colors;
-        in
-        {
-          id = "catppuccin-${flavor}";
-          name = "Catppuccin ${lib.toSentenceCase flavor}";
-          inherit flavor;
-          base = c.base.hex;
-          mantle = c.mantle.hex;
-          crust = c.crust.hex;
-          surface = c.surface0.hex;
-          overlay = c.overlay0.hex;
-          text = c.text.hex;
-          subtext = c.subtext0.hex;
-          accent = c.${catppuccin.accent}.hex;
-          red = c.red.hex;
-          green = c.green.hex;
-          yellow = c.yellow.hex;
-          terminal = map (name: c.${name}.hex) [
-            "surface1"
-            "red"
-            "green"
-            "yellow"
-            "blue"
-            "pink"
-            "teal"
-            "subtext1"
-            "surface2"
-            "red"
-            "green"
-            "yellow"
-            "blue"
-            "pink"
-            "teal"
-            "text"
-          ];
-        };
+      themes = import ./_theme-switching {
+        inherit inputs pkgs catppuccin;
+        catppuccinPalette = config.catppuccin.sources.palette;
+      };
       package = selfPackages.config-tools;
     in
     {
       home.packages = [ package ];
       home.sessionVariables.SEELE_THEME_STATE = state;
       xdg.configFile."seele-theme/catalog.json".text = builtins.toJSON {
-        version = 1;
+        version = 2;
         default = "catppuccin-${catppuccin.flavor}";
         fontFamily = config.stylix.fonts.monospace.name;
         wallpaper = "/etc/wallpaper/wallpaper.jpg";
-        themes = map theme [
-          "mocha"
-          "macchiato"
-          "frappe"
-          "latte"
-        ];
+        inherit themes;
         commands = {
           hyprctl = "${pkgs.hyprland}/bin/hyprctl";
           tmux = "${pkgs.tmux}/bin/tmux";
@@ -81,11 +74,20 @@
         text = lib.mkForce null;
         source = lib.mkForce (config.lib.file.mkOutOfStoreSymlink "${state}/selection.json");
       };
-      home.activation.seeleTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      home.activation.seeleTheme = lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "linkGeneration" ] ''
         run env XDG_CONFIG_HOME=${lib.escapeShellArg config.xdg.configHome} \
           XDG_STATE_HOME=${lib.escapeShellArg config.xdg.stateHome} \
           ${package}/bin/seele-theme init
       '';
+
+      # One stable theme ID survives launcher restarts and declarative settings
+      # reloads. The switcher changes its generated file and asks Vicinae to reload.
+      programs.vicinae.settings.theme = {
+        light.name = lib.mkForce "seele-current";
+        dark.name = lib.mkForce "seele-current";
+      };
+      xdg.dataFile."vicinae/themes/seele-current.toml".source =
+        config.lib.file.mkOutOfStoreSymlink "${state}/current/vicinae.toml";
 
       catppuccin.ghostty.enable = false;
       programs.ghostty.settings.config-file = [ "?${state}/current/ghostty" ];
