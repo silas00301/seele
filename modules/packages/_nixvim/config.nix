@@ -28,6 +28,10 @@ in
 
   globals.mapleader = " ";
 
+  # Runtime theme changes consume the palette emitted by Stylix's NixVim
+  # target. The configured scheme still supplies the default on other hosts.
+  extraPlugins = [ pkgs.vimPlugins.mini-base16 ];
+
   extraConfigVim = "source ${./undo.vim}";
 
   opts = {
