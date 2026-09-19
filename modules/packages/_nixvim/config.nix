@@ -196,6 +196,7 @@ in
   ];
 
   extraConfigLua = ''
+    ${builtins.readFile ./theme.lua}
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then
       vim.keymap.set("n", "<leader>d", function()
