@@ -37,6 +37,9 @@ services, Python runtime or mutable edits to managed application files are used.
 The native contract, transactional publication and fixtures are documented in
 [`projects/config-tools/README.md`](../seele-shell/projects/config-tools/README.md).
 The launcher fixture is `seele-shell/tests/vicinae-themes.cjs`.
+Run `lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua` to verify
+that the editor initializer leaves other hosts' remaining configuration running
+and applies only valid flavor changes through its watcher callback.
 
 Native validation should additionally exercise repeated dark/light changes with
 an open Notes window, a notification, a lock screen, a running editor, and
