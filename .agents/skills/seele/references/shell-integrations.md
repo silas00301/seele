@@ -185,6 +185,39 @@ text. Keep the panel's namespace in the Hyprland blur rule. See the submodule's
 `projects/tools/README.md` for the protocol and
 `tests/quicklook.{js,sh}` for its validation.
 
+## Themes
+
+The Control Center's Themes tile and `Super + Ctrl + Shift + T` open the shell's
+own theme picker on `nerv`; the Vicinae **Seele Themes** command is the same
+catalog from the launcher. `seele-theme` in the submodule's `config-tools` crate
+owns the catalog, publication and every reload. `ThemeStore.qml` runs it,
+`ThemePanel.qml` draws the rows, and `themes.rs` in `qml-core` owns the catalog's
+validation, the grouping, the search, the header line and every sentence about a
+failure or a pending reload.
+
+The store lists only while the panel is open, and it never treats its own
+request as the answer: the applied theme comes from the selection file the
+helper publishes, watched rather than polled, so a theme applied from the
+launcher marks the row here and a failed switch marks nothing. A palette reaches
+a Qt colour property only after the native side has accepted the whole catalog,
+so a preset missing a role is refused instead of drawn half-themed. Applying is
+single-flight, guarded by a timeout that ends the helper rather than waiting on
+it, and the reply is used only to name what has not reloaded yet — never to
+claim that the switch failed, because by then it is saved.
+
+Rows lead with the applied theme, then group by dark and light in the catalog's
+own curated order. Each row draws the preset as a bar over a window in that
+preset's colours, with the accent on the window border, because that is what the
+switch does to the compositor. The panel keeps nothing on disk, publishes
+nothing, and repaints with the rest of the shell as soon as a theme is applied.
+Like the Resources and Home Assistant windows, the Themes window hands its panel
+the room its output has, and the list takes what the search, heading and any
+banner leave. Colour Lab owns the palette mark; Themes carries the light/dark
+one. The shell's quiet text depends on the projection's legibility floor in
+`seele-theme`, so keep `subtext` and `overlay` derived there rather than read
+from Base16 slots directly. See
+[the theme switching guide](../../../../docs/theme-switching.md).
+
 ## Local controls
 
 - Right-click the clock or use `seele-shellctl control focus` for focus/break
@@ -237,7 +270,7 @@ no network requests. The same README owns its stdin/privacy and host-action test
 Ordinary panels use `WlrKeyboardFocus.OnDemand`, leaving the bar and click-away
 catcher available. Keep their namespaces in the blur rule in
 `modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant,
-Caffeinate, Ports and Quick Look.
+Caffeinate, Ports, Quick Look and Themes.
 Changing QML alone cannot add compositor blur.
 
 ## Validation
@@ -255,6 +288,11 @@ the user's microphone or outputs. `tests/quicklook.js` runs the Quick Look
 controller's own functions with fake process, clipboard and compositor IO, and
 `tests/quicklook.sh` drives the raw worker against synthetic files and fake
 Poppler tools, proving classification, bounds, private page files and cleanup.
+`tests/themes.js` runs the theme store's own methods over the native policy and
+checks its production wiring, `tests/tst_themes.qml` renders the production
+Themes panel in QtTest and fails on any Qt warning, and
+`tests/vicinae-themes.cjs` renders the launcher command itself; none of them
+applies a theme or touches the session's own state directory.
 
 Run the focused JavaScript suites in `tests/`, the native Rust tests, and the
 GitHub/Home Assistant Python fixtures against their raw Rust binaries. The

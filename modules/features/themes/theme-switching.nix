@@ -115,7 +115,7 @@ in
             dofile(theme)
           end
         end
-        hl.bind("SUPER + CTRL + SHIFT + T", hl.dsp.exec_cmd("${pkgs.vicinae}/bin/vicinae vicinae://launch/@seele/seele-shell/themes"), { description = "Choose a Seele theme" })
+        hl.bind("SUPER + CTRL + SHIFT + T", hl.dsp.exec_cmd("${selfPackages.seele-shell}/bin/seele-shellctl control themes"), { description = "Choose a Seele theme" })
       '';
     };
 }
