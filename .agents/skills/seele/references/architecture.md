@@ -1,5 +1,9 @@
 # Dendritic architecture map
 
+fd and ripgrep exclude `.git` and `.jj` metadata during recursive hidden-file
+search. Ordinary project dotfiles remain searchable. For deliberate metadata
+inspection use `fd --no-ignore` or `rg --no-config --hidden`.
+
 ## Bootstrap and public outputs
 
 `flake.nix` declares inputs and calls `flake-parts.lib.mkFlake` with the recursive module returned by `import-tree ./modules`. Import-tree loads every `.nix` file below `modules/` except paths containing `/_`.
