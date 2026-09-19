@@ -146,6 +146,10 @@ pins 1.3.1, and a `global:` keybind needs global-shortcut support Hyprland
 0.55.4 lacks. Retire this feature for `toggle_quick_terminal` once both pins
 move.
 
+Yazi’s `gd`, `go`, and `gp` open Downloads, Documents, and Pictures. The bindings
+use enabled Home Manager XDG user-directory settings, otherwise runtime-home
+fallbacks, including standalone portable evaluations. `gD` still invokes diff.
+
 `modules/features/desktop/default-applications.nix` is the Linux profile's only
 owner of `xdg.mimeApps` defaults. Images resolve to `imv.desktop`, video and
 audio to `mpv.desktop`, PDFs and EPUBs to `org.pwmt.zathura.desktop`, text to
