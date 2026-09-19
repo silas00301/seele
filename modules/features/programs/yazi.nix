@@ -1,7 +1,30 @@
 { ... }:
 let
   module = (
-    { pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
+    let
+      # Standalone portable evaluations do not activate XDG user directories.
+      # Keep their defaults relative to the runtime home, not the build sentinel.
+      directory =
+        name: fallback:
+        if config.xdg.userDirs.enable && config.xdg.userDirs.${name} != null then
+          config.xdg.userDirs.${name}
+        else
+          "~/${fallback}";
+      bookmark = key: name: fallback: {
+        on = [
+          "g"
+          key
+        ];
+        run = "cd ${lib.escapeShellArg (directory name fallback)}";
+        desc = "Go to ${fallback}";
+      };
+    in
     {
       programs.yazi = {
         enable = true;
@@ -64,6 +87,9 @@ let
           ];
         };
         keymap.mgr.prepend_keymap = [
+          (bookmark "d" "download" "Downloads")
+          (bookmark "o" "documents" "Documents")
+          (bookmark "p" "pictures" "Pictures")
           {
             on = [
               "g"
