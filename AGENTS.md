@@ -18,6 +18,12 @@ Use the `seele` skill in `.agents/skills/` for the workflow and architecture map
 - Determine whether a change contributes to a named module, an active `common`/platform/host profile, or only a package/flake output. Keep the narrowest correct scope.
 - Do not expose credentials, SSH material, machine identifiers, or local agent/auth configuration.
 
+The `theme-switching` Home Manager feature on `nerv` provides **Seele Themes**
+in Vicinae and `Super + Ctrl + Shift + T`. Its native `seele-theme` helper applies
+a saved palette across the session and supported apps without rebuilding. See
+[the theme switching guide](docs/theme-switching.md) for scope, ownership and
+application reload boundaries.
+
 ## Architecture
 
 - `flake.nix`: inputs and the `flake-parts`/`import-tree` bootstrap.
