@@ -61,6 +61,10 @@ Python compatibility patch stays inside its upstream authentication package.
 These exceptions preserve upstream API and UI contracts; Python/Node fixtures
 are not installed as dependencies of native services.
 
+Neovim’s attached LSP clients expose `<leader>cr` for symbol rename and
+`<leader>ca` for code actions in normal and visual modes. Both keep the native
+prompt/selection workflow and are described in which-key.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:
