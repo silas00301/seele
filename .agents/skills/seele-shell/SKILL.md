@@ -222,6 +222,42 @@ stable across outputs, and wait for the complete number set before auto-opening
 a typed number. Enter resolves an exact numeric prefix; never use a timeout to
 guess user intent.
 
+## Keep frozen colour picking honest
+
+`seele-shellctl color` reaches `ColorPicker.qml` and one `seele-shell-color`
+layer surface per output, with one input-transparent `seele-shell-color-status`
+card for the reading, the session history and the result. Reuse the URI picker's
+freeze, private-runtime-file and cleanup shape; do not grow a second one and do
+not reach for `hyprpicker`, which owns its own surface and can neither report a
+token nor keep a history.
+
+`seele-color-worker` holds no pixels. It streams Grim's PPM into a mode-0600
+file inside a `mkdtemp` 0700 directory, parses only the minimal `P6` header, and
+answers each sample with one seek and three bytes; a frame whose length
+disagrees with its header is rejected rather than indexed. Captures are released
+on cancellation, supersession, EOF, errors and SIGTERM. Sampling is served on
+the session thread so answers stay in the order they were asked for.
+
+Keep one sample in flight with the newest point coalesced behind it, drop an
+answer whose token is not newer than the last one drawn, and re-sample on Enter
+rather than copying the throttled readout. The watchdog guards freezing the
+screens, not how long the user spends aiming at them.
+
+A palette token is named as a chip only where the sampled pixel **is** that
+token exactly. Anything merely close is reported as prose with its CIE76
+distance and must not be copyable as a name; beyond the policy's bound, say
+nothing rather than naming the least-far entry. The table is the shell's own
+eleven `theme.json` roles, passed in from `Theme`, because those are the only
+colour names this desktop has. Format resolution belongs to `color_picker`, so a
+colour that is not a token can never keep the token format from the colour
+before it.
+
+The history is session memory only, bounded to single-digit `Ctrl + number`
+recall, and is never written to disk. `tests/color-picker.sh` exercises capture
+identity, file modes, exact pixel sampling, reply ordering, supersession and
+cleanup against the raw worker; `tests/color-picker.js` covers the policy and
+the production QML callbacks.
+
 Images are private runtime files and are removed on cancellation, EOF, errors,
 and graceful termination. Guard messages by generation so an old scan cannot
 reopen a dismissed overlay. `tests/uri-picker.sh` exercises exact tmux records,
