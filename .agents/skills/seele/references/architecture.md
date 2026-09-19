@@ -26,6 +26,9 @@ The flake exposes:
 
 `modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently. `modules/flake/submodule.nix` contributes `nix run .#update-submodule`: it requires a clean submodule and verifies its revision against freshly fetched origin bookmarks, commits only the parent gitlink through Git because Jujutsu ignores submodules during snapshots, imports that commit into the colocated repository, advances `main` when that bookmark exists, and refreshes the shell's transitive inputs in the parent lock. `inputs.self.submodules` includes the gitlink target in the parent source, while the relative `seele-shell` path entry in `flake.lock` remains unchanged across source-only shell revisions.
 
+tmux prefix + `c`, `<`, and `>` open a window or split in the active pane’s current
+directory. The directory is quoted as one argument, including paths with spaces.
+
 ## Native packages and shared policy
 
 All first-party runtime service/helper crates live under `seele-shell/projects/`
