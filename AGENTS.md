@@ -64,16 +64,6 @@ provide global input interception, a shared indicator, or autoscroll for Seele,
 Qt, or terminals. See the Seele skill's `middle-click.md` reference for the
 remaining platform boundary and validation matrix.
 
-The `night-light` Home Manager feature on Linux runs hyprsunset from the
-session's `graphical-session.target` and warms the screen on a clock schedule:
-`identity` from 07:00, 5000K from 19:00, and 4000K from 22:00. Times are used
-instead of sunrise and sunset because the latter need the user's coordinates.
-It asks the compositor for a colour transform rather than drawing over the
-screen, so captures and screen shares keep true colours.
-`Super + Shift + N` toggles the filter by stopping and starting that service,
-which is also its only state: Hyprland resets every output when the client
-goes away, and the next session starts on schedule again.
-
 The `removable-media` feature mounts external disks on `nerv`. Its NixOS half
 enables udisks2 explicitly rather than relying on the fallback Plasma session
 that pulls it in, and adds the exFAT and NTFS drivers that foreign-formatted

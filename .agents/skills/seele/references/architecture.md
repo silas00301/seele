@@ -184,22 +184,6 @@ primary-paste suppression and Zen's native autoscroll preferences. Read
 [middle-click compatibility](middle-click.md) before extending this partial
 implementation; application settings do not establish a global input boundary.
 
-`modules/features/programs/night-light.nix` publishes the `night-light` Home
-Manager module, imported by the Linux profile directly after `hypr`. It enables
-Home Manager's `services.hyprsunset`, whose unit binds to
-`config.wayland.systemd.target`; that resolves to `graphical-session.target`,
-which is what UWSM starts here, rather than the `hyprland-session.target` the
-Hyprland module does not bring up because `systemd.enable` is off. The schedule
-lives once, in `settings.profile`, and hyprsunset applies whichever profile the
-clock is already in when it starts. The `Super + Shift + N` binding is added
-through `wayland.windowManager.hyprland.extraConfig` with `lib.mkAfter`, the
-same way `seele-shell.nix` adds its IPC bindings. Its script only stops or
-starts the user service: `hyprctl hyprsunset` in the packaged 0.3 release
-accepts `temperature`, `gamma` and `identity` but not the `reset` the current
-wiki documents, so restoring the scheduled value through IPC would mean
-duplicating the schedule in the script, while Hyprland's CTM protocol already
-resets every output to identity when the client disconnects.
-
 `modules/features/programs/removable-media.nix` publishes both halves of the
 external-disk story from one leaf. `flake.modules.nixos.removable-media` enables
 udisks2 and the exFAT/NTFS drivers, and `modules/hosts/nerv/removable-media.nix`
