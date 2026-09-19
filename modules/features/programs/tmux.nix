@@ -34,8 +34,10 @@ let
           set -g extended-keys-format csi-u
 
           bind-key r source-file ~/.config/tmux/tmux.conf \; display-message "~/.config/tmux/tmux.conf reloaded"
-          bind-key < split-window -h
-          bind-key > split-window
+          # Continue in the active pane's project, even after it changed cwd.
+          bind-key c new-window -c '#{pane_current_path}'
+          bind-key < split-window -h -c '#{pane_current_path}'
+          bind-key > split-window -c '#{pane_current_path}'
           bind-key q kill-pane
           bind-key y copy-mode
 
