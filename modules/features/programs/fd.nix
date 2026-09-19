@@ -6,6 +6,7 @@ let
       ignores = [
         "*.bak"
         ".git/"
+        ".jj/"
       ];
     };
   });
