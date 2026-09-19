@@ -22,7 +22,9 @@ weights, spacing ramp, control heights, elevation, edges, interaction tints, mot
 **Read that block before drawing anything.** It is the source of truth for every value;
 this skill is the source of truth for which one to pick. The shell and every standalone
 Seele application root at `Shared.Theme`, so they all read the same block, and a user's
-`theme.json` repaints all of them at once.
+`theme.json` repaints all of them at once. On `nerv`, the theme-switching feature
+links that file to the native switcher's saved palette; new surfaces must keep
+consuming this shared entry point.
 
 If a value you need is not in the block, you have found one of two things: a step you
 should have picked, or a genuine gap in the vocabulary. Add the token to the block with
