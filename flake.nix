@@ -23,10 +23,6 @@
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Determinate Nix, the Nix distribution `nerv` runs. Deliberately without a
-    # nixpkgs `follows`: the override rebuilds Determinate's own artifacts
-    # instead of fetching the ones FlakeHub Cache already has, which upstream
-    # advises against.
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/3";
 
     nix-index-database.url = "github:nix-community/nix-index-database";
@@ -42,10 +38,8 @@
     vicinae.url = "github:vicinaehq/vicinae";
 
     nixvim.url = "github:nix-community/nixvim";
-    nixvim.inputs.nixpkgs.follows = "nixpkgs";
 
     zen-browser.url = "github:0xc000022070/zen-browser-flake";
-    zen-browser.inputs.nixpkgs.follows = "nixpkgs";
 
     zjstatus.url = "github:dj95/zjstatus";
 

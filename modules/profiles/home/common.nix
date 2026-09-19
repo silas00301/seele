@@ -7,7 +7,6 @@ let
     home.packages = [
       pkgs.nerd-fonts.geist-mono
       pkgs.maple-mono.NF-CN
-      pkgs.vue-language-server
       pkgs.obsidian
       pkgs.nixd
     ];
