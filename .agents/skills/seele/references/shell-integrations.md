@@ -198,3 +198,12 @@ preferences through pinned descriptors. The existing Nerv Windows reboot service
 uses the same crate's `reboot-windows`/`reboot-windows-service` with fixed native
 wrappers, root validation and bounded subprocesses. Its Polkit/service authority
 is unchanged; tests use temporary profiles and fake firmware commands only.
+
+## Voxtype dictation
+
+`nerv` uses the upstream ONNX/CUDA Voxtype package and an immutable FP32
+Parakeet TDT v3 batch model. `SUPER+D` toggles recording; stopping types the
+transcript. German/English is the approved scope; Japanese and live streaming
+are deferred to SIL-66. Preserve the existing native status/audio socket.
+See [package, model and validation details](../../../../docs/voxtype-streaming-blocker.md)
+before changing the backend or enabling streaming.
