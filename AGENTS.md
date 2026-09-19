@@ -333,6 +333,21 @@ the panel stops capture and playback and discards the sample; nothing reaches
 disk. See `seele-shell/projects/tools/README.md` for the protocol and the
 private-PipeWire fixture.
 
+The Audio panel's APPLICATIONS group is a per-application mixer over the same
+`pw-dump` monitor the panel already reads, so it adds no probe and no service.
+`projects/tools/src/audio.rs` names, levels, orders and bounds the playback
+streams, converting the graph's linear gain into the cubic scale wpctl reports
+so an application's percentage means what the master rows above it mean. Its
+`StreamGate` admits a stream the first time it is seen running and keeps that
+row until the node leaves the graph, which is how short-lived streams are held
+out without a clock; declared `Event`/`Notification` roles and the combined
+sink's own member streams are excluded outright. The status field is
+`audioStreams`, bounded to sixteen entries, and the group draws at most four
+rows before scrolling. It disappears entirely when nothing has played rather
+than leaving an empty card. `seele-control stream-volume <node> <0-100|mute>`
+writes one stream, capped at full volume because the boost above it belongs to
+the output as a whole. Per-stream output routing stays out of scope:
+`audio-outputs` and `audio_route.rs` remain the only routing path.
 On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control

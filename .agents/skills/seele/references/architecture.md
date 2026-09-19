@@ -434,6 +434,35 @@ the physical members of the current combined output; the virtual sink is
 excluded from the picker. `tests/audio-routing.sh` runs this against private
 PipeWire, Pulse, and WirePlumber instances with hardware monitors disabled.
 
+Under those two device lists, the Audio panel's APPLICATIONS group is a level
+per playing application, built from the same buffered `pw-dump -m` graph the
+panel already reads rather than from a second probe.
+`projects/tools/src/audio.rs` resolves each `Stream/Output/Audio` node's name
+from the first property that names the program — `application.name`, then
+`node.description`, `application.process.binary`, `node.name`, and the media
+title last, because a row titled with what is playing renames itself between
+tracks — falling back to `Unnamed stream` when nothing there names anything. It
+converts the graph's linear `channelVolumes` into the cubic scale `wpctl`
+reports, so an application's percentage means what the master rows above it
+mean, and leaves an externally amplified stream reading honestly above full.
+Streams declaring an `Event` or `Notification` role, and the combined sink's own
+`output.<sink>_<member>` loopbacks, never reach the group. `StreamGate` decides
+membership without a clock: a stream joins the first time it is seen running and
+keeps its row until its node leaves the graph, so a system ding never earns one
+and a pause between two tracks does not take a row out from under the pointer.
+The list is ordered on name and registry id alone, bounded to sixteen entries
+with silent rows yielding to playing ones, and published as `audioStreams`. The
+group draws at most four rows before scrolling, and its rule and card both
+disappear while nothing has played, so a quiet desktop carries no empty card.
+`ApplicationLevelRow` is `AudioLevelRow`'s anatomy at `rowHeight`, with the
+application's themed icon where the master row's glyph is and a music-note mark
+where PipeWire named no icon. `seele-control stream-volume <node> <0-100|mute>`
+writes one stream through `wpctl -l 1.0`, so the shell never amplifies an
+application on top of an already amplified output. Per-stream routing is
+deliberately absent; `audio-outputs` remains the only path that moves audio
+between devices. `tests/audio-streams.js` exercises the production QML
+callbacks and the group's bounds.
+
 The Control Center's historical `airpods` module id now represents supported headphones rather than one vendor. AirPods and Beats still use the shell's patched librepods package for component batteries, noise control, and ear detection. A connected Nothing Headphone (1) starts the shell's own `seele-nothing-headphones` helper, which opens the device's BlueZ RFCOMM service, keeps battery and current noise mode in a short-lived runtime cache, and applies Off, Transparency, ANC High, and Adaptive directly through Nothing's 0x55 protocol. The helper is part of `seele-tools`; no separate companion application or non-nixpkgs package enters the profile. The module, its menu-bar entry, and the Camera split tile appear for either supported headphone family only while it is connected. Connected AirPods take priority over other supported headphones. `HeadphonesIcon.qml` draws separate AirPods and over-ear shapes; the panel and tile use AirPods or Headphones labels instead of the device's potentially long name. `tests/headphones-icon.sh` verifies the rendered shape switch.
 
 `modules/packages/pipewire-nothing.nix` builds the pinned nixpkgs PipeWire

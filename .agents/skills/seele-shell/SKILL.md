@@ -420,6 +420,24 @@ settle. Keep that acknowledgement separate from unsolicited deltas.
 `projects/tools/tests/live.rs` runs against a private bus and mock probes;
 `tests/status-patches.js` exercises the shell's actual partial-update callback.
 
+The `audioStreams` field is the Audio panel's application mixer, and the graph
+is its only source: `projects/tools/src/audio.rs` names each playback stream,
+converts its linear gain into the cubic scale `wpctl` reports, orders the list
+on name and registry id alone, and bounds it. Which streams are offered belongs
+to `StreamGate`, and the caller owns it — the monitor keeps one for the life of
+its `pw-dump` connection, while the one-shot CLI passes a fresh one because it
+has no history to keep. A stream joins the first time it is seen running and
+keeps its row until its node leaves the graph, so nothing waits on a timer and
+no stream is remembered past the node that owned it. Keep short-lived streams
+out on what they declare — a `media.role` of `Event` or `Notification` — rather
+than on how long they have lasted, and keep the combined sink's own
+`output.<sink>_<member>` streams out entirely. Levels are written with
+`seele-control stream-volume`, which caps at full volume; a dragged row holds
+its latch until the graph agrees with it or its stream disappears.
+`tests/audio-streams.js` exercises the production QML callbacks and the group's
+bounds, and the unit tests beside `audio.rs` cover naming, the cubic
+conversion, the exclusions and the gate.
+
 `seele-clock watch` caches static timezone metadata for the current database,
 year, and locale, but computes times, offsets, and pins on every `refresh` line.
 Both workers exit on stdin EOF. Clock's timezone conversions remain in its own

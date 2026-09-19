@@ -144,8 +144,14 @@ alias — put it there when you add it, not after the second caller appears.
 | `AgentMark` | A harness or vendor drawn as its own vendored SVG. |
 
 The Control Center and media surfaces add `ControlTile`, `ConnectivityRow`,
-`ControlLevel`, `AudioLevelRow`, `MediaBody`, `MediaButton` and `MediaTimeline`. A module
+`ControlLevel`, `AudioLevelRow`, `ApplicationLevelRow`, `MediaBody`, `MediaButton` and
+`MediaTimeline`. A module
 that lives in both the Control Center and its own panel draws the same body in both.
+A second level in the same panel takes the first one's anatomy a step down the ramp
+rather than a shape of its own: `ApplicationLevelRow` is `AudioLevelRow` at
+`rowHeight`, with the application's icon where the master row's glyph is, and both
+pin their numeral to `levelValueWidth` so the tracks stacked under one another stay
+comparable.
 
 ## Composing a surface
 
