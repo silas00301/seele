@@ -617,3 +617,13 @@ limited to ordinary `.nix` files; lock, submodule, staged and unrelated changes
 fail validation. Jujutsu tracks the local change, then GitHub publishes a signed
 commit through `createCommitOnBranch`, refusing a branch whose head changed during
 the build. This does not replace native Darwin validation or activate either host.
+
+## Runtime theme selection
+
+`modules/features/themes/theme-switching.nix` is a named Home Manager feature
+imported by `nerv`. Its catalog and app includes connect to the shell's native
+config-tools package and launcher extension. The raw `_theme-switching` helper
+evaluates upstream Stylix targets from curated Base16 schemes, and the Linux
+`theme-presets` check validates their generated assets through the runtime. See
+[the theme switching guide](../../../../docs/theme-switching.md) before changing
+palette ownership or adding another runtime theme consumer.
