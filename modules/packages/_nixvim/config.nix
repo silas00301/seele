@@ -493,6 +493,21 @@ in
         extra = [
           {
             mode = "n";
+            key = "<leader>cr";
+            action.__raw = "vim.lsp.buf.rename";
+            options.desc = "Rename symbol";
+          }
+          {
+            mode = [
+              "n"
+              "x"
+            ];
+            key = "<leader>ca";
+            action.__raw = "vim.lsp.buf.code_action";
+            options.desc = "Code actions";
+          }
+          {
+            mode = "n";
             key = "<leader>ss";
             action = "<cmd>Telescope lsp_document_symbols<CR>";
             options.desc = "Search document symbols";
