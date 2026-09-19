@@ -622,6 +622,8 @@ the build. This does not replace native Darwin validation or activate either hos
 
 `modules/features/themes/theme-switching.nix` is a named Home Manager feature
 imported by `nerv`. Its catalog and app includes connect to the shell's native
-config-tools package and launcher extension. See
+config-tools package and launcher extension. The raw `_theme-switching` helper
+evaluates upstream Stylix targets from curated Base16 schemes, and the Linux
+`theme-presets` check validates their generated assets through the runtime. See
 [the theme switching guide](../../../../docs/theme-switching.md) before changing
 palette ownership or adding another runtime theme consumer.
