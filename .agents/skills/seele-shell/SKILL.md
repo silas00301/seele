@@ -420,6 +420,14 @@ settle. Keep that acknowledgement separate from unsolicited deltas.
 `projects/tools/tests/live.rs` runs against a private bus and mock probes;
 `tests/status-patches.js` exercises the shell's actual partial-update callback.
 
+The `audioStreams` field crosses the application mixer's native/QML state
+boundary. Add any field change to both `projects/qml-core/src/system.rs` and
+`projects/shell/SystemState.qml`. `projects/tools/src/audio.rs` owns the graph
+projection and `StreamGate`; the live monitor retains one gate for its
+connection, while a one-shot status call uses a fresh gate. Run the unit tests
+beside `audio.rs`, `tests/audio-streams.js`, and `tests/status-patches.js` after
+changing that boundary or its controls.
+
 `seele-clock watch` caches static timezone metadata for the current database,
 year, and locale, but computes times, offsets, and pins on every `refresh` line.
 Both workers exit on stdin EOF. Clock's timezone conversions remain in its own
