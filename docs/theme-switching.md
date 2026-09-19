@@ -1,8 +1,9 @@
 # Seele Themes
 
-On `nerv`, open **Seele Themes** in Vicinae or press **Super + Ctrl + Shift + T**.
-Search the curated presets, inspect their palette swatches, and press Enter to
-apply one. The catalog includes 13 presets:
+On `nerv`, press **Super + Ctrl + Shift + T**, or open the Control Center's
+**Themes** module, for the shell's own picker. **Seele Themes** in Vicinae is the
+same catalog from the launcher. Search the curated presets, look at their
+previews, and press Enter to apply one. The catalog includes 13 presets:
 
 - Catppuccin: Mocha, Macchiato, Frappé and Latte.
 - Rosé Pine: original, Moon and Dawn.
@@ -12,6 +13,16 @@ apply one. The catalog includes 13 presets:
 
 The configured flavor remains the initial choice. Selecting a theme needs no
 rebuild, privileges or network access.
+
+Both pickers show the applied theme first and group the rest by light and dark.
+The shell panel draws each preset as a bar over a window in that preset's own
+colours; the launcher shows the same palette as named colour roles beside a
+description of what a switch reaches. Applying is one request at a time, and
+neither surface publishes anything itself: both run `seele-theme`, and the shell
+panel reads the applied theme from the selection that helper publishes, so a
+theme chosen in either place is marked in the other. The shell repaints itself
+while its picker is open, because the panel is drawn with the same palette it is
+choosing from.
 
 `seele-theme list` returns the catalog and current ID as JSON. `current` returns
 the selected ID, `set catppuccin-latte` changes it, and `reset` returns to the
@@ -54,7 +65,10 @@ services, Python runtime or mutable edits to managed application files are used.
 
 The native contract, transactional publication and fixtures are documented in
 [`projects/config-tools/README.md`](../seele-shell/projects/config-tools/README.md).
-The launcher fixture is `seele-shell/tests/vicinae-themes.cjs`.
+The launcher fixture is `seele-shell/tests/vicinae-themes.cjs`, and the shell
+panel's store and production wiring are covered by `seele-shell/tests/themes.js`.
+Row grouping, search, the header line and every failure sentence belong to
+`seele-shell/projects/qml-core/src/themes.rs` and are tested there.
 Run `lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua` to verify
 that the editor initializer leaves other hosts' remaining configuration running
 and applies only complete, valid palettes through its watcher callback.
