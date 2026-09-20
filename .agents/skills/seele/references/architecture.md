@@ -10,6 +10,7 @@ The flake exposes:
 - `darwinConfigurations.asuka` for `aarch64-darwin`
 - `packages.x86_64-linux.default` and `packages.aarch64-darwin.default`, which let plain `nix build` build the native `nerv` or `asuka` system closure
 - `packages.<system>.{nixvim,spt-st}` for all four declared Linux/Darwin systems
+- `packages.x86_64-linux.voxtype`, the host-scoped ONNX/CUDA dictation package
 - `packages.<system>.<command>` for each `seele.portable` entry: a configured application that carries its own Seele configuration onto a machine this flake does not manage
 - `packages.<system>.seele-shell` on Linux, Seele's native Quickshell desktop shell
 - `packages.<system>.seele-notes` on Linux, the standalone quick-capture application for an Obsidian vault, sharing the shell's theme and QML components
@@ -92,6 +93,15 @@ or failure record is persisted. Both modes share a bounded metadata collector
 and the Codex broker. Multiple interpretations use the existing fzf picker, and
 local destructive-command detection comments the inserted line even if the model
 labels it safe. See the crate README for policy, bounds and fixtures.
+
+The `voxtype` input follows the parent nixpkgs and pins the upstream revision
+whose Nix builder carries the required Git dependency hashes. The
+`modules/packages/voxtype.nix` output adapts upstream's ONNX/CUDA wrapper for
+dynamic ONNX Runtime loading and exposes it only on x86_64-linux.
+`modules/features/programs/voxtype.nix` consumes that output from
+`selfPackages`; the Home Manager `nerv` profile imports the feature directly
+instead of the Linux profile because its CUDA runtime and driver path are
+specific to the NVIDIA host.
 
 `modules/features/programs/trash.nix` publishes the `trash` Home Manager
 feature, imported by `modules/profiles/home/linux.nix`. It adds `pkgs.trash-cli`

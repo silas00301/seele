@@ -241,7 +241,8 @@ private state. Never write Seele's own state into the vault. It shares
 `projects/shared/Theme.qml` and the same QML components with Seele Shell.
 Dictation uses Voxtype's native status and audio socket, with a
 non-interactive bottom waveform on the output where recording began. See the
-`seele-shell` skill for the protocol, the editor, and validation.
+Seele skill's `shell-integrations.md` for the active dictation integration and
+the `seele-shell` skill for the Notes protocol, editor, and validation.
 
 Vicinae's managed extension lives in `seele-shell/projects/vicinae/`. It exposes
 live controls, audio device selection, window/workspace search, keybindings,

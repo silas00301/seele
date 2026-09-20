@@ -27,7 +27,6 @@ let
       modules.mpv
       modules.zathura
       modules.default-applications
-      modules.voxtype
       modules.pi
       modules.removable-media
       modules.scratchpad
