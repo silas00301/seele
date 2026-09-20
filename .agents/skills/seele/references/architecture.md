@@ -658,3 +658,7 @@ limited to ordinary `.nix` files; lock, submodule, staged and unrelated changes
 fail validation. Jujutsu tracks the local change, then GitHub publishes a signed
 commit through `createCommitOnBranch`, refusing a branch whose head changed during
 the build. This does not replace native Darwin validation or activate either host.
+
+Fish `mkcd DIRECTORY` accepts exactly one nonempty literal path, creates its parents,
+and enters it only after mkdir succeeds. Relative paths resolve against the current
+directory rather than CDPATH; dash-prefixed names are ordinary directory names.
