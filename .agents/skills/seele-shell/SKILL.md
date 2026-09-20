@@ -222,6 +222,37 @@ stable across outputs, and wait for the complete number set before auto-opening
 a typed number. Enter resolves an exact numeric prefix; never use a timeout to
 guess user intent.
 
+## Keep frozen colour picking honest
+
+`seele-shellctl color` reaches `ColorPicker.qml` and one `seele-shell-color`
+layer surface and input-transparent `seele-shell-color-status` card per output.
+Reuse the URI picker's freeze, private-runtime-file and cleanup shape; do not
+reach for `hyprpicker`, which owns its own surface and can neither report a token
+nor keep a history.
+
+`seele-color-worker` holds no pixels. It streams Grim's PPM into a mode-0600
+file inside a `mkdtemp` 0700 directory, parses only the minimal `P6` header, and
+answers each sample with one seek and three bytes; a frame whose length
+disagrees with its header is rejected rather than indexed. Captures are released
+on cancellation, supersession, EOF, errors and SIGTERM. Reject a frame above 64
+MiPixels, more than 512 MiB across one session, or a sample request beyond the
+bounded queue. Sampling is served on the session thread so accepted answers
+stay in the order they were asked for.
+
+Keep one sample in flight with the newest point coalesced behind it, drop an
+answer whose token is not newer than the last one drawn, and re-sample on commit
+rather than copying the throttled readout. Reset the keyboard format on every
+invocation, pass its resolved format through Enter's commit, and make the mouse
+commit request hex explicitly. The watchdog guards freezing the screens, not
+how long the user spends aiming at them.
+
+The Seele taste skill owns the token-naming, format, and history choices.
+`color_picker` owns their implementation, including format fallback when the
+new pixel cannot supply the previously selected token format.
+`tests/color-picker.sh` exercises capture identity, file modes, exact pixel
+sampling, reply ordering, supersession and cleanup against the raw worker;
+`tests/color-picker.js` covers the policy and the production QML callbacks.
+
 Images are private runtime files and are removed on cancellation, EOF, errors,
 and graceful termination. Guard messages by generation so an old scan cannot
 reopen a dismissed overlay. `tests/uri-picker.sh` exercises exact tmux records,

@@ -79,6 +79,11 @@ A framed surface takes all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGra
 that order: the wash under the content, the edge and the grain film over it. The grain
 tile is generated at build time by `seele-tools grain`; it is never committed.
 
+The one surface that takes the material and the edge but neither the wash nor the grain
+is a surface whose content is being *measured*: the colour picker's lens. Both are films
+laid over the whole surface, and a film over the pixels being read changes the colour
+being read.
+
 Round every surface on `radius` — the same 8px Hyprland rounds windows with — and use
 `radiusSmall` only for a part inside an already-rounded part. Reserve pill and circular
 shapes for switches, meters and status dots. A meter or a rounded end rounds on its own

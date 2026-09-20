@@ -269,6 +269,7 @@ let
           hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl prompt"), { description = "Open the quick AI prompt" })
           hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd("${package}/bin/seele-shellctl agent pi"), { description = "Launch Pi" })
           hl.bind("SUPER + CTRL + S", hl.dsp.exec_cmd("${package}/bin/seele-shellctl uris"), { description = "Open a visible URI from the frozen screens" })
+          hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("${package}/bin/seele-shellctl color"), { description = "Sample a colour from the frozen screens" })
           hl.bind("SUPER + C", hl.dsp.exec_cmd("${package}/bin/seele-shellctl center"), { description = "Open the Control Center" })
           hl.bind("SUPER + N", hl.dsp.exec_cmd("${package}/bin/seele-shellctl control notifications"), { description = "Open notifications" })
           hl.bind("SUPER + ESCAPE", hl.dsp.exec_cmd("${package}/bin/seele-shellctl controls"), { description = "Open session controls" })

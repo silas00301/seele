@@ -225,7 +225,24 @@ captures. No new flake input or Cargo dependency is needed. The shell package
 runs deterministic exact-source fakes, real OCR/code fixtures, and numeric
 action tests in its install checks.
 
-The quick AI prompt is a third shell IPC workflow. Its parent-owned
+The screen colour picker is another frozen-screen workflow and reuses that
+shape rather than adding a parallel one. `Super + Shift + C` calls
+`seele-shellctl color` from the same block in
+`modules/features/programs/seele-shell.nix`. `ColorPicker.qml` owns lifecycle,
+aiming, coalescing and copying; `shell.qml` draws one full-screen layer surface
+and one input-transparent result card per output. `projects/tools/src/color/`
+is a separate `seele-color-worker`: it streams each nixpkgs Grim PPM straight
+into a private mode-0600 runtime file and answers each sample with a seek and
+three bytes, so unlike the URI worker it never holds a capture's pixels. It
+validates the header before accepting the stream, caps each frame at 64 MiPixels
+and each session at 512 MiB, and rejects excess pending samples through a
+bounded queue.
+`qml-core`'s `color_picker` owns hex/RGB/token formatting, CIELAB matching,
+format resolution, the bounded session history and lens geometry. No new flake
+input, Cargo dependency or workspace member is needed; the binary joins the
+existing `seele-tools` crate and is wrapped with Grim by the shell package.
+
+The quick AI prompt is another shell IPC workflow. Its parent-owned
 `Super + Space` binding calls `seele-shellctl prompt`; the submodule owns
 `AiPrompt.qml`, `ai-prompt.js`, and the resident Rust
 `seele-ai-prompt-worker`. Opening maps a centered surface on the captured
