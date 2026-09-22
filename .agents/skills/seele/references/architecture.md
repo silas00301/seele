@@ -70,6 +70,13 @@ snapshots without touching the source window or its undo/diff state. The helper
 and its isolated real-Neovim fixture live in `modules/packages/_nixvim/`; see
 that directory's README for limits and validation.
 
+Neovim's `<leader>cp` and `<leader>cP` copy project-relative and absolute source
+references, including selected line ranges. `:CopyReference[!]` accepts an Ex
+range. The in-process `modules/packages/_nixvim/copy-reference.lua` discovers the
+nearest Jujutsu/Git ancestor marker without invoking VCS commands; register `r`
+retains the reference even when the existing clipboard provider is unavailable.
+See the adjacent README and real Neovim fixture for path and clipboard boundaries.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:
