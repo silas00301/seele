@@ -23,6 +23,10 @@ let
               command mkdir -p -- "$target"; and builtin cd -- "$target"
             '';
           };
+          croot = {
+            description = "Jump to the Jujutsu workspace or Git worktree root";
+            body = builtins.readFile ./_fish/croot.fish;
+          };
           last_history_item = "echo $history[1]";
           edit = "$EDITOR $argv";
         };
@@ -110,6 +114,25 @@ in
   };
   flake.modules.nixos.fish = systemModule;
   flake.modules.darwin.fish = darwinSystemModule;
+
+  perSystem =
+    { pkgs, ... }:
+    {
+      checks.fish-project-root =
+        pkgs.runCommand "fish-project-root"
+          {
+            nativeBuildInputs = [
+              pkgs.fish
+              pkgs.jujutsu
+              pkgs.git
+              pkgs.python3
+            ];
+          }
+          ''
+            python3 ${./_fish/test_croot.py} ${./_fish/croot.fish} fish jj git
+            touch "$out"
+          '';
+    };
 
   # The whole interactive environment in one output: fish's aliases,
   # abbreviations and startup reach for eza, zellij, tmux, television and the

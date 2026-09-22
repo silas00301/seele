@@ -688,3 +688,13 @@ the build. This does not replace native Darwin validation or activate either hos
 Fish `mkcd DIRECTORY` accepts exactly one nonempty literal path, creates its parents,
 and enters it only after mkdir succeeds. Relative paths resolve against the current
 directory rather than CDPATH; dash-prefixed names are ordinary directory names.
+
+Fish `croot` jumps to the current Jujutsu workspace root, falling back to the Git
+worktree root when Jujutsu cannot resolve one. `jj root --ignore-working-copy`
+keeps this navigation read-only; Git's `rev-parse` does not inspect file contents.
+An absolute path bypasses CDPATH, and errors leave the current directory intact.
+The active common Fish module and portable Fish share the same function; the
+portable output already carries both VCS tools. The `fish-project-root` check
+runs real Fish against isolated Jujutsu and Git repositories, including linked
+workspaces, symlinks and literal newline paths. Run its fixture directly with
+`python3 modules/features/programs/_fish/test_croot.py modules/features/programs/_fish/croot.fish fish jj git`.
