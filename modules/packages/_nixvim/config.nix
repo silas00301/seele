@@ -51,6 +51,12 @@ in
   keymaps = [
     {
       mode = "n";
+      key = "<leader>cs";
+      action = "<cmd>SavedDiff<CR>";
+      options.desc = "Compare buffer with saved file";
+    }
+    {
+      mode = "n";
       key = "<leader>sd";
       action = "<cmd>Telescope diagnostics bufnr=0<CR>";
       options.desc = "Search buffer diagnostics";
@@ -196,6 +202,8 @@ in
   ];
 
   extraConfigLua = ''
+    dofile("${./saved-diff.lua}")
+
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then
       vim.keymap.set("n", "<leader>d", function()
