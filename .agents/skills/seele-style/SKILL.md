@@ -146,6 +146,8 @@ alias — put it there when you add it, not after the second caller appears.
 | `CenteredGlyph` | A font glyph centred by its visible ink rather than its advance width. |
 | `BarLabel` | A menu bar label carrying arbitrary text, baseline-anchored to the primary font. |
 | `SeeleListView` / `SeeleFlickable` | Every scrollable, so one spring governs them all. |
+| `ChoiceBox` | A bounded native ComboBox with standard keyboard navigation on the shared well material. |
+| `HistoryChart` | Render-only bounded series: fixed recent window, shared scale and breaks for missing samples. |
 | `SearchField` | The one input that filters a list. A well, because it holds a query rather than content. |
 | `ValueField` | A short editable value, such as a custom timer duration, on the same well material with a visible keyboard-focus edge. |
 | `EmptyState` | What a surface says when it has nothing to show, with its own mark, sentence and way out. |
