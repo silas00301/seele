@@ -226,7 +226,22 @@ numbers cannot move. Mask only OCR hits whose centers overlap an emitted exact
 token. Keep GUI and unsupported terminal OCR active, and never mask the ZBar
 whole-output pass for QR codes and barcodes. The Rust grayscale and 1.5×
 enlargement pass preserves small URI punctuation; use local adaptive thresholds
-for dim address-bar text beside bright browser chrome. Code payloads use exact
+for dim address-bar text beside bright browser chrome.
+
+Assemble OCR words in output coordinates before extracting links, so a wrapped
+link crossing a strip seam receives one number and one complete destination.
+Treat failed strips as barriers. Geometry and URI syntax must both establish a
+continuation: do not append prose, independent URLs or text from another column,
+remove hyphens, or guess missing glyphs. A malformed accepted continuation
+rejects the chain rather than offering its valid-looking prefix. Preserve
+per-line `regions` for highlighting and collision avoidance; the first region
+anchors the badge, and the spaces between lines remain noninteractive. Validate
+hostnames, IPs, ports and percent escapes before offering Open. Keep decoded
+code payloads exact and OCR prose punctuation cleanup separate.
+`tests/uri-multiline.sh` exercises real Tesseract wrapping and malformed inputs;
+`tests/uri-overlay.sh` clicks and hovers the production per-line delegate in Qt.
+
+Code payloads use exact
 decoded text without OCR prose cleanup. Number opens a URI or canonical path and
 copies revision or non-URI code text; Ctrl + number copies any item and stays
 latched through multi-digit input. Show the default action in the hover text.
