@@ -324,6 +324,16 @@ the panel stops capture and playback and discards the sample; nothing reaches
 disk. See `seele-shell/projects/tools/README.md` for the protocol and the
 private-PipeWire fixture.
 
+The Now Playing panel and the Control Center's media module are one block. Both
+draw `MediaBody` at `mediaBodyHeight` on a card, so opening the module does not
+unframe what was clicked, and both follow one selected player. Pure media policy,
+including capability projections and timeline labels, lives in `qml-core`; QML
+retains object identity, layout and interaction. With no player the panel shows
+one shared empty state. With a player it keeps the volume rule available to state
+unsupported or read-only capability, and offers speeds through `PanelPicker` only
+when there is a choice. The timeline is the shared `MeterBar`; controls use an
+explicit focus indicator appropriate to their shape.
+
 On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control

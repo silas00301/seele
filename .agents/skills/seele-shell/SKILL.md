@@ -611,7 +611,7 @@ group's live summary at the far end and, where the group folds, the chevron and
 the click target that fold it), `SegmentWell` with `Segment`, `IconButton`,
 `HoverWash`, `MeterBar`, `CardEdge`, `PanelSurface`,
 `SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
-`RefreshGlyph`, `CenteredGlyph`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
+`RefreshGlyph`, `CenteredGlyph`, `FocusRing`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
 `ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
 all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
 the wash under the content, the edge and the film over it.
@@ -640,11 +640,42 @@ widens into a band; a row highlight takes the row's full height.
 
 The Control Center's media module and the Now Playing panel it opens draw the
 same `MediaBody` at the same `mediaBodyHeight`, so there is one place to change
-what a track looks like. The card wraps it in a module surface with hover and a
-`ModuleDragArea`; the panel puts it under a `PanelHeader`. Neither arranges the
-parts itself. Their player comes from one root selection. The panel exposes that
-selection through `MediaPlayerPicker` when more than one resumable player is on
-the bus, and the Control Center follows it.
+what a track looks like. Both put it on a card: the module adds hover and a
+`ModuleDragArea` to that card, the panel sets its card under a `PanelHeader`.
+Neither arranges the parts itself. Their player comes from one root selection.
+The panel exposes that selection through `MediaPlayerPicker` when more than one
+resumable player is on the bus, and the Control Center follows it.
+
+With no player the panel is its `PanelHeader` over one `EmptyState`; the media
+block, volume group and speeds all withdraw rather than standing dead over
+copies of "Nothing playing". With a player, the volume group stays present and
+states unsupported or read-only capability in its rule. The speed group
+withdraws whenever `MediaSpeed.rates` holds fewer than two rates, because one
+rate is not a choice: that is the normal case, since Spotify reports
+`minRate == maxRate == 1`. Column positioners skip invisible children, so the
+panel's height keeps falling out of its content.
+
+`PanelPicker` is the shell's dropdown: the well material, the section rule's fold
+arrow, and a list on `floatColor` whose current row is lit. A caller supplies the
+model, `displayText`, a `label`/`caption` pair for how a row is worded, and a
+`chosen` predicate — a predicate rather than a value, because a player matches by
+identity and a rate within a tolerance, and a player running a rate it was given
+elsewhere matches no row at all. `MediaPlayerPicker` is that control with a
+two-line row; the speed set is the same control on its group's rule, pinned to
+the width of the widest rate it can show so the box cannot slide as the rate
+changes. Nothing cycles rates any more, so `media.nextRate` and `MediaSpeed.cycle`
+are gone rather than left unreachable.
+
+`MediaButton` is one material: the play/pause button is filled in the accent at
+`rowHeight` and the four around it rest on nothing at `controlHeight`, each
+reporting the pointer through `HoverWash` over whatever state it already shows
+and the keyboard through `FocusRing`. `MediaTimeline` draws its position with
+the shared `MeterBar` inside a `trackTarget`-tall strip, grows its `trackHead`
+under the pointer as well as under a drag, and collapses to zero height for a
+player that reports no position, so the transport takes that room instead of
+floating over a reserved band. Timeline labels come from `media.timeLabel` in
+`qml-core`, which states hours for anything past the hour rather than counting
+a recording into three-digit minutes.
 
 Hover cannot be verified by warping the cursor with `hl.dsp.cursor.move`: the
 compositor delivers a pointer event only when the warp crosses into a different
