@@ -2,6 +2,19 @@
 let
   module = (
     { pkgs, ... }:
+    let
+      scrollback = pkgs.writeShellScript "seele-tmux-scrollback" ''
+        if [ "$#" -eq 3 ]; then
+          exec ${pkgs.tmux}/bin/tmux -S "$1" display-popup -c "$3" -E -w 80% -h 70% -T 'Scrollback' \
+            -e "SEELE_SCROLLBACK_SOCKET=$1" -e "SEELE_SCROLLBACK_PANE=$2" -e "SEELE_SCROLLBACK_CLIENT=$3" \
+            "$0" view
+        fi
+        [ "$#" -eq 1 ] && [ "$1" = view ] || exit 2
+        export NVIM_LOG_FILE=/dev/null
+        export SEELE_SCROLLBACK_TMUX=${pkgs.tmux}/bin/tmux
+        exec ${pkgs.neovim-unwrapped}/bin/nvim --noplugin -n -i NONE -R -u ${./_tmux/scrollback.lua}
+      '';
+    in
     {
       programs.tmux = {
         enable = true;
@@ -40,6 +53,9 @@ let
           bind-key > split-window -c '#{pane_current_path}'
           bind-key q kill-pane
           bind-key y copy-mode
+
+          # q shell-quotes each originating identity before run-shell expands it.
+          bind-key -N 'Search and copy pane scrollback in Neovim' H run-shell '${scrollback} #{q:socket_path} #{q:pane_id} #{q:client_name}'
 
           bind-key "T" display-popup -E -w 80% -h 70% -d '#{pane_current_path}' -T 'Sesh' tv sesh
 
@@ -88,10 +104,35 @@ in
 {
   flake.modules.homeManager."tmux" = module;
 
+  perSystem =
+    { pkgs, ... }:
+    {
+      checks.tmux-scrollback =
+        pkgs.runCommand "seele-tmux-scrollback-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+              pkgs.neovim-unwrapped
+              pkgs.bash
+            ];
+          }
+          ''
+            mkdir -p programs
+            cp -r ${./_tmux} programs/_tmux
+            cp ${./tmux.nix} programs/tmux.nix
+            export NVIM_BIN=${pkgs.neovim-unwrapped}/bin/nvim
+            export TMUX_BIN=${pkgs.tmux}/bin/tmux
+            python3 programs/_tmux/test-scrollback.py
+            touch "$out"
+          '';
+    };
+
   seele.portable.tmux = {
     # tmux launches fish, and its popup binding reaches for television and sesh,
     # so the wrapper carries them rather than borrowing whatever the foreign
-    # host happens to have.
+    # host happens to have. The scrollback launcher pins its own unconfigured
+    # Neovim, so it needs no additional Home Manager feature.
     modules = [
       "tmux"
       "fish"
