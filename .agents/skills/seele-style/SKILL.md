@@ -55,6 +55,10 @@ inset, `panelMargin` and `panelSpacing` for the panel.
 button and a list row each take one; `detailRowHeight` (52) is the row that leads with a
 mark and sets a caption under its title. A card or tile still sizes to what it holds.
 
+**Media geometry** — `mediaPanelWidth` is the width that lets the shared media block
+carry art, text and transport without squeezing them. `trackTarget` is the taller pointer
+strip around a thin interactive timeline; `trackHead` is the handle drawn on that track.
+
 **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a control that
 travels. Only in-surface state changes animate. Never animate a whole window, layer
 surface or translucent card.
@@ -134,9 +138,11 @@ alias — put it there when you add it, not after the second caller appears.
 | `GlyphButton` | A complete icon action with the shared material, centered glyph, keyboard activation, accessible name and tooltip. |
 | `HoverWash` | The neutral light that reports the pointer, laid over whatever the control already says. |
 | `ControlSwitch` | A persistent on/off state. Off is a well, not a grey pill. |
-| `MeterBar` | Every filled track in the shell — capacity, usage, battery, volume. Graded along its length, running in a well with its own hairline. |
+| `MeterBar` | Every filled track in the shell — capacity, usage, battery, volume, a media timeline's position. Graded along its length, running in a well with its own hairline. Drawn thin: a track the pointer must hit is targeted by the strip around it, not by growing the meter. |
 | `RefreshGlyph` | An in-place spinner for asynchronous work. |
 | `HoverTip` | A tooltip. Inside a panel it needs `inOverlay: true`. |
+| `FocusRing` | Where the keyboard is when a control has no focus indication of its own, laid over that control on its own corner. Tracks may instead state focus through their border. |
+| `PanelPicker` | The shell's dropdown: well material, the rule's fold arrow, and a list on the floating material with the current row lit. Shell-only for now, because the callers are both in `shell.qml`. |
 | `CenteredGlyph` | A font glyph centred by its visible ink rather than its advance width. |
 | `BarLabel` | A menu bar label carrying arbitrary text, baseline-anchored to the primary font. |
 | `SeeleListView` / `SeeleFlickable` | Every scrollable, so one spring governs them all. |
@@ -151,7 +157,9 @@ alias — put it there when you add it, not after the second caller appears.
 The Control Center and media surfaces add `ControlTile`, `ConnectivityRow`,
 `ControlLevel`, `AudioLevelRow`, `ApplicationLevelRow`, `MediaBody`, `MediaButton` and
 `MediaTimeline`. A module
-that lives in both the Control Center and its own panel draws the same body in both.
+that lives in both the Control Center and its own panel draws the same body in both,
+**and frames it the same way**: the panel puts the block on a card exactly as the
+module does, so opening a module never unframes what was clicked.
 A second level in the same panel takes the first one's anatomy a step down the ramp
 rather than a shape of its own: `ApplicationLevelRow` is `AudioLevelRow` at
 `rowHeight`, with the application's icon where the master row's glyph is, and both
@@ -177,6 +185,10 @@ Choose the control by what the user is doing:
   two views is being read — is a `SegmentWell` of `Segment`s. Never several outlined
   boxes side by side: an outline around every alternative says what the fill of the one
   that is on already says, and the well is what makes the group read as one control.
+  The well is for a choice worth seeing all of at once. A choice that is rarely made,
+  or whose set can shrink to one, is a dropdown on the group's rule instead — a well
+  that spends a row on five segments, or draws a single segment because the set has
+  one member, is the shape telling you it was the wrong one.
 - **A one-shot action** is a button. Actions are not a choice among each other.
 - **A persistent on/off state** is a `ControlSwitch` beside the title or on the group's
   rule.
@@ -284,6 +296,13 @@ Each of these has been hit at least once. The symptom is what to watch for.
   Cure: `SurfaceGrain`'s `inset`.
 - **A `Rectangle` asked to clip.** Symptom: content escapes the rounded corner. Cure:
   `ClippingRectangle`.
+- **A tabbable control that draws nothing for focus.** Symptom: tab moves through a
+  transport or picker and the panel never changes. Cure: use `FocusRing`, or the
+  control's own explicit focus border when its track already provides one.
+- **A group that stays open to say it is empty.** Symptom: a well whose only content is
+  a sentence about why the well has nothing in it, or the same "nothing here" written
+  once per group. Cure: withdraw the rule and its content together, and let one
+  `EmptyState` speak for the whole surface.
 - **An anchored click area inside a `Column`.** Symptom: labels overlap because Qt disables the positioner. Put the labels in a nested column and its full-size click area beside it, inside an `Item` sized from the labels.
 - **A panel following the focused monitor.** Symptom: an open surface jumps to another
   output when the pointer crosses a screen edge. Cure: record the output at open time.
