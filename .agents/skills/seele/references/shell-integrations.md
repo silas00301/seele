@@ -191,28 +191,37 @@ The Control Center's Themes tile and `Super + Ctrl + Shift + T` open the shell's
 own theme picker on `nerv`; the Vicinae **Seele Themes** command is the same
 catalog from the launcher. `seele-theme` in the submodule's `config-tools` crate
 owns the catalog, publication and every reload. `ThemeStore.qml` runs it,
-`ThemePanel.qml` draws the rows, and `themes.rs` in `qml-core` owns the catalog's
-validation, the grouping, the search, the header line and every sentence about a
+`ThemePanel.qml` draws the preview and the tiles, and `themes.rs` in `qml-core`
+owns the catalog's validation, the family grouping, the search and mode filter,
+where each arrow key leads, what the preview shows, and every sentence about a
 failure or a pending reload.
 
 The store lists only while the panel is open, and it never treats its own
 request as the answer: the applied theme comes from the selection file the
 helper publishes, watched rather than polled, so a theme applied from the
-launcher marks the row here and a failed switch marks nothing. A palette reaches
+launcher marks the tile here and a failed switch marks nothing. A palette reaches
 a Qt colour property only after the native side has accepted the whole catalog,
 so a preset missing a role is refused instead of drawn half-themed. Applying is
 single-flight, guarded by a timeout that ends the helper rather than waiting on
 it, and the reply is used only to name what has not reloaded yet — never to
 claim that the switch failed, because by then it is saved.
 
-Rows lead with the applied theme, then group by dark and light in the catalog's
-own curated order. Each row draws the preset as a bar over a window in that
-preset's colours, with the accent on the window border, because that is what the
-switch does to the compositor. The panel keeps nothing on disk, publishes
-nothing, and repaints with the rest of the shell as soon as a theme is applied.
-Like the Resources and Home Assistant windows, the Themes window hands its panel
-the room its output has, and the list takes what the search, heading and any
-banner leave. Colour Lab owns the palette mark; Themes carries the light/dark
+The panel leads with a live preview: a small desktop drawn in the highlighted
+preset, with the accent on the focused terminal's border because that is what
+the switch does to the compositor. It follows the keyboard and the pointer, so
+a theme is seen before it is applied, and its caption names the theme it would
+replace. Below it each family is a row of tiles, each tile a sample of its
+preset. Families come from the whole catalog, so the search and the
+All/Dark/Light filter take tiles out without relabelling the rest. Only a
+pointer that actually moved chooses a tile: tiles are created and scrolled
+under a resting pointer on every keystroke, and treating that as intent would
+let a mouse left over the grid take the preview, and Enter, from the keyboard.
+Apply keeps the neutral button style, because the selected one falls near 3:1
+under light presets with pale accents. The panel keeps nothing on disk,
+publishes nothing, and repaints with the rest of the shell as soon as a theme
+is applied. Like the Resources and Home Assistant windows, the Themes window
+hands its panel the room its output has, and the grid takes what the preview,
+the controls and any banner leave. Colour Lab owns the palette mark; Themes carries the light/dark
 one. The shell's quiet text depends on the projection's legibility floor in
 `seele-theme`, so keep `subtext` and `overlay` derived there rather than read
 from Base16 slots directly. See

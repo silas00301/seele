@@ -14,10 +14,15 @@ previews, and press Enter to apply one. The catalog includes 13 presets:
 The configured flavor remains the initial choice. Selecting a theme needs no
 rebuild, privileges or network access.
 
-Both pickers show the applied theme first and group the rest by light and dark.
-The shell panel draws each preset as a bar over a window in that preset's own
-colours; the launcher shows the same palette as named colour roles beside a
-description of what a switch reaches. Applying is one request at a time, and
+The shell panel leads with a small desktop drawn in the highlighted preset — its
+bar, a focused terminal with coloured output, a notification and an accent
+slider — which follows the arrow keys and the pointer, so a theme is seen before
+it is applied. Below it each family is one row and each variant one tile, drawn
+as a sample of itself: its name in its own text colour on its own background.
+Search and an All/Dark/Light filter take tiles out without regrouping the rest.
+The launcher shows the applied theme first, groups the rest by light and dark,
+and describes each palette's roles beside what a switch reaches. Applying is one
+request at a time, and
 neither surface publishes anything itself: both run `seele-theme`, and the shell
 panel reads the applied theme from the selection that helper publishes, so a
 theme chosen in either place is marked in the other. The shell repaints itself
@@ -79,8 +84,9 @@ The launcher fixture is `seele-shell/tests/vicinae-themes.cjs`, and the shell
 panel's store and production wiring are covered by `seele-shell/tests/themes.js`,
 and `seele-shell/tests/tst_themes.qml` renders the production panel in QtTest,
 failing on any Qt warning.
-Row grouping, search, the header line and every failure sentence belong to
-`seele-shell/projects/qml-core/src/themes.rs` and are tested there.
+Family grouping, search, arrow-key movement, what the preview shows and every
+failure sentence belong to `seele-shell/projects/qml-core/src/themes.rs` and are
+tested there.
 Run `lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua` to verify
 that the editor initializer leaves other hosts' remaining configuration running
 and applies only complete, valid palettes through its watcher callback.
