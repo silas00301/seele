@@ -104,6 +104,25 @@ geometry, animations, keyboard behavior, source object identity and consent.
 Use the pinned nixpkgs Rust version for final formatting/Clippy compatibility;
 a newer local compiler is only an iteration aid.
 
+## Keep local workbenches bounded and session-owned
+
+Calculator, Colour Lab and Text workbench use `qml-core` policy. Meeting planning
+extends the existing resident clock and pinned IANA zone set. Keep source text,
+colour input and expressions out of command arguments; clipboard actions are
+explicit. Closing Calculator or Text workbench destroys its editor and undo
+history. The tools README and `projects/shell/CALCULATOR.md` describe their
+bounds and focused fixtures.
+
+Resources and Network activity sample local kernel data only while their panel
+is open. Each opening owns a fresh worker; generation guards reject queued
+stdout and exit callbacks after closing or reopening. PID/start time and
+interface index/sysfs identity protect selections from reuse. Gaps and unknown
+first rates stay visible. `HistoryChart` paints bounded native series and
+`ChoiceBox` supplies the native keyboard selector; neither owns sampling policy.
+Run the resource/network real-worker fixtures and production Qt lifecycle
+checks after changing these boundaries. Keep `tests/control-center-layout.js`
+passing when adding utility tiles or changing the output-bounded viewport.
+
 ## Keep NixOS generation rollback reviewable and guarded
 
 The managed Vicinae command `generations` lists the retained system profile with
