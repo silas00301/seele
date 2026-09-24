@@ -203,6 +203,7 @@ in
 
   extraConfigLua = ''
     dofile("${./saved-diff.lua}")
+    dofile("${./copy-reference.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then
