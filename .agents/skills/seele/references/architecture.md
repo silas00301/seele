@@ -114,8 +114,10 @@ and the Codex broker. Multiple interpretations use the existing fzf picker, and
 local destructive-command detection comments the inserted line even if the model
 labels it safe. See the crate README for policy, bounds and fixtures.
 
-The `voxtype` input follows the parent nixpkgs and pins the upstream revision
-whose Nix builder carries the required Git dependency hashes. The
+The `voxtype` input follows `nixpkgs-stable-nixos` and pins the upstream
+revision whose Nix builder carries the required Git dependency hashes. Keeping
+its ONNX Runtime, CUDA toolkit and wrapper runtime on the stable package set
+prevents unrelated unstable updates from rebuilding the dictation stack. The
 `modules/packages/voxtype.nix` output adapts upstream's ONNX/CUDA wrapper for
 dynamic ONNX Runtime loading and exposes it only on x86_64-linux.
 `modules/features/programs/voxtype.nix` consumes that output from

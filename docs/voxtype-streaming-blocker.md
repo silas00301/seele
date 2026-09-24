@@ -14,13 +14,15 @@ the native status/audio socket; the integration captures no additional audio.
 The feature is imported by the `nerv` Home Manager profile because its CUDA
 package is specific to that NVIDIA host.
 
-`modules/packages/voxtype.nix` adapts upstream `onnx-cuda`, pinned through the
-Voxtype input with the parent's nixpkgs. The revision includes the Nix hashes
-for its OpenVINO Git dependencies, missing from v1.0.1's flake. The adapter adds
-`onnx-load-dynamic` so the CUDA probe accepts the Nix-provided ONNX Runtime
-rather than enforcing a bundled runtime's CUDA major version. Its wrapper
-makes `cuda_cudart` and `/run/opengl-driver/lib` discoverable by `dlopen`.
-Upstream supplies the CUDA-enabled ONNX Runtime and typing/clipboard tools.
+`modules/packages/voxtype.nix` adapts upstream `onnx-cuda`. The Voxtype input
+and the wrapper's `cuda_cudart` follow `nixpkgs-stable-nixos`, so unrelated
+unstable updates do not rebuild the ONNX/CUDA dictation stack. The pinned
+Voxtype revision includes the Nix hashes for its OpenVINO Git dependencies,
+missing from v1.0.1's flake. The adapter adds `onnx-load-dynamic` so the CUDA
+probe accepts the Nix-provided ONNX Runtime rather than enforcing a bundled
+runtime's CUDA major version. Its wrapper makes `cuda_cudart` and
+`/run/opengl-driver/lib` discoverable by `dlopen`. Upstream supplies the
+CUDA-enabled ONNX Runtime and typing/clipboard tools.
 
 The immutable FP32 model directory contains exactly the batch loader's encoder,
 external encoder weights, joint decoder and vocabulary. Each file is separately
