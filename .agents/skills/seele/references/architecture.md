@@ -705,3 +705,11 @@ portable output already carries both VCS tools. The `fish-project-root` check
 runs real Fish against isolated Jujutsu and Git repositories, including linked
 workspaces, symlinks and literal newline paths. Run its fixture directly with
 `python3 modules/features/programs/_fish/test_croot.py modules/features/programs/_fish/croot.fish fish jj git`.
+
+## Local shell workbenches
+
+Calculator, Colour Lab, Text workbench, meeting planning, Resources and Network
+activity live in the shell submodule. The parent contributes only the Hyprland
+layer blur namespaces and the published gitlink. Keep transforms, timezone
+policy and kernel sampling native; QML owns rendering and interaction. Details
+and validation boundaries are in `docs/shell-workbenches.md`.

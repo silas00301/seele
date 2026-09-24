@@ -408,6 +408,26 @@ collects no logs. The panel's layershell namespace belongs in the Hyprland blur
 rule. See the Seele skill's `shell-integrations.md` and the submodule's
 `projects/tools/README.md`.
 
+The shell's local workbenches are Calculator, Colour Lab, Text workbench and the
+World Clock's Plan meeting mode. Calculator and text documents, including undo
+history, disappear when their panels close; clipboard operations are explicit.
+Native Rust owns expression parsing, unit conversion, colour/contrast policy,
+text transforms and timezone calculations. Meeting planning uses local and pinned
+IANA zones with an explicitly labelled weekday 09:00–17:00 guide, not calendar
+availability. Colour Lab accepts opaque sRGB colours and can explicitly use the
+last screen-picked colour. The Control Center groups utility tiles in two columns
+and scrolls within the focused output; Vicinae exposes each workbench directly.
+
+Resources and Network activity are local, read-only shell panels. Their native
+workers sample only while the owning panel is open and retain bounded histories
+in memory. Resources reads CPU, memory and process names without command-line
+arguments. Network activity reads interface counters without contacting a host
+or examining packets. Kernel identities and fresh baselines keep restarted
+processes and replaced interfaces from inheriting a previous object's rates.
+The parent supplies the new layer namespaces to the existing Hyprland blur rule;
+no service or host keybinding is needed. See `docs/shell-workbenches.md` for entry
+points, validation and the source-only PR integration boundary.
+
 Portable applications are the second way a feature reaches outside this flake. `modules/flake/portable.nix` declares `seele.portable.<app>`, and each program leaf worth running on an unmanaged machine contributes one entry beside its `flake.modules.homeManager` definition. An entry names the Home Manager features to evaluate, and the builder wraps the resulting binary so it materializes the generated `.config` tree as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<app>` and puts that evaluation's own `home.path` on `PATH`. The evaluation is standalone rather than host-derived, so a feature the app reads through has to be listed or its options resolve to Home Manager defaults instead of the values a host would give them.
 
 Portable and Glow launchers use the native `seele-launch` manifest contract.
