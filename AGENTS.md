@@ -252,8 +252,10 @@ entries and runs its focused checks. Home Manager installs the whole extension
 directory through `xdg.dataFile`, so a new command needs no parent-side change.
 Every command declares its own search keywords. Live rows state what they are
 through coloured tags and state-matched icons, window rows can close or force
-quit through the desktop's existing validated `application` endpoints, and the
-windows view filters by workspace. Polled views keep their loading indicator for
+quit through the desktop's existing validated `application` endpoints, filter by
+workspace, and move through the native validated workspace action. Copy Clean
+Link adds an explicit clipboard preview and copy command; see the shell
+integration reference and the extension README for both workflows. Polled views keep their loading indicator for
 the first load and an explicit refresh only. `projects/vicinae/ui.tsx` owns the
 shared scalar presentation, and only icon names present in both the Raycast
 typings and Vicinae's own enum are used, because Vicinae resolves `@raycast/api`

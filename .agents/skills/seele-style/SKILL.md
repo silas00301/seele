@@ -147,6 +147,7 @@ alias — put it there when you add it, not after the second caller appears.
 | `BarLabel` | A menu bar label carrying arbitrary text, baseline-anchored to the primary font. |
 | `SeeleListView` / `SeeleFlickable` | Every scrollable, so one spring governs them all. |
 | `SearchField` | The one input that filters a list. A well, because it holds a query rather than content. |
+| `ValueField` | A short editable value, such as a custom timer duration, on the same well material with a visible keyboard-focus edge. |
 | `EmptyState` | What a surface says when it has nothing to show, with its own mark, sentence and way out. |
 | `StatusBanner` | A surface's own bad news, carrying the actions that answer it. |
 | `StatusChip` | A short state named in its own tint — GitHub priority, Maintenance urgency, a job, transfer or integration state, PR checks and review, notification urgency. Red for failure or act now, yellow for attention, green for done, accent for live work, overlay otherwise. A readout on the small radius, never a pill and never a control; in a dense row it takes that row's height. |

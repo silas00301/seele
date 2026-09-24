@@ -89,13 +89,25 @@ and stops sessions and hands typed durations to native validation verbatim. The
 shell contributes only a conditional coffee bar item and a compact panel with
 Stop. See `projects/caffeinate/README.md` for the protocol and fixtures.
 
+## Transfers
+
+The Transfers panel filters retained history by filename/device, direction and
+outcome using `qml-core` policy. Active jobs remain visible, and explicit
+notification focus clears filters before revealing its target. The service
+continues to own canonical groups and file indices. See the submodule's
+`projects/transfers/README.md` for behavior and the native-backed store and
+production Qt panel fixtures.
+
 ## Ports
 
 The Control Center's Ports tile opens a local TCP listener inspector on `nerv`.
 `seele-ports` in the shell submodule's `tools` crate owns discovery, ownership,
 privilege and every action's policy; QML owns the panel, its keyboard behavior
 and its confirmations. The worker scans only while the panel is open and keeps
-nothing on disk.
+nothing on disk. Its All, Loopback and Network selectors compose with the
+existing port/URL/process search. They classify bind addresses; wildcard and
+non-loopback bindings are Network, with no inferred firewall or routing state.
+Changing filters withdraws a pending review and rejects old query replies.
 
 Discovery reads `/proc/net/tcp` and `/proc/net/tcp6` in the host network
 namespace and reports listening sockets only. UDP, remote scanning and other
@@ -134,9 +146,13 @@ the protocol, the bounds and the synthetic `/proc` validation.
 ## Local controls
 
 - Right-click the clock or use `seele-shellctl control focus` for focus/break
-  presets, pause/resume and completion. `FocusTimer.qml` retains deadlines only in
-  memory across QML reloads; `focus.js` delegates timer policy to Rust. Suspension
-  counts toward elapsed time.
+  presets, custom whole-minute durations from 1 to 240, pause/resume and completion.
+  The +5 action extends a running or paused timer within the four-hour total;
+  an expired timer completes before any extension. `FocusPanel.qml` owns the
+  controls and `FocusTimer.qml` retains deadlines only in memory across QML
+  reloads; `focus.js` delegates timer policy to Rust. Suspension counts toward
+  elapsed time. The offscreen panel fixture exercises the production controls
+  through the native policy CLI when Quickshell is unavailable.
 - The native notification store owns manual DND, app stacks and verification-code
   copying. Its local associated image is the sender-identity icon, with the
   sending application icon badged over it rather than a second body image. See
@@ -158,6 +174,21 @@ the protocol, the bounds and the synthetic `/proc` validation.
   clipping comes from the samples rather than from the bar, and a lost device is
   named rather than replaced. Record, Listen live, Replay, Stop and the test
   output rows are focusable buttons and wrap at narrow panel widths.
+
+## Launcher controls
+
+The managed Vicinae Windows command offers native-validated moves to live or
+explicitly configured ordinary workspaces. The move keeps the viewed workspace
+in place; moving its focused client away lets the compositor select a replacement.
+The native endpoint verifies window identity, destination and resulting state.
+The existing window list stays available when workspace-rule discovery fails.
+See `projects/vicinae/README.md` for the pinned Lua API and process fixtures.
+
+Copy Clean Link reads the clipboard once on explicit invocation, previews a
+conservative native HTTP(S) transformation, and copies only on the user's action.
+It retains unknown parameters, raw encodings and fragments; recognized signing
+or authentication markers keep the original link. It keeps no history and makes
+no network requests. The same README owns its stdin/privacy and host-action tests.
 
 ## Panel integration
 
