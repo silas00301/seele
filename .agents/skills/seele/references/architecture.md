@@ -64,6 +64,11 @@ are not installed as dependencies of native services.
 Neovim’s attached LSP clients expose `<leader>cr` for symbol rename and
 `<leader>ca` for code actions in normal and visual modes. Both keep the native
 prompt/selection workflow and are described in which-key.
+`<leader>cs` / `:SavedDiff` toggles a read-only comparison of current text with
+its saved file in an isolated tab; `q`, Escape or `:SavedDiffClose` retires both
+snapshots without touching the source window or its undo/diff state. The helper
+and its isolated real-Neovim fixture live in `modules/packages/_nixvim/`; see
+that directory's README for limits and validation.
 
 ## Deferred modules and active profiles
 
