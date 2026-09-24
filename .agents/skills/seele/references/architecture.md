@@ -123,6 +123,23 @@ dynamic ONNX Runtime loading and exposes it only on x86_64-linux.
 instead of the Linux profile because its CUDA runtime and driver path are
 specific to the NVIDIA host.
 
+`modules/features/programs/quicklook.nix` publishes the `quicklook` Home
+Manager feature, imported by `modules/profiles/home/nerv.nix`. Its entire
+parent-side contribution is two Yazi `mgr` bindings: `<Space>` runs
+`${selfPackages.seele-shell}/bin/seele-shellctl quicklook "$@"` through Yazi's
+`shell` command as one quoted template, and Yazi's displaced selection toggle
+moves to `<C-Space>`. Yazi's `[mgr]` and `[input]` keymaps are separate layers,
+so taking Space there never reaches a prompt; `<C-Space>` needs a terminal that
+reports it apart from NUL, which Ghostty and the configured tmux
+(`extended-keys on`, `csi-u`) do. The binding is a feature of its own rather
+than part of `yazi` because that leaf is cross-platform and publishes
+`seele.portable.yazi`, which does not list `quicklook`, so an unmanaged machine
+keeps Yazi's upstream Space. `programs.yazi.keymap` is a
+`pkgs.formats.toml` option, so the two leaves' `prepend_keymap` lists
+concatenate rather than replacing one another. The panel, the
+`seele-quicklook` worker and the `qml-core` presentation policy all live in the
+submodule; the compositor side is one namespace in the `hypr.nix` blur rule.
+
 `modules/features/programs/trash.nix` publishes the `trash` Home Manager
 feature, imported by `modules/profiles/home/linux.nix`. It adds `pkgs.trash-cli`
 and three command-position Fish abbreviations — `tp`, `tl`, `tre` for
