@@ -293,6 +293,47 @@ reopen a dismissed overlay. `tests/uri-picker.sh` exercises exact tmux records,
 real OCR, code coexistence, capture identity, strip boundaries, and cleanup;
 `tests/uri-picker.js` covers selection, action routing, and badge geometry.
 
+## Keep Quick Look a reader rather than a launcher
+
+`seele-shellctl quicklook <path>...` reaches `QuickLook.qml` and one centered
+`seele-shell-quicklook` layer surface per output, shown only on the focused
+one. The panel holds exclusive keyboard focus while it is open and must never
+acquire an editable control: that absence is the whole argument for Space
+dismissing it, and `tests/quicklook.js` fails if a text input appears. It is a
+toggle, so the surface that highlighted the file never moves under it; moving
+between the named files stays inside the panel, wrapping, while pages stop at
+the document's ends.
+
+`seele-quicklook` decides what a path is — container magic first, then the
+extension, then what the opening bytes read as — and bounds everything it
+reads. Only text and Markdown enter the reply; pictures, animations, sound and
+moving pictures are handed to Qt as a path, so the worker never copies them.
+Markdown is rendered and every other text is drawn exactly as its bytes read,
+so a source file is never re-interpreted as markup. Nothing redacts content:
+this is a private reader for the account that already owns the bytes. What is
+stripped is the class of characters that can forge a line of interface, from
+names and body text alike.
+
+Poppler is the only renderer, driven one page at a time into a `mkdtemp` 0700
+directory below `XDG_RUNTIME_DIR` under an 0077 umask, bounded to 1800 pixels
+on the longest edge and 32 cached pages per invocation. Those images are
+private runtime files, never screenshot-library or thumbnail-cache entries:
+supersession, `cancel`, stdin EOF, SIGTERM and SIGINT all remove them. Guard
+every reply by generation, index and page so a late render cannot be drawn over
+a file the reader has already left.
+
+Playback is explicit. Nothing starts on its own, and it never survives a move
+to the next file, because a folder walked through with the arrow keys would
+otherwise become a sequence of noises. `QuickLookMedia.qml` is loaded from its
+own file for the reason `CameraPreview.qml` is: a QtMultimedia backend that
+will not start must cost one body rather than the shell.
+
+`qml-core`'s `quicklook` owns the header line, the binary-unit sizes, the
+durations, the `file://` URL each preview is drawn from and the navigation
+arithmetic. `tests/quicklook.sh` exercises classification, bounds, private page
+modes, supersession and cleanup against the raw worker with fake Poppler tools;
+`tests/quicklook.js` covers the presentation and the production QML callbacks.
+
 ## Keep the quick AI prompt lazy and private
 
 `seele-shellctl prompt` reaches `AiPrompt.qml`; the parent binds it to
@@ -612,7 +653,11 @@ an install check for that layout. The Notes package globs
 `projects/shared/*.qml`, so a new component needs no packaging change but must
 pass that package's `qmllint`. The shell package also globs shared QML, but
 names shell-specific files twice, once to install them and once in its `qmllint`
-line. Keep both lists current: `MaintenancePanel.qml` and `MaintenanceStore.qml`
+line. `QuickLookMedia.qml` imports QtMultimedia and is linted separately with
+the required import paths. `CameraPreview.qml` remains installed and checked
+for presence but is left out of the main line because its module cannot be
+resolved there without the shell's own wrapper. Keep both lists current:
+`MaintenancePanel.qml` and `MaintenanceStore.qml`
 shipped unlinted long
 enough for that surface to grow its own formatting and rebuild parts the
 vocabulary already had. Add a new shell QML file to both lists.

@@ -560,7 +560,7 @@ let
           -- corners would otherwise sit on a squared-off pane of glass.
           hl.layer_rule({
             match = {
-              namespace = "^seele-shell-(bar|osd|agents|prompt|tray-menu|application|calendar|clock|focus|system-health|github|home-assistant|control-center|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|caffeinate|session|ports|calculator|color-lab|text-workbench|resources|network-activity|polkit)$",
+              namespace = "^seele-shell-(bar|osd|agents|prompt|quicklook|tray-menu|application|calendar|clock|focus|system-health|github|home-assistant|control-center|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|caffeinate|session|ports|calculator|color-lab|text-workbench|resources|network-activity|polkit)$",
             },
             blur = true,
             -- HoverTip uses child PopupWindows, not separate layer surfaces.
