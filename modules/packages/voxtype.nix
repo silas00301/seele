@@ -1,7 +1,7 @@
 { inputs, lib, ... }:
 {
   perSystem =
-    { pkgs, system, ... }:
+    { pkgs-stable, system, ... }:
     let
       upstream = inputs.voxtype.packages.${system};
       # The package dynamically loads Nix's ORT. Tell Voxtype's CUDA probe too,
@@ -20,7 +20,7 @@
             # session. Its direct dependencies do not supply that search path.
             wrapProgram "$out/bin/voxtype" \
               --prefix LD_LIBRARY_PATH : "${
-                lib.makeLibraryPath [ pkgs.cudaPackages.cuda_cudart ]
+                lib.makeLibraryPath [ pkgs-stable.cudaPackages.cuda_cudart ]
               }:/run/opengl-driver/lib"
           '';
         });
