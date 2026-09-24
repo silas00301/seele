@@ -390,6 +390,14 @@ collation and the reproducible resident-state benchmark;
 session to check the real API and production IPC handlers during the package
 build. `tests/control-actions.sh` checks command and clipboard failures.
 
+Per-application silence is session-local native notification policy. A group
+lead can silence future toasts from its stable desktop-entry/app identity while
+its current toasts, inbox, actions and history retain their existing lifetimes.
+The header's quiet menu can resume all quiet apps even after their groups have
+gone. Silence survives a QML reload through the in-memory snapshot, never a
+restart; resuming never replays arrivals. Preserve bounded app identities and
+legacy snapshot compatibility in the native and JavaScript fixtures.
+
 ## Keep the microphone test inside the panel that owns it
 
 `seele-mic-test` is started by `MicTestStore.qml` with `running: store.panelOpen`
