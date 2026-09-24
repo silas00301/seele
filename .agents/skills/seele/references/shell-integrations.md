@@ -143,6 +143,48 @@ listener still bound afterwards is reported as remaining, never as removed. No
 logs are collected or shown. See the submodule's `projects/tools/README.md` for
 the protocol, the bounds and the synthetic `/proc` validation.
 
+## Quick Look
+
+Space previews the file a surface has highlighted, without starting the
+application that owns it. There is no global Space binding and there never can
+be one: the compositor cannot tell a highlighted file from a caret. Only a
+surface that can distinguish the two offers the gesture. Yazi does, because
+`[mgr]` and `[input]` are separate keymap layers, so the `quicklook` Home
+Manager feature takes `<Space>` there and moves Yazi's own selection toggle to
+`<C-Space>`, which Ghostty and the configured tmux (`extended-keys on`,
+`csi-u`) report apart from NUL. Visual mode and `<C-a>`/`<C-r>` remain the way
+to select without it. The feature is separate from `yazi` on purpose: the file
+manager is cross-platform and has a portable application, while this binding
+needs Seele Shell, so an unmanaged machine keeps Yazi's upstream Space.
+Vicinae's own file search owns its action panel and exposes no extension point
+for a highlighted item, so Quick Look does not reach it; the Transfers panel,
+which the shell owns, offers the same preview for a received file.
+
+`seele-shellctl quicklook <path>...` is the entry point. Relative paths are
+resolved against the caller's working directory there, because the shell has
+none; the paths travel as one newline-separated argument, since every other
+byte is legal in a file name.
+
+The panel is one centered `seele-shell-quicklook` layer surface on the focused
+output. It takes exclusive keyboard focus while open and contains no editable
+control, which is what lets Space dismiss it exactly as Space opened it. The
+surface underneath therefore cannot move to another file while the preview is
+up; `←`/`→` (and `h`/`l`) move between the files the caller named, wrapping,
+while `↑`/`↓` turn PDF pages, which stop at the document's ends, or scroll a
+text body. Enter hands the file to `xdg-open` and closes, `Ctrl + C` copies the
+path through stdin, and `P` starts playback, which is never automatic and never
+survives a move to the next file.
+
+`seele-quicklook` in the submodule's `tools` crate decides what a path is and
+bounds what is read of it; `qml-core`'s `quicklook` owns the header line, the
+sizes, the durations and where the keys move. Rendered PDF pages are private
+runtime files removed on supersession, cancellation, EOF and SIGTERM. Nothing
+redacts content — this is a private reader for the account that already owns
+the bytes — but control and direction characters are stripped from names and
+text. Keep the panel's namespace in the Hyprland blur rule. See the submodule's
+`projects/tools/README.md` for the protocol and
+`tests/quicklook.{js,sh}` for its validation.
+
 ## Local controls
 
 - Right-click the clock or use `seele-shellctl control focus` for focus/break
@@ -195,7 +237,7 @@ no network requests. The same README owns its stdin/privacy and host-action test
 Ordinary panels use `WlrKeyboardFocus.OnDemand`, leaving the bar and click-away
 catcher available. Keep their namespaces in the blur rule in
 `modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant,
-Caffeinate and Ports.
+Caffeinate, Ports and Quick Look.
 Changing QML alone cannot add compositor blur.
 
 ## Validation
@@ -209,7 +251,10 @@ Quickshell timer through cold start, pause/resume and completion without touchin
 the desktop or sending notifications. `tests/mic-test.js` runs the microphone
 test's store against the real native policy, and `tests/mic-test.sh` drives the
 worker against a private PipeWire instance with synthetic audio; neither opens
-the user's microphone or outputs.
+the user's microphone or outputs. `tests/quicklook.js` runs the Quick Look
+controller's own functions with fake process, clipboard and compositor IO, and
+`tests/quicklook.sh` drives the raw worker against synthetic files and fake
+Poppler tools, proving classification, bounds, private page files and cleanup.
 
 Run the focused JavaScript suites in `tests/`, the native Rust tests, and the
 GitHub/Home Assistant Python fixtures against their raw Rust binaries. The

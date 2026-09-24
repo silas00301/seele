@@ -152,6 +152,28 @@ turn, deletes its Codex session, and removes private captures. Enter sends or
 copies according to input state; Ctrl + Enter restores the validated original
 Hyprland window and inserts the answer without moving the pointer.
 
+On `nerv`, Space previews the file a surface has highlighted without starting
+the application that owns it. There is no global Space binding and there cannot
+be one: only a surface that can tell a highlighted file from a caret may offer
+the gesture. The `quicklook` Home Manager feature takes `<Space>` in Yazi's
+`[mgr]` layer, which is separate from its `[input]` layer, and moves Yazi's own
+selection toggle to `<C-Space>`; it is a feature of its own rather than part of
+`yazi`, because the file manager is cross-platform and portable while the
+binding needs Seele Shell. `seele-shellctl quicklook <path>...` is the entry
+point, and the Transfers panel offers the same preview for a received file.
+Vicinae's built-in file search owns its own action panel and is out of reach.
+The panel is one centered layer surface that holds the keyboard while open and
+contains no editable control, so Space dismisses it exactly as Space opened it;
+arrows move between the named files and through PDF pages, Enter hands the file
+to its application, and playback is always explicit. The resident
+`seele-quicklook` worker classifies a path from its container magic, bounds
+what it reads, and drives Poppler into a private runtime directory removed on
+supersession, cancellation, EOF and termination. Nothing redacts content — this
+is a private reader for the account that already owns the bytes — but the
+control and direction characters that could forge a line of interface are
+stripped. See the Seele skill's `shell-integrations.md` and the submodule's
+`projects/tools/README.md`.
+
 On `nerv`, `Super + GRAVE` toggles a scratchpad terminal on Hyprland's
 `special:scratchpad` workspace. The `scratchpad` Home Manager feature owns the
 workspace rule, the window rule and the binding; the compositor spawns one
