@@ -1,7 +1,8 @@
 # Seele Themes
 
 On `nerv`, press **Super + Ctrl + Shift + T**, or open the Control Center's
-**Themes** module, for the shell's own picker. **Seele Themes** in Vicinae is the
+**Themes** module, for the shell's own picker. It floats in the middle of the
+focused output and closes nothing that is already open. **Seele Themes** in Vicinae is the
 same catalog from the launcher. Search the curated presets, look at their
 previews, and press Enter to apply one. The catalog includes 13 presets:
 
@@ -14,12 +15,14 @@ previews, and press Enter to apply one. The catalog includes 13 presets:
 The configured flavor remains the initial choice. Selecting a theme needs no
 rebuild, privileges or network access.
 
-The shell panel leads with a small desktop drawn in the highlighted preset — its
-bar, a focused terminal with coloured output, a notification and an accent
-slider — which follows the arrow keys and the pointer, so a theme is seen before
-it is applied. Below it each family is one row and each variant one tile, drawn
-as a sample of itself: its name in its own text colour on its own background.
-Search and an All/Dark/Light filter take tiles out without regrouping the rest.
+In the shell picker each family is one row and each variant one tile, drawn as
+a sample of itself: its name in its own text colour on its own background.
+Moving to a tile with the arrow keys, or clicking it, switches the desktop at
+once, so the shell repainting around the picker is the preview; a held key is
+coalesced so only the tile it stops on is applied. Hovering never switches
+anything. Enter keeps the ringed tile and closes, Escape closes, and **Back to**
+returns to the theme that was applied when the picker opened. Search and an
+All/Dark/Light filter take tiles out without regrouping the rest.
 The launcher shows the applied theme first, groups the rest by light and dark,
 and describes each palette's roles beside what a switch reaches. Applying is one
 request at a time, and
@@ -84,7 +87,7 @@ The launcher fixture is `seele-shell/tests/vicinae-themes.cjs`, and the shell
 panel's store and production wiring are covered by `seele-shell/tests/themes.js`,
 and `seele-shell/tests/tst_themes.qml` renders the production panel in QtTest,
 failing on any Qt warning.
-Family grouping, search, arrow-key movement, what the preview shows and every
+Family grouping, search, arrow-key movement, the ring's position and every
 failure sentence belong to `seele-shell/projects/qml-core/src/themes.rs` and are
 tested there.
 Run `lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua` to verify
