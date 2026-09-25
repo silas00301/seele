@@ -19,18 +19,19 @@ Use the `seele` skill in `.agents/skills/` for the workflow and architecture map
 - Do not expose credentials, SSH material, machine identifiers, or local agent/auth configuration.
 
 The `theme-switching` Home Manager feature on `nerv` provides **Seele Themes**
-in Vicinae, the shell's own Themes panel and Control Center module, and
-`Super + Ctrl + Shift + T`, which opens that panel. Its native `seele-theme`
-helper applies a saved palette across the session and supported apps without
+in Vicinae, the shell's own floating Themes picker and its Control Center
+module, and `Super + Ctrl + Shift + T`, which toggles the picker without closing
+any open panel. Moving between its tiles switches the desktop at once, so the
+shell repainting around it is the preview. Its native `seele-theme` helper
+applies a saved palette across the session and supported apps without
 rebuilding. Both pickers only run that helper: the panel reads the applied theme
 from the selection it publishes rather than from its own request, so either
 surface marks what the other applied. Family grouping, search, arrow-key
-movement, what the preview shows and every failure sentence belong to
-`qml-core`. The projection holds the shell's
-quiet text to a legibility floor rather than reading Base16's dim slots
-verbatim, because Catppuccin's Base16 file puts surface colours there. See
-[the theme switching guide](docs/theme-switching.md) for scope, ownership and
-application reload boundaries.
+movement, the ring's position and every failure sentence belong to `qml-core`.
+The projection holds the shell's quiet text to a legibility floor rather than
+reading Base16's dim slots verbatim, because Catppuccin's Base16 file puts
+surface colours there. See [the theme switching guide](docs/theme-switching.md)
+for scope, ownership and application reload boundaries.
 
 ## Architecture
 
