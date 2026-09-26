@@ -732,3 +732,13 @@ activity live in the shell submodule. The parent contributes only the Hyprland
 layer blur namespaces and the published gitlink. Keep transforms, timezone
 policy and kernel sampling native; QML owns rendering and interaction. Details
 and validation boundaries are in `docs/shell-workbenches.md`.
+
+## Runtime theme selection
+
+`modules/features/themes/theme-switching.nix` is a named Home Manager feature
+imported by `nerv`. Its catalog and app includes connect to the shell's native
+config-tools package and launcher extension. The raw `_theme-switching` helper
+evaluates upstream Stylix targets from curated Base16 schemes, and the Linux
+`theme-presets` check validates their generated assets through the runtime. See
+[the theme switching guide](../../../../docs/theme-switching.md) before changing
+palette ownership or adding another runtime theme consumer.

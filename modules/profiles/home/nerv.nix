@@ -12,6 +12,7 @@
     config.flake.modules.homeManager.maintenance
     config.flake.modules.homeManager.seele-shell
     config.flake.modules.homeManager.quicklook
+    config.flake.modules.homeManager.theme-switching
     config.flake.modules.homeManager.seele-transfers
     config.flake.modules.homeManager.seele-caffeinate
     config.flake.modules.homeManager.failure-analysis

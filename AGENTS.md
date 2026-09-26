@@ -18,6 +18,26 @@ Use the `seele` skill in `.agents/skills/` for the workflow and architecture map
 - Determine whether a change contributes to a named module, an active `common`/platform/host profile, or only a package/flake output. Keep the narrowest correct scope.
 - Do not expose credentials, SSH material, machine identifiers, or local agent/auth configuration.
 
+The `theme-switching` Home Manager feature on `nerv` provides **Seele Themes**
+in Vicinae, the shell's own floating Themes carousel and its Control Center
+module, and `Super + Ctrl + Shift + T`, which toggles the carousel without
+closing any open panel. The desktop keeps a light theme and a dark theme and a
+mode that picks between them; any preset may fill either slot. Moving through
+the carousel switches the desktop at once, so the shell repainting around it is
+the preview, and Escape puts the mode and both slots back. The mode can follow a
+schedule at fixed times or at sunrise and sunset; the `seele-theme-auto` user
+service runs the native helper's edge-triggered loop, so a mode chosen by hand
+holds until the next boundary. Sunrise and sunset are reckoned from the system
+timezone's reference city in the tz database; no location is asked for or
+stored. The native `seele-theme` helper owns the slots, the mode, the schedule
+and publication, and both pickers only run it; the carousel reads the applied
+theme from the selection it publishes, so a switch from anywhere is seen there.
+Ordering, filtering, movement and the schedule's sentence belong to `qml-core`.
+The projection holds the shell's quiet text to a legibility floor rather than
+reading Base16's dim slots verbatim, because Catppuccin's Base16 file puts
+surface colours there. See [the theme switching guide](docs/theme-switching.md)
+for scope, ownership and application reload boundaries.
+
 ## Architecture
 
 - `flake.nix`: inputs and the `flake-parts`/`import-tree` bootstrap.
