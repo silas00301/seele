@@ -10,28 +10,30 @@ in
 {
   perSystem =
     { pkgs, config, ... }:
-    lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-      checks.theme-presets =
-        let
-          catalog = pkgs.writeText "seele-theme-catalog-check.json" (
-            builtins.toJSON {
-              version = 2;
-              default = "catppuccin-${themeSettings.flavor}";
-              fontFamily = "Seele";
-              wallpaper = "/etc/wallpaper/wallpaper.jpg";
-              commands = { };
-              themes = import ./_theme-switching {
-                inherit inputs pkgs;
-                catppuccin = themeSettings;
-                catppuccinPalette = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.palette;
-              };
-            }
-          );
-        in
-        pkgs.runCommand "seele-theme-presets-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
-          python3 ${../../../tests/theme-presets.py} ${config.packages.config-tools}/bin/seele-theme ${catalog}
-          touch "$out"
-        '';
+    {
+      checks = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+        theme-presets =
+          let
+            catalog = pkgs.writeText "seele-theme-catalog-check.json" (
+              builtins.toJSON {
+                version = 2;
+                default = "catppuccin-${themeSettings.flavor}";
+                fontFamily = "Seele";
+                wallpaper = "/etc/wallpaper/wallpaper.jpg";
+                commands = { };
+                themes = import ./_theme-switching {
+                  inherit inputs pkgs;
+                  catppuccin = themeSettings;
+                  catppuccinPalette = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.palette;
+                };
+              }
+            );
+          in
+          pkgs.runCommand "seele-theme-presets-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+            python3 ${../../../tests/theme-presets.py} ${config.packages.config-tools}/bin/seele-theme ${catalog}
+            touch "$out"
+          '';
+      };
     };
 
   flake.modules.homeManager.theme-switching =
@@ -120,8 +122,7 @@ in
       catppuccin.ghostty.enable = false;
       programs.ghostty.settings.config-file = [ "?${state}/current/ghostty" ];
       # Import only the generated color sheet, preserving GTK settings/fonts.
-      gtk.gtk3.extraCss = lib.mkForce ''@import url("file://${state}/current/gtk.css");'';
-      gtk.gtk4.extraCss = lib.mkForce ''@import url("file://${state}/current/gtk.css");'';
+      stylix.targets.gtk.extraCss = ''@import url("file://${state}/current/gtk.css");'';
       programs.fish.interactiveShellInit = lib.mkAfter ''
         function __seele_theme --on-event fish_prompt
           set -l theme_file "$SEELE_THEME_STATE/current/fish.fish"
