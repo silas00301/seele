@@ -316,6 +316,19 @@ path, and the module loads with `nofail`, so a plugin that will not load costs
 the virtual source rather than the audio server. It adds no WirePlumber rules
 and leaves the Bluetooth receiver's `bluez5.media-source-role` rules untouched.
 
+On `nerv`, the Camera panel carries every attached Litra Glow, each with its
+own settings. The shell's resident status monitor owns the lights, not the
+panel: OpenLogi's light commands cannot read a light back, so the monitor keeps
+each light's mode (`Off`, `On` or `With camera`), brightness and colour
+temperature by OpenLogi identity in a private config file, applies them when
+that light appears, changes or, in camera mode, when the PipeWire camera signal
+starts or stops, and reports the power it applied. It writes nothing to a light
+before a first choice and never switches off on an unknown graph. A light that
+is absent or refuses a write is hidden until a retry succeeds; several lights
+are numbered in identity order. OpenLogi's own light settings should stay unset
+so two owners do not race on reconnect. See the submodule's
+`projects/tools/README.md`.
+
 On `nerv`, Caffeinate keeps the machine awake, its displays on and its session
 unlocked while one explicitly started session is active. The `seele-caffeinate`
 user service holds a single systemd-logind `idle` block inhibitor, which
