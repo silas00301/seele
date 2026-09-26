@@ -187,35 +187,45 @@ text. Keep the panel's namespace in the Hyprland blur rule. See the submodule's
 
 ## Themes
 
-The Control Center's Themes tile and `Super + Ctrl + Shift + T` (`seele-shellctl
-themes`) toggle the shell's own theme carousel on `nerv`; the Vicinae **Seele
-Themes** command is the same catalog from the launcher. `seele-theme` in the
-submodule's `config-tools` crate owns the catalog, the light and dark slots, the
-mode, the schedule, publication and every reload; `appearance.rs` beside it
-computes fixed-time and sunrise and sunset boundaries. `ThemeStore.qml` runs the
-helper, `ThemePanel.qml` draws the carousel, and `themes.rs` in `qml-core` owns
-the catalog's validation, the carousel's ordering and scope, the search, where
-left and right lead, which entry is centred, the schedule's sentence and every
-sentence about a failure or a pending reload.
+`Super + Ctrl + Shift + T` (`seele-shellctl themes`) toggles the shell's
+floating theme switcher on `nerv`, and the Control Center's Themes tile opens
+the Themes panel; the Vicinae **Seele Themes** command is the same catalog from
+the launcher. `seele-theme` in the submodule's `config-tools` crate owns the
+catalog, the light and dark slots, the mode, the schedule, publication and every
+reload; `appearance.rs` beside it computes fixed-time and sunrise and sunset
+boundaries. `ThemeStore.qml` runs the helper for both shell surfaces,
+`ThemePanel.qml` draws the switcher, `ThemeSettingsPanel.qml` the Control Center
+panel, and `themes.rs` in `qml-core` owns the catalog's validation, the
+carousel's order, where left and right lead, which entry is centred, the
+schedule's sentence and every sentence about a failure or a pending reload.
 
-The carousel is not a control panel. It is its own centred window with its own
+The switcher is not a control panel. It is its own centred window with its own
 open state (`themesOpen`), so opening it runs no `closeOverlays()`, and
 `closeOverlays()` leaves it alone; it sits on the overlay layer above the
 click-away catcher, so a click outside closes a panel beside it and not the
-carousel. Only its own toggle, Escape or Enter dismisses it.
+switcher. Only its own toggle, Escape or Enter dismisses it. Keep it a switcher:
+every preset, never filtered, and nothing on it but the carousel, the name and
+the key hint.
 
-The Light and Dark toggle chooses the slot being edited and is the desktop's
-mode. The carousel offers that mode's presets until the reader asks for all; any
-preset may fill either slot. Moving switches the desktop at once — the shell
-repainting around the carousel is the preview. The store is optimistic: the mode
-and both slots change there first and the helper is told after, one request at a
-time, a keyboard burst settling for 160 ms, a newer request of a kind replacing
-one still waiting and a restore superseding everything. Enter keeps; Escape
-clears a filter first, then restores mode and both slots as the carousel opened.
-The applied theme is read from the selection file the helper publishes, watched
-rather than polled, so a switch by the launcher or the schedule makes an idle
-open carousel read its slots again. A time field consumes its own Enter and
-Escape; neither may reach the carousel's keep or cancel.
+Moving switches the desktop at once and sends `seele-theme pick`, which gives
+the preset to its own mode and switches to that mode, so the switcher needs no
+mode control. The store is optimistic: the mode and both themes change there
+first and the helper is told after, one request at a time, a keyboard burst
+settling for 160 ms, a newer request of a kind replacing one still waiting and a
+restore superseding everything. Enter keeps; Escape restores mode and both
+themes as the switcher opened.
+
+The Themes panel (`controlPanel === "themes"`, namespace
+`seele-shell-theme-settings`, which the Hyprland blur rule lists) holds Light,
+Dark and Auto, Auto's source and times, and each mode's preset with Use current,
+which is the only way a mode wears a preset of the other kind; Browse themes
+opens the switcher over it. The tile's glyph is a knob, drawn and hit-tested
+above the tile's drag area, that shows Light, Dark or Auto and steps to the
+next. A hand-chosen Light or Dark sends `auto off` before `mode`. The store
+watches `selection.json` and `preferences.json` and reads the helper at start
+and whenever either changes while nothing of its own is pending, so the knob is
+true with no picker open. A time field's Escape restores the saved time and
+hands the keyboard to the panel, so only a second Escape closes it.
 
 The schedule is edge-triggered in the helper: a hand-chosen mode holds until the
 next boundary, and a boundary missed while the machine slept is caught up. The
@@ -228,7 +238,7 @@ The centre card draws its preset as a small desktop in its own roles — bar,
 terminal with the accent border and tmux's status line, a notification, a switch
 and a slider — and the neighbours as slices of themselves under a light veil,
 kept light so that under a pale shell they fade rather than turn grey. Colour
-Lab owns the palette mark; Themes carries the light/dark one. The shell's quiet
+Lab owns the palette mark; Themes carries the light, dark and auto ones. The shell's quiet
 text depends on the projection's legibility floor in `seele-theme`, so keep
 `subtext` and `overlay` derived there rather than read from Base16 slots
 directly. See [the theme switching guide](../../../../docs/theme-switching.md).
@@ -305,7 +315,7 @@ controller's own functions with fake process, clipboard and compositor IO, and
 Poppler tools, proving classification, bounds, private page files and cleanup.
 `tests/themes.js` runs the theme store's own methods over the native policy and
 checks its production wiring, `tests/tst_themes.qml` renders the production
-Themes carousel in QtTest and fails on any Qt warning, and
+switcher and Themes panel in QtTest and fails on any Qt warning, and
 `tests/vicinae-themes.cjs` renders the launcher command itself; none of them
 applies a theme or touches the session's own state directory.
 
