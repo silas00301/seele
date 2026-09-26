@@ -54,7 +54,6 @@ in
       package = selfPackages.config-tools;
     in
     {
-      home.packages = [ package ];
       home.sessionVariables.SEELE_THEME_STATE = state;
       xdg.configFile."seele-theme/catalog.json".text = builtins.toJSON {
         version = 2;
