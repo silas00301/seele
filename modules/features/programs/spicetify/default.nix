@@ -18,7 +18,7 @@ let
 
         enabledExtensions = [
           {
-            name = "setAccent.js";
+            name = "syncTheme.js";
             src = ./js;
           }
         ];
@@ -28,4 +28,12 @@ let
 in
 {
   flake.modules.homeManager."spicetify" = module;
+  perSystem = { pkgs, ... }: {
+    checks.spicetify-theme =
+      pkgs.runCommand "spicetify-theme-check" { nativeBuildInputs = [ pkgs.nodejs ]; }
+        ''
+          node ${./js/test-syncTheme.cjs} ${./js/syncTheme.js}
+          touch "$out"
+        '';
+  };
 }

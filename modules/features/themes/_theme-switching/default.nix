@@ -20,6 +20,8 @@ let
             inputs.stylix.homeModules.stylix
             inputs.nixvim.homeModules.nixvim
             inputs.vicinae.homeManagerModules.default
+            inputs.zen-browser.homeModules.beta
+            inputs.spicetify-nix.homeManagerModules.default
             {
               home = {
                 username = "seele-theme";
@@ -32,6 +34,8 @@ let
               news.display = "silent";
               programs.nixvim.enable = true;
               programs.vicinae.enable = true;
+              programs.zen-browser.enable = true;
+              programs.spicetify.enable = true;
               stylix = {
                 enable = true;
                 autoEnable = false;
@@ -55,12 +59,29 @@ let
                     fonts.enable = false;
                     opacity.enable = false;
                   };
+                  gtk.enable = true;
+                  gtksourceview.enable = true;
+                  kde.enable = true;
+                  qt.enable = true;
+                  "zen-browser" = {
+                    enable = true;
+                    profileNames = [ "default" ];
+                    fonts.enable = false;
+                    opacity.enable = false;
+                  };
+                  spicetify.enable = true;
                 };
               };
             }
           ];
         }).config;
       launcher = generated.programs.vicinae.themes.stylix;
+      kdePackage = lib.findFirst (
+        package: lib.hasPrefix "stylix-kde-theme" (package.name or "")
+      ) null generated.home.packages;
+      kdeScheme = lib.concatStrings (
+        lib.filter lib.isString (builtins.split "[^a-zA-Z]" generated.lib.stylix.colors.scheme)
+      );
     in
     preset
     // {
@@ -76,6 +97,19 @@ let
           }
         )
       );
+      assets = {
+        gtkCss = toString generated.xdg.configFile."gtk-3.0/gtk.css".source;
+        gtkSourceView = toString generated.xdg.dataFile."gtksourceview-4/styles/stylix.xml".source;
+        zenChrome = pkgs.writeText "seele-${preset.id}-zen-chrome.css" generated.programs.zen-browser.profiles.default.userChrome;
+        zenContent = pkgs.writeText "seele-${preset.id}-zen-content.css" generated.programs.zen-browser.profiles.default.userContent;
+        spicetify = toString (generated.programs.spicetify.theme.src + /color.ini);
+        kvantumConfig =
+          toString (lib.head generated.qt.kvantum.themes)
+          + "/share/Kvantum/Base16Kvantum/Base16Kvantum.kvconfig";
+        kvantumSvg =
+          toString (lib.head generated.qt.kvantum.themes) + "/share/Kvantum/Base16Kvantum/Base16Kvantum.svg";
+        kdeColors = toString kdePackage + "/share/color-schemes/${kdeScheme}.colors";
+      };
     };
 in
 map render presets

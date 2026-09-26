@@ -739,7 +739,11 @@ and validation boundaries are in `docs/shell-workbenches.md`.
 `modules/features/themes/theme-switching.nix` is a named Home Manager feature
 imported by `nerv`. Its catalog and app includes connect to the shell's native
 config-tools package and launcher extension. The raw `_theme-switching` helper
-evaluates upstream Stylix targets from curated Base16 schemes, and the Linux
-`theme-presets` check validates their generated assets through the runtime. See
+evaluates upstream Stylix targets from curated Base16 schemes, including the
+active GTK, GtkSourceView, Qt/Kvantum, KDE, Spicetify and Zen targets. The
+native helper publishes their per-preset assets into one selected generation;
+Home Manager supplies stable app links, and a loopback-only palette service
+feeds Spicetify's packaged extension. The Linux `theme-presets` check validates
+the generated assets through the runtime. See
 [the theme switching guide](../../../../docs/theme-switching.md) before changing
 palette ownership or adding another runtime theme consumer.

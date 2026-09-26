@@ -4,6 +4,7 @@ Usage: python3 tests/theme-presets.py /path/to/seele-theme /path/to/catalog.json
 The flake check supplies its actual generated catalog and theme files.
 """
 import json
+import configparser
 from pathlib import Path
 import subprocess
 import sys
@@ -20,7 +21,8 @@ with tempfile.TemporaryDirectory(prefix="seele-stylix-") as directory:
     (config / "catalog.json").write_text(json.dumps(catalog))
     env = {"HOME": str(root), "XDG_CONFIG_HOME": str(config.parent), "XDG_STATE_HOME": str(root / "state")}
     def run(*args):
-        result = subprocess.run([binary, *args], env=env, capture_output=True, text=True, timeout=15, check=True)
+        result = subprocess.run([binary, *args], env=env, capture_output=True, text=True, timeout=15)
+        assert result.returncode == 0, (args, result.stdout, result.stderr)
         return json.loads(result.stdout)
     entries = run("list")["themes"]
     assert len(entries) == len(catalog["themes"])
@@ -43,5 +45,23 @@ with tempfile.TemporaryDirectory(prefix="seele-stylix-") as directory:
         assert (state / "current/vicinae.toml").read_bytes() == Path(theme["vicinaeTheme"]).read_bytes()
         ghostty = (state / "current/ghostty").read_text()
         assert "background = " + theme["palette"]["base00"] in ghostty
+        assets = {
+            "gtkCss": "gtk.css",
+            "gtkSourceView": "gtksourceview.xml",
+            "zenChrome": "zen-chrome.css",
+            "zenContent": "zen-content.css",
+            "spicetify": "spicetify.ini",
+            "kvantumConfig": "kvantum.kvconfig",
+            "kvantumSvg": "kvantum.svg",
+            "kdeColors": "kde.colors",
+        }
+        for key, filename in assets.items():
+            assert (state / "current" / filename).read_bytes() == Path(theme["assets"][key]).read_bytes()
+        assert theme["palette"]["base00"] in (state / "current/gtk.css").read_text()
+        assert theme["palette"]["base0D"] in (state / "current/zen-chrome.css").read_text()
+        spicetify = configparser.ConfigParser()
+        spicetify.read(state / "current/spicetify.ini")
+        assert spicetify["base"]["main"].lower() == theme["palette"]["base00"].removeprefix("#").lower()
+        assert "*background: " + theme["palette"]["base00"] in (state / "current/Xresources").read_text()
         assert len(list(state.glob(".theme-*"))) == 1
     print(f"{len(entries)} generated presets passed palette, mode, publication and launcher parity checks")

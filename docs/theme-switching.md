@@ -72,24 +72,35 @@ single selection into its own mode's slot.
 | Surface | When colors change |
 | --- | --- |
 | Seele Shell, notifications, Notes, lock and polkit | Live through the shared theme file |
-| Hyprland borders | Live; also loaded with compositor configuration |
+| Hyprland borders, shadows, groups and background | Live; also loaded with compositor configuration |
 | Vicinae | Live through its theme command |
-| Ghostty | Live for its systemd desktop service; other instances use Reload Configuration |
+| Ghostty | Live through SIGUSR2 for same-user Nix Ghostty processes, including scratchpads |
 | Neovim | Live through a file watcher, with a focus/startup fallback |
 | Fish | At the next prompt |
 | tmux | Live for the default server; also loaded when reading its configuration |
-| GTK 3/4 | New applications; existing applications may need reopening |
+| Spicetify | Live through its packaged extension and a read-only loopback palette feed; restart Spotify once after the first rebuild to load the extension |
+| GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
+| KDE color schemes | Live through `plasma-apply-colorscheme` |
+| X resources | Live through `xrdb`; existing X clients may need reopening |
+| Zen Browser | Restart Zen after switching to load its selected chrome/content CSS |
 
-This is a user-session feature. The boot screen, greeter, cursor, Qt application
-styles, browser content and other independently themed tools retain their
-configured appearance. Wallpaper and font choices stay unchanged. `asuka` and
-portable applications keep their declarative themes.
+This is a user-session feature. The boot screen, greeter, cursor, browser page
+content and independently themed tools retain their configured appearance.
+Wallpaper and font choices stay unchanged. `asuka` and portable applications
+keep their declarative themes.
 
 `modules/features/themes/_theme-switching/presets.json` selects schemes from
 the pinned `base16-schemes` package. Its adjacent Nix helper evaluates the
 upstream Stylix NixVim and Vicinae targets for every preset: Neovim receives
 the generated `mini.base16` palette, and Vicinae receives the generated TOML.
 The runtime projects that same palette into Seele and the other app includes.
+For the targets enabled on `nerv`, the catalog also carries each preset's
+Stylix-generated GTK, GtkSourceView, Qt/Kvantum, KDE, Spicetify and Zen assets.
+The helper publishes one complete private generation and Home Manager links
+the target files to it. KDE's named schemes come from those assets so its own
+activation command can switch between preset IDs. The Spicetify extension
+reads only the current ID and Base16 palette from `127.0.0.1:48725`; the
+endpoint accepts no changes or Spotify account data.
 Quiet text is held to a legibility floor in that projection, because schemes
 disagree about what Base16's dim foregrounds are: Catppuccin's Base16 file puts
 its surface colours in `base04` and `base03`, which taken verbatim would drop
@@ -110,8 +121,9 @@ name or plugin mapping is needed.
 `modules/features/themes/theme-switching.nix` declares the catalog and includes. It is
 imported only by the `nerv` home profile. Home Manager owns those includes;
 `seele-theme` owns only `$XDG_STATE_HOME/seele-theme`. The palette enters the
-existing `seele-shell/theme.json` path through a managed symlink. No new inputs,
-services, Python runtime or mutable edits to managed application files are used.
+existing `seele-shell/theme.json` path through a managed symlink. The one new
+user service serves the public palette to Spicetify on loopback. No new inputs,
+Python runtime or mutable edits to Home Manager files are used.
 
 The native contract, transactional publication and fixtures are documented in
 [`projects/config-tools/README.md`](../seele-shell/projects/config-tools/README.md).

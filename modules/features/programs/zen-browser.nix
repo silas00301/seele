@@ -53,7 +53,7 @@ let
             };
             Preferences = mkLockedAttrs {
               "browser.taskbarTabs.enabled" = true;
-              "devtools.theme" = "dark";
+              "devtools.theme" = "auto";
               "zen.view.compact.hide-toolbar" = true;
               "zen.view.compact.enable-at-startup" = true;
               "zen.view.use-single-toolbar" = false;
@@ -113,48 +113,18 @@ let
                   icon = "chrome://browser/skin/zen-icons/selectable/people.svg";
                   container = containers."Private".id;
                   position = 1000;
-                  theme = {
-                    type = "solid";
-                    colors = [
-                      {
-                        red = 24;
-                        green = 24;
-                        blue = 37;
-                      }
-                    ];
-                  };
                 };
                 "School" = {
                   id = "5a1bfdd1-0dce-4b11-b818-a54d074a1e12";
                   icon = "chrome://browser/skin/zen-icons/selectable/school.svg";
                   container = containers."School".id;
                   position = 2000;
-                  theme = {
-                    type = "solid";
-                    colors = [
-                      {
-                        red = 24;
-                        green = 24;
-                        blue = 37;
-                      }
-                    ];
-                  };
                 };
                 "Work" = {
                   id = "af11e9bd-310e-4a24-81c9-8ead70a71abf";
                   icon = "chrome://browser/skin/zen-icons/selectable/briefcase.svg";
                   container = containers."Work".id;
                   position = 3000;
-                  theme = {
-                    type = "solid";
-                    colors = [
-                      {
-                        red = 24;
-                        green = 24;
-                        blue = 37;
-                      }
-                    ];
-                  };
                 };
               };
           };
