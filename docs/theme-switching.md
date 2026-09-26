@@ -1,10 +1,11 @@
 # Seele Themes
 
 On `nerv`, press **Super + Ctrl + Shift + T**, or open the Control Center's
-**Themes** module, for the shell's own picker. It floats in the middle of the
-focused output and closes nothing that is already open. **Seele Themes** in Vicinae is the
-same catalog from the launcher. Search the curated presets, look at their
-previews, and press Enter to apply one. The catalog includes 13 presets:
+**Themes** module, for the shell's own picker: a carousel floating in the middle
+of the focused output that closes nothing already open. **Seele Themes** in
+Vicinae is the same catalog from the launcher.
+
+The catalog includes 13 presets:
 
 - Catppuccin: Mocha, Macchiato, Frappé and Latte.
 - Rosé Pine: original, Moon and Dawn.
@@ -12,30 +13,52 @@ previews, and press Enter to apply one. The catalog includes 13 presets:
 - Gruvbox: Dark and Light, both medium contrast.
 - Nord and Everforest (dark).
 
-The configured flavor remains the initial choice. Selecting a theme needs no
-rebuild, privileges or network access.
+The configured Catppuccin flavor is the initial dark theme, and its family's
+light variant, Catppuccin Latte, the initial light theme. Selecting a theme or a
+mode needs no rebuild, privileges or network access.
 
-In the shell picker each family is one row and each variant one tile, drawn as
-a sample of itself: its name in its own text colour on its own background.
-Moving to a tile with the arrow keys, or clicking it, switches the desktop at
-once, so the shell repainting around the picker is the preview; a held key is
-coalesced so only the tile it stops on is applied. Hovering never switches
-anything. Enter keeps the ringed tile and closes, Escape closes, and **Back to**
-returns to the theme that was applied when the picker opened. Search and an
-All/Dark/Light filter take tiles out without regrouping the rest.
-The launcher shows the applied theme first, groups the rest by light and dark,
-and describes each palette's roles beside what a switch reaches. Applying is one
-request at a time, and
-neither surface publishes anything itself: both run `seele-theme`, and the shell
-panel reads the applied theme from the selection that helper publishes, so a
-theme chosen in either place is marked in the other. The shell repaints itself
-while its picker is open, because the panel is drawn with the same palette it is
-choosing from.
+The desktop keeps two presets, a light theme and a dark theme, and a mode that
+picks between them. Any preset may fill either slot.
 
-`seele-theme list` returns the catalog and current ID as JSON. `current` returns
-the selected ID, `set catppuccin-latte` changes it, and `reset` returns to the
-flake's configured default. `init` refreshes generated files during Home Manager
-activation while preserving the saved selection.
+The carousel shows the preset on screen large in the middle, drawn as a small
+desktop in its own colours — the bar, a terminal with tmux's status line, a
+notification and a switch in its accent — with its neighbours as slices on
+either side and its name beneath. The **Light / Dark** toggle chooses which slot
+the carousel edits, and is also the desktop's mode. The carousel offers that
+mode's presets until **Show all** opens it to every preset. Left and right (or
+Tab) move and switch the desktop at once, so the shell repainting around the
+picker is the preview, and a held key is coalesced so only the preset it stops
+on is applied. Up switches to light and Down to dark; typing filters; Enter
+keeps and closes; Escape first clears a filter, then puts the mode and both
+slots back as they were when the carousel opened. Clicking a neighbour chooses
+it, and clicking the centre keeps it.
+
+**Auto** changes the mode by itself. **Times** switches at two times of day,
+editable in place (light from 07:00 and dark from 19:00 by default, the hours
+the night light warms the screen at). **Sun** switches at sunrise and sunset,
+reckoned from the system timezone's reference city in the tz database — Berlin
+for `nerv` — so no location is asked for or stored; a timezone without a city
+offers no Sun. A line under the carousel says what the schedule does next. The
+schedule acts only when a boundary passes, so a mode chosen by hand holds until
+the next sunrise, sunset or fixed time, and a boundary missed while the machine
+slept is caught up when it wakes. The `seele-theme-auto` user service runs the
+schedule in the graphical session.
+
+The launcher applies the theme for the mode on screen. It shows the applied
+theme first, groups the rest by light and dark, and describes each palette's
+roles beside what a switch reaches. Neither surface publishes anything itself:
+both run `seele-theme`, and the carousel reads the applied theme from the
+selection that helper publishes, so a switch made in either place, or by the
+schedule, is seen in the other.
+
+`seele-theme list` returns the catalog, the current ID, both slots, the mode and
+the schedule as JSON. `current` returns the selected ID. `set catppuccin-latte`
+fills the slot of the mode on screen; `slot light rose-pine-dawn` fills either
+slot; `mode dark` switches mode; `auto sun`, `auto schedule 07:00 19:00` and
+`auto off` set the schedule; `reset` returns both slots, the mode and the
+schedule to the flake's defaults. `init` refreshes generated files during Home
+Manager activation while preserving the saved choices, and migrates an earlier
+single selection into its own mode's slot.
 
 | Surface | When colors change |
 | --- | --- |
@@ -84,15 +107,19 @@ services, Python runtime or mutable edits to managed application files are used.
 The native contract, transactional publication and fixtures are documented in
 [`projects/config-tools/README.md`](../seele-shell/projects/config-tools/README.md).
 The launcher fixture is `seele-shell/tests/vicinae-themes.cjs`, and the shell
-panel's store and production wiring are covered by `seele-shell/tests/themes.js`,
-and `seele-shell/tests/tst_themes.qml` renders the production panel in QtTest,
-failing on any Qt warning.
-Family grouping, search, arrow-key movement, the ring's position and every
-failure sentence belong to `seele-shell/projects/qml-core/src/themes.rs` and are
-tested there.
-Run `lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua` to verify
-that the editor initializer leaves other hosts' remaining configuration running
-and applies only complete, valid palettes through its watcher callback.
+carousel's store and production wiring are covered by
+`seele-shell/tests/themes.js`, and `seele-shell/tests/tst_themes.qml` renders
+the production panel in QtTest, failing on any Qt warning. Ordering, filtering,
+movement and the schedule's sentence belong to
+`seele-shell/projects/qml-core/src/themes.rs` and are tested there. The slots,
+the mode and the schedule belong to `seele-shell/projects/config-tools`: its
+`appearance.rs` tests pin sunrise and sunset to published times across seasons,
+hemispheres and a polar day and night, and `tests/appearance.py` drives the real
+helper through migration, both schedules, a hand-chosen mode holding until its
+boundary, catch-up after a gap, and `follow` applying a boundary on its own. Run
+`lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua` to verify that
+the editor initializer leaves other hosts' remaining configuration running and
+applies only complete, valid palettes through its watcher callback.
 `checks.<system>.theme-presets` on Linux exercises every actual Stylix-generated
 preset against the native switcher and checks launcher/editor palette parity.
 

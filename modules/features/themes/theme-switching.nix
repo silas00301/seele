@@ -80,6 +80,34 @@ in
           ${package}/bin/seele-theme init
       '';
 
+      # Light and dark each keep a preset, and an optional schedule flips the
+      # mode at fixed times or at sunrise and sunset. The helper's own loop is
+      # the schedule: it wakes at the next boundary, and at least once a
+      # minute so a resumed machine, a changed clock or new settings are seen
+      # promptly. It acts only when a boundary passes, so a mode chosen by
+      # hand holds until the next one, and it sleeps idle while the schedule
+      # is off. Reloading applications needs the session, so it runs in it.
+      systemd.user.services.seele-theme-auto = {
+        Unit = {
+          Description = "Switch Seele Themes between light and dark on schedule";
+          PartOf = [ "graphical-session.target" ];
+          After = [ "graphical-session.target" ];
+        };
+        Service = {
+          ExecStart = "${package}/bin/seele-theme follow";
+          # The user manager does not necessarily carry the session's XDG
+          # values, and a scheduler reading a different catalog or state than
+          # the picker writes would be worse than none.
+          Environment = [
+            "XDG_CONFIG_HOME=${config.xdg.configHome}"
+            "XDG_STATE_HOME=${config.xdg.stateHome}"
+          ];
+          Restart = "on-failure";
+          RestartSec = 5;
+        };
+        Install.WantedBy = [ "graphical-session.target" ];
+      };
+
       # One stable theme ID survives launcher restarts and declarative settings
       # reloads. The switcher changes its generated file and asks Vicinae to reload.
       programs.vicinae.settings.theme = {
