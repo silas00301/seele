@@ -19,23 +19,27 @@ Use the `seele` skill in `.agents/skills/` for the workflow and architecture map
 - Do not expose credentials, SSH material, machine identifiers, or local agent/auth configuration.
 
 The `theme-switching` Home Manager feature on `nerv` provides **Seele Themes**
-in Vicinae, the shell's own floating Themes carousel and its Control Center
-module, and `Super + Ctrl + Shift + T`, which toggles the carousel without
+in Vicinae, the shell's floating theme switcher, the Control Center's Themes
+panel, and `Super + Ctrl + Shift + T`, which toggles the switcher without
 closing any open panel. The desktop keeps a light theme and a dark theme and a
-mode that picks between them; any preset may fill either slot. Moving through
-the carousel switches the desktop at once, so the shell repainting around it is
-the preview, and Escape puts the mode and both slots back. The mode can follow a
+mode that picks between them. The switcher is every preset, never filtered:
+moving switches the desktop at once, so the shell repainting around it is the
+preview, a preset chosen there becomes the theme for its own mode and brings
+that mode with it, and Escape puts the mode and both themes back. The Themes
+tile's knob shows Light, Dark or Auto and steps to the next; the tile opens the
+panel, which holds that choice, the schedule's source and times, and a Use
+current button that gives the preset on screen to either mode. Auto follows a
 schedule at fixed times or at sunrise and sunset; the `seele-theme-auto` user
 service runs the native helper's edge-triggered loop, so a mode chosen by hand
 holds until the next boundary. Sunrise and sunset are reckoned from the system
 timezone's reference city in the tz database; no location is asked for or
 stored. The native `seele-theme` helper owns the slots, the mode, the schedule
-and publication, and both pickers only run it; the carousel reads the applied
-theme from the selection it publishes, so a switch from anywhere is seen there.
-Ordering, filtering, movement and the schedule's sentence belong to `qml-core`.
-The projection holds the shell's quiet text to a legibility floor rather than
-reading Base16's dim slots verbatim, because Catppuccin's Base16 file puts
-surface colours there. See [the theme switching guide](docs/theme-switching.md)
+and publication, and every surface only runs it; the shell reads the applied
+theme and the preferences from the files the helper publishes, so a change from
+anywhere is seen there. Ordering, movement and the schedule's sentence belong to
+`qml-core`. The projection holds the shell's quiet text to a legibility floor
+rather than reading Base16's dim slots verbatim, because Catppuccin's Base16
+file puts surface colours there. See [the theme switching guide](docs/theme-switching.md)
 for scope, ownership and application reload boundaries.
 
 ## Architecture
