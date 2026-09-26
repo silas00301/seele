@@ -836,6 +836,17 @@ jj -R seele-shell diff
 jj -R seele-shell status
 ```
 
+## Google Calendar
+
+`projects/integrations/src/calendar.rs` owns the one-account, read-only worker,
+Secret Service credential access, offline cache and reminder delivery. The
+calendar popup and bar read `CalendarStore.qml`; `calendar.js` owns pure agenda,
+dot, color and countdown policy. Read
+`projects/integrations/CALENDAR.md` before changing OAuth setup, date windows,
+time-zone handling or reminder identity. Run the focused Rust and JavaScript
+checks there. Follow the parent repository's `seele-credentials` skill for
+credential storage.
+
 ## Commit and push the submodule
 
 Commit and push only when the user asked for a rebuild-ready result or otherwise authorized those history and remote changes.

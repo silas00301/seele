@@ -63,6 +63,7 @@ language server and linters, ShellCheck, jq, Python, Jujutsu, and GitHub CLI. It
 adds no Nix distribution and runs no setup or activation hook.
 
 For authentication, service privileges, network exposure or device authorization changes, consult the [configuration security audit](../../../docs/security-configuration-audit.md) and its native-host validation boundaries before changing the active profile.
+For desktop integration credentials, use the [`seele-credentials` skill](../seele-credentials/SKILL.md) so tokens stay in the system wallet and out of Nix and UI state.
 
 ## 4. Format the whole repository
 

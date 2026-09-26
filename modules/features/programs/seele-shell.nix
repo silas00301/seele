@@ -94,6 +94,16 @@ let
             ];
             disruptive = [ "reconnect" ];
           };
+          calendar = {
+            enable = lib.mkDefault true;
+            name = "Google Calendar";
+            deadline = 600000;
+            setup = "calendar";
+            actions = [
+              "retry"
+              "settings"
+            ];
+          };
         };
         xdg.configFile."seele-shell/health.json".text = builtins.toJSON (
           lib.mapAttrsToList (id: provider: (builtins.removeAttrs provider [ "enable" ]) // { inherit id; }) (
