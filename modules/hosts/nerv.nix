@@ -62,7 +62,7 @@ in
               inputs.nix-index-database.homeModules.default
             ];
             extraSpecialArgs = moduleArgs // {
-              inherit (perSystemArgs) pkgs-stable;
+              inherit (perSystemArgs) pkgs-parakeet pkgs-stable;
               configName = "nerv";
             };
           };

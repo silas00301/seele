@@ -25,7 +25,7 @@ The flake exposes:
 
 `modules/flake/portable.nix` declares `seele.portable` and turns each entry into one of those `packages.<system>.<command>` outputs.
 
-`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable and stable package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently. `modules/flake/submodule.nix` contributes `nix run .#update-submodule`: it requires a clean submodule and verifies its revision against freshly fetched origin bookmarks, commits only the parent gitlink through Git because Jujutsu ignores submodules during snapshots, imports that commit into the colocated repository, advances `main` when that bookmark exists, and refreshes the shell's transitive inputs in the parent lock. `inputs.self.submodules` includes the gitlink target in the parent source, while the relative `seele-shell` path entry in `flake.lock` remains unchanged across source-only shell revisions.
+`modules/flake/core.nix` enables flake-parts' `flake.modules` support, declares the four systems, owns per-host usernames and the shared Catppuccin values, and configures per-system unstable, stable, and Parakeet-pinned package sets. `modules/flake/formatter.nix` and `overlays.nix` contribute their outputs independently. `modules/flake/submodule.nix` contributes `nix run .#update-submodule`: it requires a clean submodule and verifies its revision against freshly fetched origin bookmarks, commits only the parent gitlink through Git because Jujutsu ignores submodules during snapshots, imports that commit into the colocated repository, advances `main` when that bookmark exists, and refreshes the shell's transitive inputs in the parent lock. `inputs.self.submodules` includes the gitlink target in the parent source, while the relative `seele-shell` path entry in `flake.lock` remains unchanged across source-only shell revisions.
 
 ## Native packages and shared policy
 
@@ -114,10 +114,11 @@ and the Codex broker. Multiple interpretations use the existing fzf picker, and
 local destructive-command detection comments the inserted line even if the model
 labels it safe. See the crate README for policy, bounds and fixtures.
 
-The `voxtype` input follows `nixpkgs-stable-nixos` and pins the upstream
-revision whose Nix builder carries the required Git dependency hashes. Keeping
-its ONNX Runtime, CUDA toolkit and wrapper runtime on the stable package set
-prevents unrelated unstable updates from rebuilding the dictation stack. The
+The `voxtype` input follows the commit-pinned `nixpkgs-parakeet` input and pins
+the upstream revision whose Nix builder carries the required Git dependency
+hashes. That package set also builds the wrapper's CUDA runtime, the model
+fetchers and bundle, and the generated Voxtype configuration, so routine stable
+and unstable updates cannot rebuild the Parakeet closure. The
 `modules/packages/voxtype.nix` output adapts upstream's ONNX/CUDA wrapper for
 dynamic ONNX Runtime loading and exposes it only on x86_64-linux.
 `modules/features/programs/voxtype.nix` consumes that output from

@@ -62,6 +62,10 @@
           inherit system;
           config.allowUnfree = true;
         };
+        _module.args.pkgs-parakeet = import inputs.nixpkgs-parakeet {
+          inherit system;
+          config.allowUnfree = true;
+        };
       };
   };
 }
