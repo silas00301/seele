@@ -7,6 +7,9 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nixpkgs-stable-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixpkgs-stable-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
+    # Keep the expensive Parakeet/ONNX/CUDA closure independent of routine
+    # stable and unstable package-set updates.
+    nixpkgs-parakeet.url = "github:NixOS/nixpkgs/cf9d2fb3e50fa1cd5114c47505ea9177f7ff5f49";
 
     flake-parts.url = "github:hercules-ci/flake-parts";
     import-tree.url = "github:denful/import-tree";
@@ -37,7 +40,7 @@
 
     # Upstream ONNX/CUDA build and Nix Git-dependency hash fixes after v1.0.1.
     voxtype.url = "github:peteonrails/voxtype/320a737e5d3c8662e0ec7de95f75407baa784d82";
-    voxtype.inputs.nixpkgs.follows = "nixpkgs-stable-nixos";
+    voxtype.inputs.nixpkgs.follows = "nixpkgs-parakeet";
 
     vicinae.url = "github:vicinaehq/vicinae";
 

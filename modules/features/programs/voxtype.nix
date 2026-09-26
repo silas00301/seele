@@ -3,7 +3,7 @@ let
   homeModule = (
     {
       lib,
-      pkgs,
+      pkgs-parakeet,
       selfPackages,
       ...
     }:
@@ -19,18 +19,20 @@ let
       };
       modelFiles = lib.mapAttrs (
         name: hash:
-        pkgs.fetchurl {
+        pkgs-parakeet.fetchurl {
           inherit name hash;
           url = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/${modelRevision}/${name}";
         }
       ) modelHashes;
-      model = pkgs.runCommand "parakeet-tdt-0.6b-v3-fp32-${builtins.substring 0 8 modelRevision}" { } ''
-        mkdir -p "$out"
-        ${lib.concatMapStringsSep "\n" (name: ''
-          cp ${modelFiles.${name}} "$out/${name}"
-        '') (builtins.attrNames modelFiles)}
-      '';
-      configFile = (pkgs.formats.toml { }).generate "voxtype-config.toml" {
+      model =
+        pkgs-parakeet.runCommand "parakeet-tdt-0.6b-v3-fp32-${builtins.substring 0 8 modelRevision}" { }
+          ''
+            mkdir -p "$out"
+            ${lib.concatMapStringsSep "\n" (name: ''
+              cp ${modelFiles.${name}} "$out/${name}"
+            '') (builtins.attrNames modelFiles)}
+          '';
+      configFile = (pkgs-parakeet.formats.toml { }).generate "voxtype-config.toml" {
         engine = "parakeet";
         # Hyprland owns the toggle binding; do not grant raw input access.
         hotkey.enabled = false;
