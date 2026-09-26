@@ -107,7 +107,9 @@ a newer local compiler is only an iteration aid.
 ## Keep local workbenches bounded and session-owned
 
 Calculator, Colour Lab and Text workbench use `qml-core` policy. Meeting planning
-extends the existing resident clock and pinned IANA zone set. Keep source text,
+extends the existing resident clock and pinned IANA zone set: `clock/meeting.rs`
+owns the local-day axis, hour ribbons, fit, suggestions, Next fit and the copied
+text, while `MeetingPlanner.qml` only moves one start instant and draws them. Keep source text,
 colour input and expressions out of command arguments; clipboard actions are
 explicit. Closing Calculator or Text workbench destroys its editor and undo
 history. The tools README and `projects/shell/CALCULATOR.md` describe their
@@ -841,7 +843,8 @@ jj -R seele-shell status
 `projects/integrations/src/calendar.rs` owns the one-account, read-only worker,
 Secret Service credential access, offline cache and reminder delivery. The
 calendar popup and bar read `CalendarStore.qml`; `calendar.js` owns pure agenda,
-dot, color and countdown policy. Read
+dot, color, countdown and meeting busy-time policy. Only bare busy intervals
+reach the clock worker; event titles stay in the shell. Read
 `projects/integrations/CALENDAR.md` before changing OAuth setup, date windows,
 time-zone handling or reminder identity. Run the focused Rust and JavaScript
 checks there. Follow the parent repository's `seele-credentials` skill for

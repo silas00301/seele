@@ -260,6 +260,14 @@ directly. See [the theme switching guide](../../../../docs/theme-switching.md).
 - Calendar arrows select days/weeks, Home returns to today, and Enter copies an
   ISO date. World-clock search uses Up/Down and Enter to copy a selected zone;
   Ctrl+Enter copies local time. Timestamps carry explicit UTC offsets.
+- The World Clock's Plan meeting mode moves one start instant on this
+  computer's local day. Left/Right or H/L step 15 minutes (Shift an hour) and
+  cross midnight, Page Up/Down keep the wall time on another day, D edits the
+  ISO date, N is Now, F is Next fit, 1–3 take a suggestion, -/+ change the
+  length, Ctrl+C copies and Ctrl+Enter opens Google Calendar's own prefilled
+  editor. A click or drag centres the meeting under the pointer. With Google
+  Calendar configured, its busy time is a row of its own and steers suggestions;
+  see the submodule's `projects/tools/README.md`.
 - Now Playing exposes supported shuffle/repeat modes, keyboard seeking, per-player
   volume and bounded playback-speed presets. Respect each selected player's
   capabilities; live streams never receive seeking writes. Volume writes stay

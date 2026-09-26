@@ -454,7 +454,8 @@ event indicator consume its public snapshots. The shell feature registers a
 Calendar entry in Integration Health, whose Settings action opens the picker.
 Calendar colors remain Google's
 configured colors; the rest of the UI uses Seele tokens. The integration is
-read-only and supports one account. See `seele-shell/projects/integrations/CALENDAR.md`
+read-only and supports one account; the World Clock's meeting planner reads the
+same cache as busy time. See `seele-shell/projects/integrations/CALENDAR.md`
 for OAuth client setup, cache limits and focused checks. Use the
 `seele-credentials` skill for future integration credentials.
 
@@ -483,9 +484,14 @@ The shell's local workbenches are Calculator, Colour Lab, Text workbench and the
 World Clock's Plan meeting mode. Calculator and text documents, including undo
 history, disappear when their panels close; clipboard operations are explicit.
 Native Rust owns expression parsing, unit conversion, colour/contrast policy,
-text transforms and timezone calculations. Meeting planning uses local and pinned
-IANA zones with an explicitly labelled weekday 09:00–17:00 guide, not calendar
-availability. Colour Lab accepts opaque sRGB colours and can explicitly use the
+text transforms and timezone calculations. Meeting planning works on this
+computer's local day, 23 or 25 hours long across a transition: every local and
+pinned IANA zone is an hour ribbon against an explicitly labelled weekday
+09:00–17:00 guide, one band marks the meeting across them, and ranked
+suggestions and Next fit weigh those hours and, once Google Calendar is set up,
+the selected calendars' busy time. The planner reads that calendar and never
+writes it; Open in Google Calendar hands a prefilled draft to Google's editor.
+Colour Lab accepts opaque sRGB colours and can explicitly use the
 last screen-picked colour. The Control Center groups utility tiles in two columns
 and scrolls within the focused output; Vicinae exposes each workbench directly.
 
