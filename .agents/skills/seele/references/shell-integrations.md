@@ -188,46 +188,50 @@ text. Keep the panel's namespace in the Hyprland blur rule. See the submodule's
 ## Themes
 
 The Control Center's Themes tile and `Super + Ctrl + Shift + T` (`seele-shellctl
-themes`) toggle the shell's own theme picker on `nerv`; the Vicinae **Seele
+themes`) toggle the shell's own theme carousel on `nerv`; the Vicinae **Seele
 Themes** command is the same catalog from the launcher. `seele-theme` in the
-submodule's `config-tools` crate owns the catalog, publication and every reload.
-`ThemeStore.qml` runs it, `ThemePanel.qml` draws the tiles, and `themes.rs` in
-`qml-core` owns the catalog's validation, the family grouping, the search and
-mode filter, where each arrow key leads, where the ring sits, and every sentence
-about a failure or a pending reload.
+submodule's `config-tools` crate owns the catalog, the light and dark slots, the
+mode, the schedule, publication and every reload; `appearance.rs` beside it
+computes fixed-time and sunrise and sunset boundaries. `ThemeStore.qml` runs the
+helper, `ThemePanel.qml` draws the carousel, and `themes.rs` in `qml-core` owns
+the catalog's validation, the carousel's ordering and scope, the search, where
+left and right lead, which entry is centred, the schedule's sentence and every
+sentence about a failure or a pending reload.
 
-The store lists only while the panel is open, and it never treats its own
-request as the answer: the applied theme comes from the selection file the
-helper publishes, watched rather than polled, so a theme applied from the
-launcher marks the tile here and a failed switch marks nothing. A palette
-reaches a Qt colour property only after the native side has accepted the whole
-catalog, so a preset missing a role is refused instead of drawn half-themed.
-Applying is single-flight, guarded by a timeout that ends the helper rather than
-waiting on it, and the reply is used only to name what has not reloaded yet —
-never to claim that the switch failed, because by then it is saved.
-
-The picker is not a control panel. It is its own centred window with its own
+The carousel is not a control panel. It is its own centred window with its own
 open state (`themesOpen`), so opening it runs no `closeOverlays()`, and
 `closeOverlays()` leaves it alone; it sits on the overlay layer above the
 click-away catcher, so a click outside closes a panel beside it and not the
-picker. Only its own toggle, Escape, Enter or close button dismisses it. Moving
-to a tile switches the desktop at once — the shell repainting around the picker
-is the preview. Every switch publishes files and reloads applications, so
-keyboard moves settle for 160 ms and only the last is sent, one switch runs at a
-time, and a choice made meanwhile follows the moment it finishes; a click
-switches immediately, and hovering only lights a tile. The footer offers one
-step back to the theme applied when the picker opened. Each family is a row of
-tiles, each tile a sample of its preset; families come from the whole catalog,
-so the search and the All/Dark/Light filter take tiles out without relabelling
-the rest, and move the ring without switching anything. The panel keeps nothing
-on disk, publishes nothing, and repaints with the rest of the shell as soon as a
-theme is applied. Like the Resources and Home Assistant windows, the Themes
-window hands its panel the room its output has, and the grid takes what the
-header, the controls, the footer and any banner leave. Colour Lab owns the
-palette mark; Themes carries the light/dark one. The shell's quiet text depends
-on the projection's legibility floor in `seele-theme`, so keep `subtext` and
-`overlay` derived there rather than read from Base16 slots directly. See [the
-theme switching guide](../../../../docs/theme-switching.md).
+carousel. Only its own toggle, Escape or Enter dismisses it.
+
+The Light and Dark toggle chooses the slot being edited and is the desktop's
+mode. The carousel offers that mode's presets until the reader asks for all; any
+preset may fill either slot. Moving switches the desktop at once — the shell
+repainting around the carousel is the preview. The store is optimistic: the mode
+and both slots change there first and the helper is told after, one request at a
+time, a keyboard burst settling for 160 ms, a newer request of a kind replacing
+one still waiting and a restore superseding everything. Enter keeps; Escape
+clears a filter first, then restores mode and both slots as the carousel opened.
+The applied theme is read from the selection file the helper publishes, watched
+rather than polled, so a switch by the launcher or the schedule makes an idle
+open carousel read its slots again. A time field consumes its own Enter and
+Escape; neither may reach the carousel's keep or cancel.
+
+The schedule is edge-triggered in the helper: a hand-chosen mode holds until the
+next boundary, and a boundary missed while the machine slept is caught up. The
+`seele-theme-auto` user service runs `seele-theme follow` in the graphical
+session with the configuration's own XDG paths. Sunrise and sunset use NOAA's
+solar calculator algorithm, and the place is the timezone's reference city from
+`zone1970.tab`, never asked for or stored; a zone without a city offers no Sun.
+
+The centre card draws its preset as a small desktop in its own roles — bar,
+terminal with the accent border and tmux's status line, a notification, a switch
+and a slider — and the neighbours as slices of themselves under a light veil,
+kept light so that under a pale shell they fade rather than turn grey. Colour
+Lab owns the palette mark; Themes carries the light/dark one. The shell's quiet
+text depends on the projection's legibility floor in `seele-theme`, so keep
+`subtext` and `overlay` derived there rather than read from Base16 slots
+directly. See [the theme switching guide](../../../../docs/theme-switching.md).
 
 ## Local controls
 
@@ -301,7 +305,7 @@ controller's own functions with fake process, clipboard and compositor IO, and
 Poppler tools, proving classification, bounds, private page files and cleanup.
 `tests/themes.js` runs the theme store's own methods over the native policy and
 checks its production wiring, `tests/tst_themes.qml` renders the production
-Themes panel in QtTest and fails on any Qt warning, and
+Themes carousel in QtTest and fails on any Qt warning, and
 `tests/vicinae-themes.cjs` renders the launcher command itself; none of them
 applies a theme or touches the session's own state directory.
 
