@@ -56,7 +56,13 @@ with tempfile.TemporaryDirectory(prefix="seele-stylix-") as directory:
             "kdeColors": "kde.colors",
         }
         for key, filename in assets.items():
-            assert (state / "current" / filename).read_bytes() == Path(theme["assets"][key]).read_bytes()
+            published = (state / "current" / filename).read_bytes()
+            source = Path(theme["assets"][key]).read_bytes()
+            if key == "zenChrome":
+                assert published.startswith(source)
+                assert b"#urlbar-input::placeholder" in published
+            else:
+                assert published == source
         assert theme["palette"]["base00"] in (state / "current/gtk.css").read_text()
         assert theme["palette"]["base0D"] in (state / "current/zen-chrome.css").read_text()
         spicetify = configparser.ConfigParser()

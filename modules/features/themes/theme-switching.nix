@@ -52,6 +52,7 @@ in
         catppuccinPalette = config.catppuccin.sources.palette;
       };
       package = selfPackages.config-tools;
+      tmuxTheme = "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin/catppuccin_tmux.conf";
     in
     {
       home.sessionVariables.SEELE_THEME_STATE = state;
@@ -61,6 +62,7 @@ in
         fontFamily = config.stylix.fonts.monospace.name;
         wallpaper = "/etc/wallpaper/wallpaper.jpg";
         vesktopDir = "${config.xdg.configHome}/vesktop";
+        inherit tmuxTheme;
         inherit themes;
         commands = {
           hyprctl = "${pkgs.hyprland}/bin/hyprctl";
@@ -215,6 +217,7 @@ in
       '';
       programs.tmux.extraConfig = lib.mkAfter ''
         source-file -q ${lib.escapeShellArg "${state}/current/tmux.conf"}
+        source-file -q ${lib.escapeShellArg tmuxTheme}
       '';
       wayland.windowManager.hyprland.extraConfig = lib.mkAfter ''
         do

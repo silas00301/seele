@@ -77,13 +77,13 @@ single selection into its own mode's slot.
 | Ghostty | Live through SIGUSR2 for same-user Nix Ghostty processes, including scratchpads |
 | Neovim | Live through a file watcher, with a focus/startup fallback; Catppuccin presets use the official Catppuccin colorscheme and other presets use Stylix's Base16 palette |
 | Fish | At the next prompt |
-| tmux | Live for the default server; also loaded when reading its configuration |
+| tmux | Live for the default server, including Catppuccin's status modules and rounded windows; also loaded when reading its configuration |
 | Spicetify | Live through its packaged extension and a read-only loopback palette feed; restart Spotify once after the first rebuild to load the extension |
-| Vesktop | Restart Vesktop once after the first rebuild to unload its old fixed Mocha theme link; later changes are live through Vencord QuickCSS's file watcher. Catppuccin presets load their official Discord stylesheet, and other presets project their palette into Discord's color variables |
+| Vesktop | Restart Vesktop once after the first rebuild to unload its old fixed Mocha theme link; later CSS changes are live through Vencord QuickCSS's file watcher. Catppuccin presets load their official Discord stylesheet, and other presets project legible text and surface colors into Discord's current variables. Set Discord Appearance to Sync with computer so the official Latte stylesheet uses its light branch |
 | GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
 | KDE color schemes | Live through `plasma-apply-colorscheme` |
 | X resources | Live through `xrdb`; existing X clients may need reopening |
-| Zen Browser | Fully quit every Zen process after switching, then start it again to load the selected chrome/content CSS from the active `~/.zen/default` profile. Its built-in theme follows the system mode; opening another window of an existing process keeps its old CSS |
+| Zen Browser | Fully quit every Zen process after switching, then start it again to load the selected chrome/content CSS from the active `~/.zen/default` profile. The helper also corrects toolbar and address placeholder contrast. Its built-in theme follows the system mode; opening another window of an existing process keeps its old CSS |
 | Brave | Live light/dark changes through the desktop portal after a full Brave restart applies its system color-scheme preference; its Qt colors are chosen when the browser starts |
 
 This is a user-session feature. The boot screen, greeter, cursor, browser page
@@ -105,7 +105,13 @@ reads only the current ID and Base16 palette from `127.0.0.1:48725`; the
 endpoint accepts no changes or Spotify account data.
 The helper updates Vesktop's QuickCSS file in place so Vencord's watcher can
 repaint a running window. It removes only Catppuccin's fixed stylesheet URL
-from Vesktop's theme links and preserves other links and user QuickCSS.
+from Vesktop's theme links and preserves other links and user QuickCSS. Latte's
+official stylesheet includes a Frappé fallback for Discord's dark class, so
+Seele projects the selected palette over the opposite appearance class if
+Discord has not yet switched appearance; the matching official branch stays
+intact.
+It refreshes Catppuccin's tmux render after changing the palette, because that
+plugin expands status text and separators to literal colors when sourced.
 Quiet text is held to a legibility floor in that projection, because schemes
 disagree about what Base16's dim foregrounds are: Catppuccin's Base16 file puts
 its surface colours in `base04` and `base03`, which taken verbatim would drop
