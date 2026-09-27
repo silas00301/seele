@@ -855,6 +855,11 @@ Rust and QtTest checks. The Rust tests drive the fetch path and the worker loop
 against a local fake Calendar API and must never touch the real cache, wallet
 or network. Follow the parent repository's `seele-credentials` skill for
 credential storage.
+The Google Desktop client secret is optional with PKCE. When supplied, the
+sign-in command carries it only in memory; `google.rs` stores it in a separate
+Secret Service entry and includes it in authorization-code and refresh-token
+exchanges. Keep only its presence in the private cache, and clear it on
+disconnect.
 
 ## Commit and push the submodule
 

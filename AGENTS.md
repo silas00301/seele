@@ -450,14 +450,15 @@ room/favorite organization and fixture validation.
 
 Google Calendar's agenda is inside the existing clock/calendar popup. The native
 `seele-calendar` worker in the shell integrations crate owns desktop OAuth with
-PKCE, the Secret Service refresh token, the private cache, every calendar
-policy and durable reminder keys. It fetches in the background and publishes
-small sections -- account, calendars, day dots, the selected day's agenda and
-the bar's event -- each only when it changed, so QML never parses or filters
-events and nothing waits for Google. The popup keeps one month above the agenda
-and puts account and calendar choice behind a header gear; the clock-adjacent
-indicator opens its event unfolded on its day. The shell feature registers a
-Calendar entry in Integration Health, whose Settings action opens that view.
+PKCE, the Secret Service refresh token and optional OAuth client secret, the
+private cache, every calendar policy and durable reminder keys. It fetches in
+the background and publishes small sections -- account, calendars, day dots,
+the selected day's agenda and the bar's event -- each only when it changed, so
+QML never parses or filters events and nothing waits for Google. The popup keeps
+one month above the agenda and puts account and calendar choice behind a header
+gear; the clock-adjacent indicator opens its event unfolded on its day. The shell
+feature registers a Calendar entry in Integration Health, whose Settings action
+opens that view.
 Calendar colors remain Google's configured colors; the rest of the UI uses
 Seele tokens. The integration is read-only and supports one account. The World
 Clock planner reads the same cache as busy time. See
