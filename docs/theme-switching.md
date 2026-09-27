@@ -79,7 +79,7 @@ single selection into its own mode's slot.
 | Fish | At the next prompt |
 | tmux | Live for the default server; also loaded when reading its configuration |
 | Spicetify | Live through its packaged extension and a read-only loopback palette feed; restart Spotify once after the first rebuild to load the extension |
-| Vesktop | Live through Vencord QuickCSS's file watcher; the selected Catppuccin preset loads its official Discord stylesheet, and other presets project their palette into Discord's color variables |
+| Vesktop | Restart Vesktop once after the first rebuild to unload its old fixed Mocha theme link; later changes are live through Vencord QuickCSS's file watcher. Catppuccin presets load their official Discord stylesheet, and other presets project their palette into Discord's color variables |
 | GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
 | KDE color schemes | Live through `plasma-apply-colorscheme` |
 | X resources | Live through `xrdb`; existing X clients may need reopening |
