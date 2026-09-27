@@ -79,7 +79,7 @@ single selection into its own mode's slot.
 | Fish | At the next prompt |
 | tmux | Live for the default server, including Catppuccin's status modules and rounded windows; also loaded when reading its configuration |
 | Spicetify | Live through its packaged extension and a read-only loopback palette feed; restart Spotify once after the first rebuild to load the extension |
-| Vesktop | Restart Vesktop once after the first rebuild to unload its old fixed Mocha theme link; later CSS changes are live through Vencord QuickCSS's file watcher. Catppuccin presets load their official Discord stylesheet, and other presets project legible text and surface colors into Discord's current variables. Set Discord Appearance to Sync with computer so the official Latte stylesheet uses its light branch |
+| Vesktop | Restart Vesktop once after the first rebuild to unload its old fixed Mocha theme link; later CSS changes are live through Vencord QuickCSS's file watcher. Latte uses the official light stylesheet in either Discord appearance class; other Catppuccin presets import their official stylesheet, and other presets project legible text and surface colors into Discord's current variables |
 | GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
 | KDE color schemes | Live through `plasma-apply-colorscheme` |
 | X resources | Live through `xrdb`; existing X clients may need reopening |
@@ -106,10 +106,11 @@ endpoint accepts no changes or Spotify account data.
 The helper updates Vesktop's QuickCSS file in place so Vencord's watcher can
 repaint a running window. It removes only Catppuccin's fixed stylesheet URL
 from Vesktop's theme links and preserves other links and user QuickCSS. Latte's
-official stylesheet includes a Frappé fallback for Discord's dark class, so
-Seele projects the selected palette over the opposite appearance class if
-Discord has not yet switched appearance; the matching official branch stays
-intact.
+official stylesheet includes a Frappé fallback for Discord's dark class. Seele
+ships the complete official Latte light branch, scoped to both appearance
+classes, so header, search and other direct CSS rules cannot retain Frappé
+colors when Discord has not switched classes. Other Catppuccin presets retain
+the imported stylesheet and a projected fallback for the opposite class.
 It refreshes Catppuccin's tmux render after changing the palette, because that
 plugin expands status text and separators to literal colors when sourced.
 Quiet text is held to a legibility floor in that projection, because schemes
