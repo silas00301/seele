@@ -39,7 +39,9 @@ theme and the preferences from the files the helper publishes, so a change from
 anywhere is seen there. Ordering, movement and the schedule's sentence belong to
 `qml-core`. The projection holds the shell's quiet text to a legibility floor
 rather than reading Base16's dim slots verbatim, because Catppuccin's Base16
-file puts surface colours there. See [the theme switching guide](docs/theme-switching.md)
+file puts surface colours there. Vesktop reloads the helper's in-place QuickCSS
+update; Neovim selects the official colorscheme for Catppuccin presets and
+Stylix's Base16 palette for the others. See [the theme switching guide](docs/theme-switching.md)
 for scope, ownership and application reload boundaries.
 
 ## Architecture

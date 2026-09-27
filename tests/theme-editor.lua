@@ -1,20 +1,22 @@
 -- Run with: lua tests/theme-editor.lua modules/packages/_nixvim/theme.lua
 local source = assert(io.open(arg[1])):read('*a')
-local applied, callback, selection, events, highlights, clears
+local applied, callback, selection, events, highlights, clears, schemes
 local function palette()
   local result = {}
   for i = 0, 15 do result[string.format('base%02X', i)] = string.format('#%06x', i * 4096) end
   return result
 end
 local function fixture(state, mode)
-  applied, callback, events, highlights, clears = {}, nil, {}, {}, 0
+  applied, callback, events, highlights, clears, schemes = {}, nil, {}, {}, 0, {}
   selection = { version=2, id='flexoki-light', mode=mode, palette=palette() }
   package.loaded['mini.base16'] = { setup=function(config) table.insert(applied, config.palette) end }
   vim = {
     env = { SEELE_THEME_STATE=state },
     json = { decode=function() if selection == 'broken' then error('bad JSON') end return selection end },
     o = {}, g = { colors_name='catppuccin' },
-    cmd = function(command) assert(command == 'highlight clear'); clears = clears + 1 end,
+    cmd = {
+      colorscheme = function(name) table.insert(schemes, name) end,
+    },
     api = {
       nvim_create_augroup=function() return 1 end,
       nvim_create_autocmd=function() end,
@@ -28,6 +30,9 @@ local function fixture(state, mode)
       stop=function() end, close=function() end,
     } end },
   }
+  setmetatable(vim.cmd, { __call = function(_, command)
+    assert(command == 'highlight clear'); clears = clears + 1
+  end })
   assert(assert(load(source .. '\nreturn "continued"'))() == 'continued')
 end
 local original = io.open
@@ -46,15 +51,25 @@ assert(#applied == 2 and applied[2].base00 == '#abcdef', 'Same-ID palette edits 
 selection.mode = 'dark'
 callback(nil, 'selection.json')
 assert(vim.o.background == 'dark' and #applied == 3)
+selection.id = 'catppuccin-mocha'
+callback(nil, 'selection.json')
+assert(schemes[1] == 'catppuccin-mocha' and #applied == 3 and clears == 3,
+  'Catppuccin must use its official colorscheme, not a Base16 approximation')
+selection.id = 'catppuccin-latte'; selection.mode = 'light'
+callback(nil, 'selection.json')
+assert(schemes[2] == 'catppuccin-latte' and vim.o.background == 'light')
+selection.id = 'flexoki-light'; selection.mode = 'dark'
+callback(nil, 'selection.json')
+assert(#applied == 4, 'Non-Catppuccin presets return to Stylix Base16')
 selection.palette.base00 = '#123456; command'
 callback(nil, 'selection.json')
-assert(#applied == 3 and clears == 3)
+assert(#applied == 4 and clears == 4)
 selection.palette = palette(); selection.palette.extra = '#123456'
-callback(nil, 'selection.json'); assert(#applied == 3)
+callback(nil, 'selection.json'); assert(#applied == 4)
 selection.palette = palette(); selection.palette.base0F = nil
-callback(nil, 'selection.json'); assert(#applied == 3)
+callback(nil, 'selection.json'); assert(#applied == 4)
 selection.palette = palette(); selection.mode = 'invalid'
-callback(nil, 'selection.json'); assert(#applied == 3)
-selection = 'broken'; callback(nil, 'selection.json'); assert(#applied == 3)
+callback(nil, 'selection.json'); assert(#applied == 4)
+selection = 'broken'; callback(nil, 'selection.json'); assert(#applied == 4)
 io.open = original
-print('Editor Base16 palettes, transparency, live updates, malformed state and unmanaged initialization passed')
+print('Editor official Catppuccin and Base16 palettes, transparency, live updates, malformed state and unmanaged initialization passed')

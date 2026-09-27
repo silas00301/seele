@@ -75,14 +75,15 @@ single selection into its own mode's slot.
 | Hyprland borders, shadows, groups and background | Live; also loaded with compositor configuration |
 | Vicinae | Live through its theme command |
 | Ghostty | Live through SIGUSR2 for same-user Nix Ghostty processes, including scratchpads |
-| Neovim | Live through a file watcher, with a focus/startup fallback |
+| Neovim | Live through a file watcher, with a focus/startup fallback; Catppuccin presets use the official Catppuccin colorscheme and other presets use Stylix's Base16 palette |
 | Fish | At the next prompt |
 | tmux | Live for the default server; also loaded when reading its configuration |
 | Spicetify | Live through its packaged extension and a read-only loopback palette feed; restart Spotify once after the first rebuild to load the extension |
+| Vesktop | Live through Vencord QuickCSS's file watcher; the selected Catppuccin preset loads its official Discord stylesheet, and other presets project their palette into Discord's color variables |
 | GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
 | KDE color schemes | Live through `plasma-apply-colorscheme` |
 | X resources | Live through `xrdb`; existing X clients may need reopening |
-| Zen Browser | Restart Zen after switching to load its selected chrome/content CSS from the active `~/.zen/default` profile |
+| Zen Browser | Fully quit every Zen process after switching, then start it again to load the selected chrome/content CSS from the active `~/.zen/default` profile; opening another window of an existing process keeps its old CSS |
 | Brave | Live light/dark changes through the desktop portal after a full Brave restart applies its system color-scheme preference; its Qt colors are chosen when the browser starts |
 
 This is a user-session feature. The boot screen, greeter, cursor, browser page
@@ -102,6 +103,9 @@ the target files to it. KDE's named schemes come from those assets so its own
 activation command can switch between preset IDs. The Spicetify extension
 reads only the current ID and Base16 palette from `127.0.0.1:48725`; the
 endpoint accepts no changes or Spotify account data.
+The helper updates Vesktop's QuickCSS file in place so Vencord's watcher can
+repaint a running window. It removes only Catppuccin's fixed stylesheet URL
+from Vesktop's theme links and preserves other links and user QuickCSS.
 Quiet text is held to a legibility floor in that projection, because schemes
 disagree about what Base16's dim foregrounds are: Catppuccin's Base16 file puts
 its surface colours in `base04` and `base03`, which taken verbatim would drop

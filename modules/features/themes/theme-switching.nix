@@ -60,6 +60,7 @@ in
         default = "catppuccin-${catppuccin.flavor}";
         fontFamily = config.stylix.fonts.monospace.name;
         wallpaper = "/etc/wallpaper/wallpaper.jpg";
+        vesktopDir = "${config.xdg.configHome}/vesktop";
         inherit themes;
         commands = {
           hyprctl = "${pkgs.hyprland}/bin/hyprctl";

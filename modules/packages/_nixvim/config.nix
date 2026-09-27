@@ -15,7 +15,7 @@ in
     enable = catppuccin.enable;
     settings = {
       flavour = catppuccin.flavor;
-      transparent_background = true;
+      transparent_background = false;
       integrations = {
         harpoon = true;
         noice = true;

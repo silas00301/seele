@@ -16,7 +16,7 @@ do
       if not ok or type(theme) ~= "table" or theme.version ~= 2 then return end
       if theme.mode ~= "light" and theme.mode ~= "dark" then return end
       if type(theme.palette) ~= "table" then return end
-      local palette, values = {}, { theme.mode }
+      local palette, values = {}, { theme.id, theme.mode }
       local count = 0
       for _ in pairs(theme.palette) do count = count + 1 end
       if count ~= #keys then return end
@@ -29,19 +29,26 @@ do
       -- Content identity also catches palette edits under an unchanged theme ID.
       local identity = table.concat(values, ";")
       if current == identity then return end
-      local loaded, base16 = pcall(require, "mini.base16")
-      if not loaded then return end
-      vim.g.colors_name = nil
       vim.o.background = theme.mode
-      vim.cmd("highlight clear")
-      base16.setup({ palette = palette })
-      -- Retain Seele's transparent editor while preserving generated foregrounds.
-      for _, name in ipairs({ "Normal", "NormalNC", "NonText", "SignColumn", "LineNr" }) do
-        local highlight = vim.api.nvim_get_hl(0, { name = name, link = false })
-        highlight.bg = nil
-        vim.api.nvim_set_hl(0, name, highlight)
+      local flavour = type(theme.id) == "string" and theme.id:match("^catppuccin%-([a-z]+)$")
+      if flavour and ({ latte = true, frappe = true, macchiato = true, mocha = true })[flavour] then
+        -- Use Catppuccin's actual highlight groups and integrations for its
+        -- own presets; Base16 cannot reproduce those semantic color choices.
+        if not pcall(vim.cmd.colorscheme, "catppuccin-" .. flavour) then return end
+      else
+        local loaded, base16 = pcall(require, "mini.base16")
+        if not loaded then return end
+        vim.g.colors_name = nil
+        vim.cmd("highlight clear")
+        base16.setup({ palette = palette })
+        -- Retain Seele's transparent editor for non-Catppuccin presets.
+        for _, name in ipairs({ "Normal", "NormalNC", "NonText", "SignColumn", "LineNr" }) do
+          local highlight = vim.api.nvim_get_hl(0, { name = name, link = false })
+          highlight.bg = nil
+          vim.api.nvim_set_hl(0, name, highlight)
+        end
+        vim.api.nvim_exec_autocmds("ColorScheme", { pattern = "seele", modeline = false })
       end
-      vim.api.nvim_exec_autocmds("ColorScheme", { pattern = "seele", modeline = false })
       current = identity
     end
     local group = vim.api.nvim_create_augroup("SeeleTheme", { clear = true })
