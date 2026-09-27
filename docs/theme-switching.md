@@ -82,7 +82,7 @@ single selection into its own mode's slot.
 | GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
 | KDE color schemes | Live through `plasma-apply-colorscheme` |
 | X resources | Live through `xrdb`; existing X clients may need reopening |
-| Zen Browser | Restart Zen after switching to load its selected chrome/content CSS |
+| Zen Browser | Restart Zen after switching to load its selected chrome/content CSS from the active `~/.zen/default` profile |
 
 This is a user-session feature. The boot screen, greeter, cursor, browser page
 content and independently themed tools retain their configured appearance.

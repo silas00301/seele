@@ -189,6 +189,18 @@ in
         userContent = lib.mkForce ''@import url("file://${state}/current/zen-content.css");'';
         settings."zen.view.window.scheme" = lib.mkForce 2;
       };
+      # Zen still opens its existing ~/.zen/default profile. The Zen Home
+      # Manager module writes to ~/.config/zen/default, so bridge only the
+      # theme entry points into the active profile without replacing its
+      # profile registry, containers or browser data.
+      home.file."${config.home.homeDirectory}/.zen/default/chrome/userChrome.css".source =
+        config.lib.file.mkOutOfStoreSymlink "${state}/current/zen-chrome.css";
+      home.file."${config.home.homeDirectory}/.zen/default/chrome/userContent.css".source =
+        config.lib.file.mkOutOfStoreSymlink "${state}/current/zen-content.css";
+      home.file."${config.home.homeDirectory}/.zen/default/user.js".text = ''
+        user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+        user_pref("zen.view.window.scheme", 2);
+      '';
       programs.fish.interactiveShellInit = lib.mkAfter ''
         function __seele_theme --on-event fish_prompt
           set -l theme_file "$SEELE_THEME_STATE/current/fish.fish"
