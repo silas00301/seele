@@ -78,7 +78,9 @@ in
         text = lib.mkForce null;
         source = lib.mkForce (config.lib.file.mkOutOfStoreSymlink "${state}/selection.json");
       };
-      home.activation.seeleTheme = lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "linkGeneration" ] ''
+      # Stylix's Xresources on-change hook reads the linked file. Publish it
+      # after Home Manager links the catalog, before that hook runs.
+      home.activation.seeleTheme = lib.hm.dag.entryBetween [ "onFilesChange" ] [ "linkGeneration" ] ''
         run env XDG_CONFIG_HOME=${lib.escapeShellArg config.xdg.configHome} \
           XDG_STATE_HOME=${lib.escapeShellArg config.xdg.stateHome} \
           ${package}/bin/seele-theme init

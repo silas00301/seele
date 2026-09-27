@@ -1,3 +1,3 @@
 [submodule "seele-shell"]
 	path = seele-shell
-	url = git@github.com:silas00301/seele-shell.git
+	url = ssh://git@github.com/silas00301/seele-shell.git
