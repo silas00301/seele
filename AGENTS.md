@@ -448,6 +448,23 @@ and display preferences in its private JSON file. See the Seele skill's
 `shell-integrations.md` reference for live state, per-device confirmation,
 room/favorite organization and fixture validation.
 
+Google Calendar's agenda is inside the existing clock/calendar popup. The native
+`seele-calendar` worker in the shell integrations crate owns desktop OAuth with
+PKCE, the Secret Service refresh token, the private cache, every calendar
+policy and durable reminder keys. It fetches in the background and publishes
+small sections -- account, calendars, day dots, the selected day's agenda and
+the bar's event -- each only when it changed, so QML never parses or filters
+events and nothing waits for Google. The popup keeps one month above the agenda
+and puts account and calendar choice behind a header gear; the clock-adjacent
+indicator opens its event unfolded on its day. The shell feature registers a
+Calendar entry in Integration Health, whose Settings action opens that view.
+Calendar colors remain Google's configured colors; the rest of the UI uses
+Seele tokens. The integration is read-only and supports one account. The World
+Clock planner reads the same cache as busy time. See
+`seele-shell/projects/integrations/CALENDAR.md` for OAuth client setup, the
+worker protocol, sync windows, cache limits and the fake-API and QtTest checks.
+Use the `seele-credentials` skill for future integration credentials.
+
 On `nerv`, the Control Center's Ports tile opens a local TCP listener
 inspector. The resident `seele-ports` worker in the shell submodule's `tools`
 crate owns discovery, ownership, privilege and action policy; QML owns the
@@ -473,9 +490,14 @@ The shell's local workbenches are Calculator, Colour Lab, Text workbench and the
 World Clock's Plan meeting mode. Calculator and text documents, including undo
 history, disappear when their panels close; clipboard operations are explicit.
 Native Rust owns expression parsing, unit conversion, colour/contrast policy,
-text transforms and timezone calculations. Meeting planning uses local and pinned
-IANA zones with an explicitly labelled weekday 09:00–17:00 guide, not calendar
-availability. Colour Lab accepts opaque sRGB colours and can explicitly use the
+text transforms and timezone calculations. Meeting planning works on this
+computer's local day, 23 or 25 hours long across a transition: every local and
+pinned IANA zone is an hour ribbon against an explicitly labelled weekday
+09:00–17:00 guide, one band marks the meeting across them, and ranked
+suggestions and Next fit weigh those hours and, once Google Calendar is set up,
+the selected calendars' busy time. The planner reads that calendar and never
+writes it; Open in Google Calendar hands a prefilled draft to Google's editor.
+Colour Lab accepts opaque sRGB colours and can explicitly use the
 last screen-picked colour. The Control Center groups utility tiles in two columns
 and scrolls within the focused output; Vicinae exposes each workbench directly.
 

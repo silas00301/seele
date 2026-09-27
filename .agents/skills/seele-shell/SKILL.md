@@ -107,7 +107,9 @@ a newer local compiler is only an iteration aid.
 ## Keep local workbenches bounded and session-owned
 
 Calculator, Colour Lab and Text workbench use `qml-core` policy. Meeting planning
-extends the existing resident clock and pinned IANA zone set. Keep source text,
+extends the existing resident clock and pinned IANA zone set: `clock/meeting.rs`
+owns the local-day axis, hour ribbons, fit, suggestions, Next fit and the copied
+text, while `MeetingPlanner.qml` only moves one start instant and draws them. Keep source text,
 colour input and expressions out of command arguments; clipboard actions are
 explicit. Closing Calculator or Text workbench destroys its editor and undo
 history. The tools README and `projects/shell/CALCULATOR.md` describe their
@@ -835,6 +837,24 @@ Inspect the submodule diff before crossing back into the parent:
 jj -R seele-shell diff
 jj -R seele-shell status
 ```
+
+## Google Calendar
+
+`projects/integrations/src/calendar/` owns the one-account, read-only worker:
+`google.rs` sign-in, tokens and the Calendar API, `cache.rs` the private cache
+and its date windows, `view.rs` the agenda, day dots, bar indicator and meeting
+busy blocks,
+`reminders.rs` reminder times and wording, and `content.rs` descriptions and
+meeting links. It publishes only the sections that changed; `CalendarStore.qml`
+assigns each as it arrives, and `CalendarAgenda.qml` and `CalendarSettings.qml`
+only draw. The planner sends bare busy intervals to the clock worker; titles
+stay in the shell. Keep calendar policy in the worker rather than in QML or JavaScript.
+Read `projects/integrations/CALENDAR.md` before changing OAuth setup, the
+protocol, date windows, time-zone handling or reminder identity, and run its
+Rust and QtTest checks. The Rust tests drive the fetch path and the worker loop
+against a local fake Calendar API and must never touch the real cache, wallet
+or network. Follow the parent repository's `seele-credentials` skill for
+credential storage.
 
 ## Commit and push the submodule
 

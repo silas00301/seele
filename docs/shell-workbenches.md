@@ -8,7 +8,7 @@ flake input or system privilege is required.
 | Tool | Open from the shell | Native behavior |
 | --- | --- | --- |
 | Calculator | Control Center or `seele-shellctl calculator` | Bounded arithmetic parser, six conversion categories and a 32-entry session tape |
-| Meeting planner | World Clock → Plan meeting or `seele-shellctl control meeting` | IANA timezone conversion, date rollover, DST-aware durations and weekday working-hour overlap |
+| Meeting planner | World Clock → Plan meeting or `seele-shellctl control meeting` | Local-day hour ribbons per IANA zone, DST-aware day moves, working-hour fit, ranked suggestions and Next fit around calendar busy time |
 | Colour Lab | Control Center or `seele-shellctl color-lab` | Opaque sRGB parsing, unrounded WCAG thresholds, typography preview and tonal palettes |
 | Text workbench | Control Center or `seele-shellctl control text-workbench` | JSON formatting, URL and Base64 transforms, line cleanup and stable deduplication |
 | Resources | Control Center or `seele-shellctl control resources` | Live CPU, memory and searchable processes with bounded histories |
@@ -21,8 +21,11 @@ Colour Lab's AA/AAA verdict uses the unrounded ratio, even when its displayed
 ratio rounds up to a threshold. Its sampled-colour action is deliberate.
 
 The meeting planner's weekday 09:00–17:00 shading is a guide, not another
-person's calendar. A UTC date and time identify one instant even during repeated
-local clock hours; each participant keeps its actual local date and offset.
+person's calendar. Its axis is this computer's local day, 23 or 25 hours long
+across a transition, and every selection is one absolute instant, so a repeated
+or skipped local hour is never guessed and each participant keeps its actual
+local date and offset. With Google Calendar configured it steers around your own
+busy time, which it reads and never writes.
 
 Resources and Network activity are read-only, local observers. Closing their
 panels stops sampling and releases the in-memory session. No process arguments,

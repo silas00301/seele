@@ -257,9 +257,16 @@ directly. See [the theme switching guide](../../../../docs/theme-switching.md).
   copying. Its local associated image is the sender-identity icon, with the
   sending application icon badged over it rather than a second body image. See
   the `seele-shell` skill for the restored 11:00 notification behavior.
-- Calendar arrows select days/weeks, Home returns to today, and Enter copies an
-  ISO date. World-clock search uses Up/Down and Enter to copy a selected zone;
+- Calendar clicks and arrows select days/weeks, Home returns to today, and the
+  agenda follows the selection. Enter, a double-click or the agenda's copy
+  button copies an ISO date; Escape leaves calendar settings before it closes
+  the popup. World-clock search uses Up/Down and Enter to copy a selected zone;
   Ctrl+Enter copies local time. Timestamps carry explicit UTC offsets.
+- The World Clock's Plan meeting mode uses this computer's local day. H/L or
+  Left/Right step 15 minutes, Shift steps an hour, and Page Up/Down move days.
+  F finds the next fit, 1–3 choose a suggestion, Ctrl+C copies, and Ctrl+Enter
+  opens Google's prefilled editor. A click or drag centres the meeting under
+  the pointer. Calendar busy time steers suggestions when configured.
 - Now Playing exposes supported shuffle/repeat modes, keyboard seeking, per-player
   volume and bounded playback-speed presets. Respect each selected player's
   capabilities; live streams never receive seeking writes. Volume writes stay
