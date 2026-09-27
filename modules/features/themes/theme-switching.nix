@@ -188,6 +188,7 @@ in
       programs.zen-browser.profiles.default = {
         userChrome = lib.mkForce ''@import url("file://${state}/current/zen-chrome.css");'';
         userContent = lib.mkForce ''@import url("file://${state}/current/zen-content.css");'';
+        settings."extensions.activeThemeID" = lib.mkForce "default-theme@mozilla.org";
         settings."zen.view.window.scheme" = lib.mkForce 2;
       };
       # Zen still opens its existing ~/.zen/default profile. The Zen Home
@@ -200,6 +201,7 @@ in
         config.lib.file.mkOutOfStoreSymlink "${state}/current/zen-content.css";
       home.file."${config.home.homeDirectory}/.zen/default/user.js".text = ''
         user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+        user_pref("extensions.activeThemeID", "default-theme@mozilla.org");
         user_pref("zen.view.window.scheme", 2);
       '';
       programs.fish.interactiveShellInit = lib.mkAfter ''
