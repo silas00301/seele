@@ -83,6 +83,7 @@ single selection into its own mode's slot.
 | KDE color schemes | Live through `plasma-apply-colorscheme` |
 | X resources | Live through `xrdb`; existing X clients may need reopening |
 | Zen Browser | Restart Zen after switching to load its selected chrome/content CSS from the active `~/.zen/default` profile |
+| Brave | Live light/dark changes through the desktop portal after a full Brave restart applies its system color-scheme preference; its Qt colors are chosen when the browser starts |
 
 This is a user-session feature. The boot screen, greeter, cursor, browser page
 content and independently themed tools retain their configured appearance.

@@ -333,7 +333,9 @@ not install another Nix or download store closures.
 
 Brave's prelaunch Qt-theme helper is the native `set-brave-qt-theme` in
 `projects/desktop-tools`; it skips running/unsafe profiles and publishes private
-preferences through pinned descriptors. The existing Nerv Windows reboot service
+preferences through pinned descriptors. It clears a forced Brave color scheme
+to the system choice so the desktop portal can change light/dark mode in a
+running browser after the next full launch. The existing Nerv Windows reboot service
 uses the same crate's `reboot-windows`/`reboot-windows-service` with fixed native
 wrappers, root validation and bounded subprocesses. Its Polkit/service authority
 is unchanged; tests use temporary profiles and fake firmware commands only.
