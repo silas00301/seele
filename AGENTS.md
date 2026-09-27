@@ -448,15 +448,19 @@ room/favorite organization and fixture validation.
 
 Google Calendar's agenda is inside the existing clock/calendar popup. The native
 `seele-calendar` worker in the shell integrations crate owns desktop OAuth with
-PKCE, the Secret Service refresh token, selected calendar/event cache, and
-durable reminder keys. The popup, settings picker, day dots and clock-adjacent
-event indicator consume its public snapshots. The shell feature registers a
-Calendar entry in Integration Health, whose Settings action opens the picker.
-Calendar colors remain Google's
-configured colors; the rest of the UI uses Seele tokens. The integration is
-read-only and supports one account. See `seele-shell/projects/integrations/CALENDAR.md`
-for OAuth client setup, cache limits and focused checks. Use the
-`seele-credentials` skill for future integration credentials.
+PKCE, the Secret Service refresh token, the private cache, every calendar
+policy and durable reminder keys. It fetches in the background and publishes
+small sections -- account, calendars, day dots, the selected day's agenda and
+the bar's event -- each only when it changed, so QML never parses or filters
+events and nothing waits for Google. The popup keeps one month above the agenda
+and puts account and calendar choice behind a header gear; the clock-adjacent
+indicator opens its event unfolded on its day. The shell feature registers a
+Calendar entry in Integration Health, whose Settings action opens that view.
+Calendar colors remain Google's configured colors; the rest of the UI uses
+Seele tokens. The integration is read-only and supports one account. See
+`seele-shell/projects/integrations/CALENDAR.md` for OAuth client setup, the
+worker protocol, sync windows, cache limits and the fake-API and QtTest checks.
+Use the `seele-credentials` skill for future integration credentials.
 
 On `nerv`, the Control Center's Ports tile opens a local TCP listener
 inspector. The resident `seele-ports` worker in the shell submodule's `tools`

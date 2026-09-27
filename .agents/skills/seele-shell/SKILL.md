@@ -838,13 +838,18 @@ jj -R seele-shell status
 
 ## Google Calendar
 
-`projects/integrations/src/calendar.rs` owns the one-account, read-only worker,
-Secret Service credential access, offline cache and reminder delivery. The
-calendar popup and bar read `CalendarStore.qml`; `calendar.js` owns pure agenda,
-dot, color and countdown policy. Read
-`projects/integrations/CALENDAR.md` before changing OAuth setup, date windows,
-time-zone handling or reminder identity. Run the focused Rust and JavaScript
-checks there. Follow the parent repository's `seele-credentials` skill for
+`projects/integrations/src/calendar/` owns the one-account, read-only worker:
+`google.rs` sign-in, tokens and the Calendar API, `cache.rs` the private cache
+and its date windows, `view.rs` the agenda, day dots and bar indicator,
+`reminders.rs` reminder times and wording, and `content.rs` descriptions and
+meeting links. It publishes only the sections that changed; `CalendarStore.qml`
+assigns each as it arrives, and `CalendarAgenda.qml` and `CalendarSettings.qml`
+only draw. Keep calendar policy in the worker rather than in QML or JavaScript.
+Read `projects/integrations/CALENDAR.md` before changing OAuth setup, the
+protocol, date windows, time-zone handling or reminder identity, and run its
+Rust and QtTest checks. The Rust tests drive the fetch path and the worker loop
+against a local fake Calendar API and must never touch the real cache, wallet
+or network. Follow the parent repository's `seele-credentials` skill for
 credential storage.
 
 ## Commit and push the submodule
