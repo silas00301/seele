@@ -214,7 +214,9 @@ action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
-toasts, app stacks, local images, progress, and verification-code copying. A
+toasts, app stacks, local images, progress, verification-code copying, and
+per-notification reminders that return a waiting notification as a toast at a
+chosen time, held back by Do Not Disturb. A
 local notification image leads its card as the rounded sender identity, while
 the sending application's icon moves to a lower-right badge instead of the
 image being repeated in the body. Toasts declare no keyboard interactivity,
@@ -226,7 +228,7 @@ hour, 4 hours, no end, and the way out -- so no row below the title is spent
 on it. Notification state and DND
 belong to a resident Rust policy object owned by Qt; the QML store holds native
 notification objects and delivers callbacks. The hardware feed is independent. History,
-pins, and a running quiet period survive QML reloads in memory; notification
+pins, reminders, and a running quiet period survive QML reloads in memory; notification
 text is never written to disk. See the `seele-shell` skill for the protocol
 and tests.
 
