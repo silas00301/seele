@@ -372,6 +372,16 @@ conditional coffee bar item and a compact panel with the same session and Stop.
 See `seele-shell/projects/caffeinate/README.md` for the inhibition boundary, the
 protocol and its validation.
 
+Presentation mode on `nerv` holds back toasts and takes personal text off the
+bar. It covers the active window's title, the calendar event's title, media
+track text and artwork, and the Home Assistant readings. A `Presenting` bar item
+says the mode is on. It is chosen through `seele-shellctl presentation` or
+Vicinae's **Seele Presentation Mode**. It is also implied, without keeping the
+session awake, while the screen is shared. A chosen mode keeps the session awake
+by borrowing Caffeinate: it starts a session only when none is running and ends
+only that one. It never writes Do Not Disturb, so ending it has nothing else to
+restore. See the `seele-shell` skill for ownership and tests.
+
 The Audio panel's microphone test is the resident `seele-mic-test` worker,
 started by the panel and ended with it. It offers a five-second sample held only
 in memory and replayed through the chosen test output, and a live monitor that
