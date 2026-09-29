@@ -55,6 +55,12 @@ in
   keymaps = [
     {
       mode = "n";
+      key = "<leader>cf";
+      action = "<cmd>FormatToggle<CR>";
+      options.desc = "Toggle automatic formatting";
+    }
+    {
+      mode = "n";
       key = "<leader>cs";
       action = "<cmd>SavedDiff<CR>";
       options.desc = "Compare buffer with saved file";
@@ -267,6 +273,22 @@ in
             "diff"
           ];
           lualine_x = [
+            {
+              __unkeyed-1.__raw = ''
+                function()
+                  local formatter = require("lsp-format")
+                  if formatter.disabled then
+                    return "format off"
+                  end
+                  for _, filetype in ipairs(vim.split(vim.bo.filetype, ".", { plain = true })) do
+                    if formatter.disabled_filetypes[filetype] then
+                      return "format off"
+                    end
+                  end
+                  return ""
+                end
+              '';
+            }
             {
               __unkeyed-1.__raw = ''
                 require("noice").api.statusline.mode.get
