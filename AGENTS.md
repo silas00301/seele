@@ -211,6 +211,18 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+Fish reports a command that ran for more than ten seconds and finished while
+its terminal window was not focused. The `command-notifications` Home Manager
+feature in the `common` profile loads the `done` plugin, which times commands,
+compares the focused window at start and end, and stays silent over SSH. On
+`nerv`, `command-notifications-seele` replaces the plugin's own notify-send call:
+the shell never lists a transient notification in its panel and withdraws it when
+its toast retires, which the plugin sets to three seconds, and the plugin raises
+failures as critical, which the shell keeps on screen until dismissed. The hook sends an ordinary notification whose Show action
+focuses the originating Ghostty window through `seele-control vicinae-focus`
+and, inside tmux, selects the command's pane without switching any client. The
+command line reaches the hook as arguments and is never evaluated.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned

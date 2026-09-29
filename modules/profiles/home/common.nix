@@ -27,6 +27,7 @@ let
       modules.bat
       modules.bottom
       modules.brave
+      modules.command-notifications
       modules.determinate
       modules.direnv
       modules.eza
