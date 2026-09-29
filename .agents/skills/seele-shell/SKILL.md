@@ -119,7 +119,11 @@ Resources and Network activity sample local kernel data only while their panel
 is open. Each opening owns a fresh worker; generation guards reject queued
 stdout and exit callbacks after closing or reopening. PID/start time and
 interface index/sysfs identity protect selections from reuse. Gaps and unknown
-first rates stay visible. `HistoryChart` paints bounded native series and
+first rates stay visible. Resources' Storage group comes from
+`projects/tools/src/resources/storage.rs`: mountinfo plus `statvfs` on its own
+five-second thread, so a filesystem stalled in the kernel leaves the other
+readings running and reports `stale` instead; keep blocking filesystem calls off
+the publishing loop. `HistoryChart` paints bounded native series and
 `ChoiceBox` supplies the native keyboard selector; neither owns sampling policy.
 Run the resource/network real-worker fixtures and production Qt lifecycle
 checks after changing these boundaries. Keep `tests/control-center-layout.js`
