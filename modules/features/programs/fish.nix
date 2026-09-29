@@ -58,7 +58,11 @@ let
             source $script
           end
 
-          if not set -q TMUX
+          # Offer the session picker once per terminal. A shell nested inside
+          # this one -- `nix develop` keeps Fish through nix-your-shell -- inherits
+          # the marker and opens straight into the environment it was asked for.
+          if not set -q TMUX; and not set -q SEELE_SESSION_PICKER_OFFERED
+            set -gx SEELE_SESSION_PICKER_OFFERED 1
             tv sesh
           end
         '';
@@ -158,6 +162,7 @@ in
       "jq"
       "jujutsu"
       "lazygit"
+      "nix-your-shell"
       "nixvim"
       "ripgrep"
       "sesh"

@@ -117,7 +117,7 @@ When the request does not select a tool, preserve these active defaults:
 | Concern | Default |
 | --- | --- |
 | Version control | Jujutsu for daily work; Git for interoperability; `gh` for GitHub |
-| Interactive shell | Fish with vi bindings; keep Zsh as the system/compatibility bridge |
+| Interactive shell | Fish with vi bindings, including inside `nix develop`, `nix shell` and `nix-shell`; keep Zsh as the system/compatibility bridge |
 | Editor | Neovim/Nixvim |
 | Terminal | Ghostty |
 | Multiplexer | tmux |

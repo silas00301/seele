@@ -41,6 +41,7 @@ let
       modules.jq
       modules.jujutsu
       modules.nh
+      modules.nix-your-shell
       modules.nixvim
       modules.ripgrep
       modules.sesh
