@@ -384,8 +384,14 @@ let
 
           hl.bind(
             "XF86AudioPause",
-            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"),
-            { locked = true, description = "Toggle media playback" }
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl pause"),
+            { locked = true, description = "Pause media playback" }
+          )
+
+          hl.bind(
+            "XF86AudioStop",
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl stop"),
+            { locked = true, description = "Stop media playback" }
           )
 
           hl.bind(
