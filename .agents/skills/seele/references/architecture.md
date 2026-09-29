@@ -215,6 +215,10 @@ attribute defined by both features is a merge conflict, not a fallback, so
 publishes a Linux-only `seele.portable` entry. The Hyprland feature floats imv,
 which is why the pre-existing `mpv` rule finally has a player to apply to.
 
+The Linux `mpv` feature loads nixpkgs’ MPRIS script, including in portable mpv,
+so local playback participates in desktop media keys and Seele Now Playing.
+It uses the existing session bus and needs no separate service.
+
 `modules/features/system/firmware-updates.nix` is the NixOS-wide hardware
 feature: the `linux` profile imports `flake.modules.nixos.firmware-updates`, so
 it follows any NixOS host rather than one machine. fwupd owns the metadata
