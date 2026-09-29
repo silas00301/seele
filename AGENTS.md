@@ -342,6 +342,15 @@ path, and the module loads with `nofail`, so a plugin that will not load costs
 the virtual source rather than the audio server. It adds no WirePlumber rules
 and leaves the Bluetooth receiver's `bluez5.media-source-role` rules untouched.
 
+On `nerv`, the shell's resident status monitor warns when a device's battery
+runs low. Every battery list it publishes — system supplies, OpenLogi devices and
+connected Bluetooth peripherals — passes a native policy that raises one ordinary
+notification at 15% and one critical notification at 5% for a discharging
+device, and re-arms only once that device is seen charging or back at 25%. What
+has been said is kept in the private runtime directory, so a shell reload does
+not repeat it and a reboot starts fresh. See the submodule's
+`projects/tools/README.md`.
+
 On `nerv`, the Camera panel carries every attached Litra Glow, each with its
 own settings. The shell's resident status monitor owns the lights, not the
 panel: OpenLogi's light commands cannot read a light back, so the monitor keeps
