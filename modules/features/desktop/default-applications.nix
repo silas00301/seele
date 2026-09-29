@@ -68,7 +68,7 @@ let
       # The terminal applications are opened by the configured terminal through
       # explicit store paths, because a desktop entry is executed by whatever
       # launched it and must not depend on that process's PATH.
-      inTerminal = command: "${pkgs.ghostty}/bin/ghostty -e ${command} %f";
+      inTerminal = command: "${pkgs.ghostty}/bin/ghostty -e ${command}";
 
       handle = entry: types: lib.genAttrs types (_: entry);
 
@@ -94,7 +94,8 @@ let
           name = "Neovim";
           genericName = "Text editor";
           comment = "Edit a file in the configured Neovim";
-          exec = inTerminal "${selfPackages.nixvim}/bin/nvim";
+          # One editor owns the whole selection; filenames follow the option boundary.
+          exec = inTerminal "${selfPackages.nixvim}/bin/nvim -- %F";
           icon = "nvim";
           terminal = false;
           startupNotify = false;
@@ -109,7 +110,7 @@ let
           name = "Files";
           genericName = "File manager";
           comment = "Browse a directory in Yazi";
-          exec = inTerminal "${config.programs.yazi.package}/bin/yazi";
+          exec = inTerminal "${config.programs.yazi.package}/bin/yazi %f";
           icon = "system-file-manager";
           terminal = false;
           startupNotify = false;

@@ -207,7 +207,9 @@ audio to `mpv.desktop`, PDFs and EPUBs to `org.pwmt.zathura.desktop`, text to
 two are declared in the same leaf, because Neovim and Yazi are terminal
 applications with no entry that opens this desktop's terminal; both `Exec` lines
 name Ghostty and the target binary by store path, since a desktop entry inherits
-the `PATH` of whatever launched it. The Zen feature holds the other half of the
+the `PATH` of whatever launched it. The editor uses `%F` after `--` to open a
+multi-file selection in one Neovim; Files retains one directory per launch.
+The Zen feature holds the other half of the
 same option and was narrowed to the web documents and URL schemes it handles: an
 attribute defined by both features is a merge conflict, not a fallback, so
 `text/plain` now belongs to the editor alone. `imv.nix`, `mpv.nix`, and
