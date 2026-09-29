@@ -45,6 +45,7 @@ let
       modules.ripgrep
       modules.sesh
       modules.starship
+      modules.tealdeer
       modules.television
       modules.tmux
       modules.yazi

@@ -123,6 +123,7 @@ When the request does not select a tool, preserve these active defaults:
 | Multiplexer | tmux |
 | Search and selection | ripgrep, fd, fzf, Television, Telescope |
 | Files and inspection | yazi, eza, bat, bottom, jq |
+| Command examples | tealdeer's `tldr`, read from a local page cache that a weekly user timer refreshes rather than the lookup itself |
 | Markdown reading | Glow with the shared Catppuccin Glamour theme; 100-column wrapping and hidden files excluded |
 | Nix operations | `nh` for intended user rebuild workflows; direct `nix` commands for agent validation |
 | Nix distribution | Determinate Nix everywhere this flake reaches: both hosts through its NixOS and nix-darwin modules, and every Home Manager and portable evaluation through its Home Manager module, so no user profile carries a Nix of its own. This flake's own nixpkgs stays the `nixpkgs` registry pin. Configure Nix through `nix.settings` on NixOS and `determinateNix.customSettings` on Darwin |

@@ -175,6 +175,22 @@ directory macOS neither shows nor empties. There is no `seele.portable.trash`
 entry — a trash is machine state, not configuration worth carrying to a borrowed
 machine.
 
+`modules/features/programs/tealdeer.nix` publishes the `tealdeer` Home Manager
+feature, imported by the `common` profile, so `tldr` exists on both hosts.
+Home Manager's `programs.tealdeer` enables its `services.tldr-update` by default:
+a weekly `Persistent` systemd user timer on `nerv` and a launchd agent on `asuka`,
+each running `tldr --update`. `settings.updates.auto_update` is on as well, which
+in tealdeer 1.9 downloads a missing cache on the first lookup and otherwise
+refreshes in-command once the cache is older than `auto_update_interval_hours`.
+That refresh fails the whole lookup when it cannot reach the network instead of
+falling back to the stale pages, so the interval is 90 days rather than Home
+Manager's 30: the timer owns freshness, and the in-command refresh is only a
+backstop for a timer that has not succeeded in a season. The Linux service gains `Restart=on-failure` every 15 minutes: the
+Maintenance `systemd` source reports failed user units, and a weekly refresh that
+ran while offline should retry rather than become a System Health finding. There
+is no portable entry, because the program's worth is its downloaded cache rather
+than configuration.
+
 The shell submodule's `projects/shell/SystemState.qml` owns status fields and publishes changes per field. Full snapshots and optimistic patches go through its `apply()` method: Rust's `system.patch` schema validates allowed fields/types, and the Qt adapter retains unchanged engine object references so unrelated updates leave list models and delegates alone. `tests/system-state.sh` checks change-signal counts, delegate reuse, and unchanged rendered pixels. Agent CPU sampling reuses the process name in `/proc/<pid>/stat` instead of opening each process's `comm` separately; command-line fallback discovery stays in place.
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and wraps the native screenshot helper from `projects/desktop-tools/`. It sets `configType = "lua"`, and that choice reaches every caller rather than only the config file: Hyprland evaluates `hyprctl dispatch` as Lua, so a dispatch is one `hl.dsp` call — `hl.dsp.exit()`, `hl.dsp.focus({ workspace = "9" })`, `hl.dsp.window.close({ window = "address:0x…" })` — and the legacy `hyprctl dispatch <name> <args>` form resolves to an undefined global. hyprctl still exits zero on that error, so a stale call fails in silence; `hyprctl repl` evaluates a candidate without dispatching it. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it. Each completed capture gets a collision-safe timestamped path under `Pictures/Screenshots` and is copied after optional Satty annotation. The upload variant uses a native consent dialog before sending the saved image to 0x0.st with a secret URL and 24-hour expiry; declining or a failed upload copies the image locally. Its native package runs `projects/desktop-tools/tests/screenshot.py` against the raw Rust executable.
