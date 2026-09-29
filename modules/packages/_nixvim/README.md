@@ -77,3 +77,42 @@ state. A real desktop/terminal clipboard still needs validation in that session.
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.
 `test-undo.py` exercises real editor writes and reloads; see its header for the
 writable-directory requirement and Vim fallback.
+
+## Spell checking
+
+Commit messages, Jujutsu descriptions, Markdown, plain text and mail open with
+`spell` on; every other filetype, source code included, stays unchecked.
+Treesitter queries and syntax files decide what counts as prose inside those
+buffers, so code spans, URLs, wikilinks, a `type(scope):` prefix, change IDs and
+the generated file lists are not flagged. Use Neovim's own `]s`/`[s`, `z=` and
+`zg`; `:setlocal spell` turns it on anywhere else.
+
+`spelllang` is `en_us,de_de`. English comes from Neovim's runtime.
+`german-spell.nix` builds `de.utf-8.spl` and its suggestion file with `:mkspell`
+from the frami word lists adapted for Vim, the source Vim's own published German
+file is built from, including the Austrian and Swiss lists as regions. A
+spelling that is only right across a border is therefore marked regional rather
+than wrong, and Neovim never offers to download a spell file. The build checks
+that both files exist, because `:mkspell` can abandon a word list and still exit
+successfully.
+
+nvim-treesitter's `jjdescription` query marks only hand-written `JJ:` comments
+as spellable. With a Treesitter highlighter active, Neovim checks nothing else,
+so `jjdescription-spell.scm` extends it to the subject and body.
+
+`zg` writes to `stdpath('data')/spell/personal.utf-8.add`. The directory is
+created with mode `0700`, because Neovim does not create it and the list can
+hold people's names. The store-built runtime path is never written.
+
+Run the real Neovim fixture with a built German spell directory and
+nvim-treesitter's `jjdescription` parser and base highlights query:
+
+```sh
+NVIM=/path/to/nvim python3 modules/packages/_nixvim/test-spell.py \
+  SPELL_DIR PARSER.so highlights.scm
+```
+
+It isolates every XDG directory and walks each buffer with `]s`/`]S`, so syntax
+and Treesitter decide the result exactly as they do on screen. It covers both
+languages and their regions, prose versus code, the description query, and a
+`zg` word that a later session accepts.

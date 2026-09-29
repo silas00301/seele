@@ -77,6 +77,15 @@ nearest Jujutsu/Git ancestor marker without invoking VCS commands; register `r`
 retains the reference even when the existing clipboard provider is unavailable.
 See the adjacent README and real Neovim fixture for path and clipboard boundaries.
 
+Neovim spell checks prose filetypes (commit and Jujutsu descriptions, Markdown,
+plain text, mail) in `en_us` and `de_de`, and leaves source code alone.
+`modules/packages/_nixvim/spell.lua` sets that up and keeps `zg` words in a
+private `stdpath('data')/spell` file. `german-spell.nix` builds the German spell
+file with `:mkspell` from the frami source Vim's own runtime uses, so nothing is
+downloaded at run time, and `jjdescription-spell.scm` extends nvim-treesitter's
+query, which otherwise leaves a description's subject and body unchecked. See
+the adjacent README for the real-Neovim fixture.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:

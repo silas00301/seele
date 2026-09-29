@@ -9,6 +9,7 @@ let
   colors =
     (builtins.fromJSON (builtins.readFile "${catppuccinPalette}/palette.json"))
     .${catppuccin.flavor}.colors;
+  germanSpell = pkgs.callPackage ./german-spell.nix { };
 in
 {
   colorschemes.catppuccin = {
@@ -33,6 +34,14 @@ in
   extraPlugins = [ pkgs.vimPlugins.mini-base16 ];
 
   extraConfigVim = "source ${./undo.vim}";
+
+  # Neovim ships the English spell file; the German one and the query that
+  # makes a Jujutsu description's message spellable join the runtime path.
+  extraFiles = {
+    "spell/de.utf-8.spl".source = "${germanSpell}/spell/de.utf-8.spl";
+    "spell/de.utf-8.sug".source = "${germanSpell}/spell/de.utf-8.sug";
+    "after/queries/jjdescription/highlights.scm".source = ./jjdescription-spell.scm;
+  };
 
   opts = {
     number = true;
@@ -209,6 +218,7 @@ in
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
     dofile("${./copy-reference.lua}").setup()
+    dofile("${./spell.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then

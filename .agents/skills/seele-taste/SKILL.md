@@ -158,6 +158,7 @@ mouse-button remap as equivalent: browser links must retain their action.
 - Provide rich language intelligence: LSP, inlay hints, Treesitter, formatting, snippets, diagnostics, and contextual documentation.
 - Keep editor diagnostics and symbols in the existing Telescope search layer: lowercase `sd`/`ss` after the leader search the buffer/document, uppercase `sD`/`sS` search the workspace. Give shortcuts readable which-key descriptions.
 - Keep completion user-controlled: offer strong suggestions and fuzzy matching without silently accepting the first item.
+- Spell check what is written for people — commit and change descriptions, Markdown notes, plain text — in English and German, and leave code alone, where a flagged identifier is noise rather than a typo. Treat a spelling that is right across a border as regional, not wrong. Ship the dictionaries with the editor instead of letting it fetch them at run time, and keep words the user taught it as private local data.
 - Integrate navigation boundaries. Pane movement should flow between Neovim and tmux instead of trapping focus.
 - In tmux copy mode, use `v` to select, `Ctrl-v` for a rectangle, `y` to copy and close, and Escape to cancel. Copy through the terminal clipboard so the workflow also works over SSH; the terminal retains its clipboard permission policy.
 - Prefer previews and structured dashboards for changes, pull requests, files, and sessions.
