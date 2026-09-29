@@ -72,6 +72,12 @@ and visual mappings, range semantics, project boundaries and hostile filenames,
 checks provider failure/fallback, and verifies unchanged repository data and editor
 state. A real desktop/terminal clipboard still needs validation in that session.
 
+## Text search
+
+Lowercase `/` and `?` searches match either case. An uppercase letter in the
+pattern makes the search case-sensitive. Explicit `\C` and `\c` pattern flags
+still force sensitive and insensitive matching respectively.
+
 ## Persistent undo
 
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.

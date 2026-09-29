@@ -38,6 +38,7 @@ in
     number = true;
     relativenumber = true;
     shiftwidth = 2;
+    ignorecase = true;
     smartcase = true;
     smartindent = true;
     autoindent = true;
