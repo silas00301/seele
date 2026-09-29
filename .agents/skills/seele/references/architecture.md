@@ -609,6 +609,11 @@ The wrapper does not point applications at the store tree directly, because the 
 
 The mechanism has two known limits. It re-roots `XDG_CONFIG_HOME` only, so a Home Manager module that writes outside `.config` — nushell's Darwin path under `~/Library` is the example — is unconfigured in its wrapper on that platform. And features that only make sense as part of a running system, the compositor, the greeter, the shell, and the browsers with heavy profile state, have no portable entry.
 
+Bash hands interactive sessions to Fish through Home Manager's `initExtra`.
+The handoff must stay after Home Manager's interactive guard: `bashrcExtra`
+also runs for noninteractive startup, where a Fish process can consume a
+remote command's standard input. Scripted Bash remains Bash.
+
 ## Validation boundaries
 
 The interactive rebuild abbreviations remain:
