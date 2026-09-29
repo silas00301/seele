@@ -747,3 +747,7 @@ feeds Spicetify's packaged extension. The Linux `theme-presets` check validates
 the generated assets through the runtime. See
 [the theme switching guide](../../../../docs/theme-switching.md) before changing
 palette ownership or adding another runtime theme consumer.
+
+Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
+GitHub SSH and `me:repository` selects the personal namespace. Bare relative
+paths starting with `gh` or `me` remain local paths.
