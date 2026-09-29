@@ -46,7 +46,7 @@ let
         column.ui = "auto";
         help.autocorrect = "prompt";
         init.defaultBranch = "main";
-        aliases = {
+        alias = {
           co = "checkout";
         };
       };
