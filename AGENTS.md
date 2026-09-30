@@ -502,12 +502,16 @@ Colour Lab accepts opaque sRGB colours and can explicitly use the
 last screen-picked colour. The Control Center groups utility tiles in two columns
 and scrolls within the focused output; Vicinae exposes each workbench directly.
 
-Resources and Network activity are local, read-only shell panels. Their native
+Resources, Network activity and Sensors are local, read-only shell panels. Their native
 workers sample only while the owning panel is open and retain bounded histories
 in memory. Resources reads CPU, memory and process names without command-line
 arguments. Network activity reads interface counters without contacting a host
-or examining packets. Kernel identities and fresh baselines keep restarted
-processes and replaced interfaces from inheriting a previous object's rates.
+or examining packets. Sensors, opened from the Resources header, reads hwmon
+temperatures and fan speeds with only the limits their drivers state, and leaves
+`drivetemp` disks alone because reading them can reset a spin-down timer.
+Kernel identities and fresh baselines keep restarted
+processes, replaced interfaces and rebound sensor drivers from inheriting a
+previous object's rates or peaks.
 The parent supplies the new layer namespaces to the existing Hyprland blur rule;
 no service or host keybinding is needed. See `docs/shell-workbenches.md` for entry
 points, validation and the source-only PR integration boundary.

@@ -1,6 +1,6 @@
 # Shell workbenches
 
-These six tools share Seele Shell's design tokens and direct Vicinae commands.
+These tools share Seele Shell's design tokens and direct Vicinae commands.
 The parent change adds their layer namespaces to Hyprland's existing blur rule
 and pins their combined, published shell revision. No new daemon, host binding,
 flake input or system privilege is required.
@@ -13,6 +13,7 @@ flake input or system privilege is required.
 | Text workbench | Control Center or `seele-shellctl control text-workbench` | JSON formatting, URL and Base64 transforms, line cleanup and stable deduplication |
 | Resources | Control Center or `seele-shellctl control resources` | Live CPU, memory and searchable processes with bounded histories |
 | Network activity | Network panel or `seele-shellctl control network-activity` | Per-interface receive/send rates and session totals |
+| Sensors | Resources header or `seele-shellctl sensors` | hwmon temperatures and fan speeds with driver-stated limits, alarm states and session peaks |
 
 Calculator and text-workbench documents are destroyed on close. Paste and Copy
 are explicit. Text transforms reject malformed or oversized data without partial
@@ -27,9 +28,10 @@ or skipped local hour is never guessed and each participant keeps its actual
 local date and offset. With Google Calendar configured it steers around your own
 busy time, which it reads and never writes.
 
-Resources and Network activity are read-only, local observers. Closing their
-panels stops sampling and releases the in-memory session. No process arguments,
-packet contents, network probes or historical files are collected.
+Resources, Network activity and Sensors are read-only, local observers. Closing
+their panels stops sampling and releases the in-memory session. No process
+arguments, packet contents, network probes or historical files are collected,
+and Sensors never reads a `drivetemp` disk.
 
 ## Validation boundary
 
