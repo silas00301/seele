@@ -656,7 +656,7 @@ nix build .#nixosConfigurations.nerv.config.system.build.toplevel --no-link --no
 nix build .#darwinConfigurations.asuka.system --no-link --no-write-lock-file                     # Darwin
 ```
 
-Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary.
+Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary. `nix flake show` and `nix flake check` evaluate `darwinConfigurations.asuka`, so on Linux they stop on that Catppuccin palette mismatch. The Linux host check that completes is the `nixosConfigurations.nerv` derivation above.
 
 Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
 
@@ -678,3 +678,7 @@ and explicit repair confirmation are enforced by the service as well as the UI.
 AI analysis is explicit and goes through the shared Codex broker, with repair IDs
 restricted to the finding's registered actions. It never executes a proposal.
 See `seele-shell/projects/maintenance/README.md` for source policy and validation.
+
+## Cursor Cloud specific instructions
+
+Cloud agents run on x86_64 Linux without systemd. The environment installs Determinate Nix and starts `nix-daemon` before work begins, and `install` checks out the `seele-shell` submodule. Use the Validation commands. On this machine, the Linux host check is the `nerv` derivation eval. `nix flake show` and `nix flake check` stop on the Darwin palette boundary above. Do not activate either host.
