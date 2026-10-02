@@ -61,6 +61,20 @@ Python compatibility patch stays inside its upstream authentication package.
 These exceptions preserve upstream API and UI contracts; Python/Node fixtures
 are not installed as dependencies of native services.
 
+Neovim's `<leader>b` / `:LineOrigin` (with Visual or Ex ranges) opens a popup
+naming the change that last touched each line: short id, author, relative and
+absolute date and full description, one section per distinct change. `y` copies
+the id, Enter or `d` opens the change's diff read-only, `p` steps to the line's
+version before that change, and `q`/Escape closes. It uses `jj file annotate`
+with `--ignore-working-copy` in Jujutsu repositories and `git blame --porcelain
+--contents -` in plain Git ones, mapping the buffer onto the saved file and the
+saved file onto jj's last recorded working copy so unsaved and unrecorded lines
+are named rather than misattributed. Commands are bounded asynchronous argv
+lists from `PATH`. `<leader>b` is deliberately not `<leader>gb`, because
+`<leader>g` opens LazyGit directly, and a key below it would make that mapping
+wait for `timeoutlen`. The module `modules/packages/_nixvim/line-origin.lua`, its
+README section and `test-line-origin.py` fixture hold the limits and validation.
+
 Neovim’s attached LSP clients expose `<leader>cr` for symbol rename and
 `<leader>ca` for code actions in normal and visual modes. Both keep the native
 prompt/selection workflow and are described in which-key.
