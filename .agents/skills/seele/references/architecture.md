@@ -216,6 +216,37 @@ Yazi’s `gd`, `go`, and `gp` open Downloads, Documents, and Pictures. The bindi
 use enabled Home Manager XDG user-directory settings, otherwise runtime-home
 fallbacks, including standalone portable evaluations. `gD` still invokes diff.
 
+Archives are Yazi's own business plus one plugin, all inside the `yazi` leaf, so
+both hosts and `seele.portable.yazi` behave alike. The leaf overrides the
+nixpkgs wrapper's `_7zz` argument with `pkgs._7zz-rar`: the free build lists a
+RAR but writes each compressed member empty, and the unRAR licence only forbids
+recreating the RAR compressor, which `allowUnfree` already admits. An assertion
+holds that 7-Zip at 25.01 or later, whose CVE-2025-55188 fix is what keeps link
+entries inside the target. Yazi's built-in archive previewer and `extract`
+plugin take that `7zz` from the wrapper's PATH. `E` runs
+`ya pub extract --list %s` by store path, the same path Yazi's archive opener
+takes: each hovered or selected archive unpacks through a hidden temporary
+directory into a new sibling folder named after it (or, when it holds one
+entry, that entry), with numbered names instead of overwriting, nested tarballs
+unwrapped, and a password prompt repeated until it is right or dismissed;
+several archives at once refuse protected ones and name them. 7-Zip refuses
+`..`, absolute and link-escaping entries. `C` runs the packaged `pack` plugin
+from `_yazi/pack.lua`, with 7-Zip substituted by store path: it packs the
+selection, or the hovered entry, relative to the entries' closest common folder
+into the folder on screen, defaulting to the single entry's or that folder's
+name plus `.zip`. The typed extension picks `.zip`, `.7z`, `.tar` or a
+gzip/xz/bzip2 tarball; a path, an unknown extension or an existing name
+re-prompts, and the finished archive replaces only a placeholder `fs.unique`
+created, so nothing is ever overwritten. Names stay literal (`-spd`, `--`) and
+links are stored as links (`-snl`). Neither key collides with Yazi's `[mgr]`
+defaults, where `C` and `E` only appear as chord seconds (`cC`, `,E`). Run
+`YAZI_BIN=… YA_BIN=… SEVENZIP_BIN=… python3 modules/features/programs/_yazi/test-archives.py`
+with the pinned Yazi and the `_7zz-rar` 7-Zip after changing the plugin, either
+key or the 7-Zip choice: it drives real Yazi in a private tmux server and
+temporary HOME through packing, refusals, previews, crafted traversal, absolute
+and link archives, a RAR5 member and password prompts. With the free 7-Zip it
+fails on the RAR member.
+
 `modules/features/desktop/default-applications.nix` is the Linux profile's only
 owner of `xdg.mimeApps` defaults. Images resolve to `imv.desktop`, video and
 audio to `mpv.desktop`, PDFs and EPUBs to `org.pwmt.zathura.desktop`, text to

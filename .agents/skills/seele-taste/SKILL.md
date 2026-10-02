@@ -35,7 +35,7 @@ Aim for a **polished cockpit**: compact, keyboard-driven, information-rich when 
 - Use vi-shaped navigation: `h/j/k/l`, a space leader where applicable, and the same directional geometry across editor, multiplexer, and window manager.
 - Favor direct numbered workspaces/tabs, predictable modifier layers, and shortcuts that compose navigation, move, and resize actions.
 - Favor fuzzy search, frecency, previews, command palettes, and session launchers over deep menus or manual path traversal.
-- In Yazi, keep Markdown previews and Git status available; use `g D` to copy a selected-versus-hovered patch and `c m` for the explicit permissions prompt. Space belongs to Quick Look there, with the displaced selection toggle on `<C-Space>` and visual mode untouched.
+- In Yazi, keep Markdown previews and Git status available; use `g D` to copy a selected-versus-hovered patch and `c m` for the explicit permissions prompt. Space belongs to Quick Look there, with the displaced selection toggle on `<C-Space>` and visual mode untouched. `C` packs the selection into an archive whose format the typed name chooses and `E` unpacks archives beside themselves, both through Yazi's own tasks and 7-Zip with RAR decoding, never overwriting and never letting an entry leave its folder.
 - Focus a searchable popup's query field when it opens and select any retained query so typing starts a fresh search immediately.
 - Keep frequent actions fast and reversible. Automate routine cleanup, session setup, refetching, and integration work.
 - Give Atuin Ctrl-R for global fuzzy history and Up for prefix history in the current directory. Return selections to the prompt for editing, and keep Television on Ctrl-T for file search.
