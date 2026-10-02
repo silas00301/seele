@@ -211,6 +211,10 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+On `nerv`, `Super + Ctrl + Tab` returns to the previous workspace through
+Hyprland's native workspace history. `Super + Tab` and `Super + Shift + Tab`
+still move the current workspace to the next and previous monitor.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
