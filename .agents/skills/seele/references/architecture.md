@@ -612,7 +612,8 @@ tmux prefix + `c`, `<`, and `>` open a window or split in the active pane’s cu
 directory. The directory is quoted as one argument, including paths with spaces.
 Prefix + `H` opens the originating pane's retained scrollback in a temporary,
 read-only Neovim popup. The tmux feature pins an unconfigured editor itself,
-including in portable tmux. Capture is limited to 10,000 history rows and 8 MiB,
+including in portable tmux. New panes retain 10,000 history rows; reloading does
+not change existing panes’ retention. Capture is limited to 10,000 history rows and 8 MiB,
 soft wraps join, and only an explicit yank changes the terminal clipboard.
 `modules/features/programs/_tmux/README.md` documents the isolated editor and the
 private-server fixture packaged as `checks.<system>.tmux-scrollback`.
