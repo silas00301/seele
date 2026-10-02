@@ -28,7 +28,10 @@ let
             body = builtins.readFile ./_fish/croot.fish;
           };
           last_history_item = "echo $history[1]";
-          edit = "$EDITOR $argv";
+          edit = {
+            description = "Open literal file arguments with the configured editor";
+            body = builtins.readFile ./_fish/edit.fish;
+          };
         };
         shellAliases = {
           ls = "eza -la --git";
@@ -118,6 +121,19 @@ in
   perSystem =
     { pkgs, ... }:
     {
+      checks.fish-edit =
+        pkgs.runCommand "fish-edit"
+          {
+            nativeBuildInputs = [
+              pkgs.fish
+              pkgs.python3
+            ];
+          }
+          ''
+            python3 ${./_fish/test_edit.py} ${./_fish/edit.fish} fish
+            touch "$out"
+          '';
+
       checks.fish-project-root =
         pkgs.runCommand "fish-project-root"
           {
