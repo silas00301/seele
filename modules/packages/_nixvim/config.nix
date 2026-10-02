@@ -38,6 +38,9 @@ in
     number = true;
     relativenumber = true;
     shiftwidth = 2;
+    expandtab = true;
+    tabstop = 2;
+    softtabstop = -1;
     smartcase = true;
     smartindent = true;
     autoindent = true;
