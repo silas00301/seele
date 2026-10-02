@@ -10,6 +10,7 @@ let
   reader = "org.pwmt.zathura.desktop";
 
   editorTypes = [
+    "application/json"
     "application/toml"
     "application/x-shellscript"
     "application/x-yaml"

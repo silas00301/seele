@@ -155,7 +155,6 @@ let
                 "x-scheme-handler/https"
                 "x-scheme-handler/http"
                 "application/xhtml+xml"
-                "application/json"
                 "text/html"
               ]
           );
