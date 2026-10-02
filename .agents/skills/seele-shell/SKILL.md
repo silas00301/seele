@@ -428,6 +428,13 @@ manual choice replaces a timed one, and `restore()` drops a period that ran out
 while the shell was down. `seele-shellctl notification snooze <minutes>`
 reaches the same store; the minute count travels in the `id` argument.
 
+`seele-shellctl pr-focus` is separate from the focus timer. It pins one
+configured pull request in the Control Center and, while that pin is up, holds
+desktop toasts that are not @-mentions. The notifications stay in the inbox and
+toast when focus ends. A summary or body that contains an @-mention, or GitHub's
+"mentioned you", is not held. Exit clears the pin. Do not post the focus
+anywhere, and do not enter it from a push or an opened URL.
+
 `NotificationStore.qml` owns the desktop notification service through
 Quickshell. `projects/qml-core/src/notifications.rs` owns presentation and the
 complete state machine in a Rust object owned by a Qt QObject. `notifications.js`

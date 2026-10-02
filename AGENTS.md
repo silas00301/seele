@@ -440,6 +440,16 @@ GitHub's web inbox because the public API lacks them; this is the approved SIL-4
 scope. See the Seele skill's `shell-integrations.md` and the shell's
 `projects/github/README.md` for limits, reconciliation and fixture validation.
 
+On `nerv`, `seele-shellctl pr-focus` enters or leaves focus on one configured
+pull request (`SEELE_FOCUS_PULL`, or `seele-shell/focus.json` when that variable
+is unset). While focus is on, the Control Center pins that pull request's check
+rollup and latest review comment; exit clears the pin. The same session defers
+desktop toasts that are not @-mentions and keeps those notifications in the
+inbox, then shows the held toasts when focus ends. @-mentions, including a
+GitHub "mentioned you" summary, still arrive immediately. Focus is not written
+beside notification text, and nothing is posted to chat or email. Entering when
+a branch is pushed or a pull request URL is opened stays out of this slice.
+
 Home Assistant's house icon stays visible before setup. Its panel groups named
 sensor readouts and expandable device controls into Favorites and room cards,
 with a searchable device picker and an output-bounded viewport. It stores the token
