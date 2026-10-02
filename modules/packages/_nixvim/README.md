@@ -75,5 +75,28 @@ state. A real desktop/terminal clipboard still needs validation in that session.
 ## Persistent undo
 
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.
-`test-undo.py` exercises real editor writes and reloads; see its header for the
-writable-directory requirement and Vim fallback.
+Alongside SSH, GPG, AWS, Kubernetes, SOPS and `.env` files, it excludes `.netrc`,
+`.npmrc`, `.pypirc`, `.git-credentials`, `.config/gh/hosts.yml` and
+`.docker/config.json`. GitHub CLI authentication in `GH_CONFIG_DIR` or
+`XDG_CONFIG_HOME/gh` (falling back to `~/.config/gh`) and Docker authentication in
+`DOCKER_CONFIG` receive the same protection. Adjacent ordinary configuration
+files retain persistent undo.
+
+The policy checks both the displayed filename and its resolved symlink target
+before reading, renaming or writing, including an alternate `:write` destination.
+A protected buffer keeps undo in memory, and `:setlocal noundofile` remains a
+manual opt-out for other sensitive files. This controls automatic persistence;
+it does not remove old undo files, prevent an explicit `:wundo`, or inspect file
+contents for secrets stored under arbitrary names.
+
+Run the isolated write/reload fixture from a writable directory outside runtime
+or temporary paths:
+
+```sh
+python3 modules/packages/_nixvim/test-undo.py
+```
+
+It uses synthetic files and a private HOME/config/state environment, covering
+actual undo files, auth path overrides, symlinks, renames, alternate write targets,
+buffer opt-outs and ordinary neighboring files. See its header for the Vim
+fallback when Neovim is unavailable.
