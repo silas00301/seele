@@ -1,11 +1,9 @@
-# Unprivileged build signal for Dependabot lockfile pull requests.
-# Nix from the pull request runs here only. This file has no secrets context,
-# no Copilot invocation, and no contents: write permission.
-
 name: Dependabot Nix
 
+# pull_request_target runs this file from the base branch. The job below
+# continues only when that ref is main, so the workflow definition is main's.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize]
     paths:
       - flake.nix
@@ -21,49 +19,64 @@ concurrency:
 jobs:
   build:
     if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event.pull_request.base.ref == 'main' &&
       github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: write
     steps:
-      - name: Check out the pull request
+      - name: Require a flake-only Dependabot diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          case "$BASE_SHA" in
+            [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+            *) echo 'Unexpected base commit.' >&2; exit 1 ;;
+          esac
+          case "$HEAD_SHA" in
+            [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+            *) echo 'Unexpected head commit.' >&2; exit 1 ;;
+          esac
+          gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE_SHA}...${HEAD_SHA}" > "$RUNNER_TEMP/compare.json"
+          python3 - <<'PY'
+          import json
+          import os
+          data = json.load(open(os.environ["RUNNER_TEMP"] + "/compare.json"))
+          files = data.get("files") or []
+          names = [item.get("filename") for item in files]
+          allowed = {"flake.nix", "flake.lock"}
+          if not names or len(names) >= 300 or not set(names) <= allowed:
+              raise SystemExit("Refusing a Dependabot diff outside flake.nix and flake.lock.")
+          PY
+
+      - name: Check out the Dependabot commit
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           submodules: recursive
+          persist-credentials: false
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v21
 
       - name: Restore the Nix store cache
         uses: DeterminateSystems/magic-nix-cache-action@v13
-        with:
-          use-gha-cache: "enabled"
-          use-flakehub: "false"
-          diagnostic-endpoint: ""
 
       - name: Build the updated configuration
         env:
           GITHUB_TOKEN: ""
           GH_TOKEN: ""
-          ACTIONS_RUNTIME_TOKEN: ""
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
-          COPILOT_GITHUB_TOKEN: ""
         run: |
           set -euo pipefail
-          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${COPILOT_GITHUB_TOKEN}" ]; then
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}" ]; then
             echo 'Refusing to evaluate Nix while a GitHub token is set.' >&2
             exit 1
           fi
-          nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath \
-            --no-write-lock-file \
-            --option accept-flake-config false \
-            --option sandbox true
+          nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath --no-write-lock-file
           nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
             --no-link \
-            --no-write-lock-file \
-            --option accept-flake-config false \
-            --option sandbox true
+            --no-write-lock-file

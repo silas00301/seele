@@ -704,15 +704,12 @@ Python/JavaScript validation, including the Linux Taildrop API limitations.
 
 ## Dependency update automation
 
-`.github/dependabot.yml` schedules weekly Nix updates. The pull request workflow
-evaluates and builds `nerv` for same-repository Dependabot updates with read-only
-contents and no secrets. Repair is a separate workflow dispatched from `main`:
-Copilot may edit files but cannot run Nix, push, or write Git metadata. Collect
-restores the pre-Copilot Git directory and runs Git with no repository token. An
-unprivileged job verifies the tree, and only then does `createCommitOnBranch`
-publish ordinary `.nix` files. The publish job does not evaluate Nix. `COPILOT_GITHUB_TOKEN` is
-configured outside the repository and is not present on any Nix evaluation job.
-This does not replace native Darwin validation or activate either host.
+`.github/dependabot.yml` schedules weekly Nix updates. `.github/workflows/dependabot-nix.yml`
+runs from `main` and builds `nerv` only for a same-repository Dependabot pull
+request whose base is `main` and whose diff is exclusively `flake.nix` and/or
+`flake.lock`. The job is read-only, has no secrets, and does not repair or
+publish. Nix evaluation clears the GitHub token. This does not replace native
+Darwin validation or activate either host.
 
 Fish `mkcd DIRECTORY` accepts exactly one nonempty literal path, creates its parents,
 and enters it only after mkdir succeeds. Relative paths resolve against the current
