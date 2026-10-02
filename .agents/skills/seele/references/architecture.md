@@ -706,10 +706,13 @@ Python/JavaScript validation, including the Linux Taildrop API limitations.
 
 `.github/dependabot.yml` schedules weekly Nix updates. `.github/workflows/dependabot-nix.yml`
 runs from `main` and builds `nerv` only for a same-repository Dependabot pull
-request whose base is `main` and whose diff is exclusively `flake.nix` and/or
-`flake.lock`. The job is read-only, has no secrets, and does not repair or
-publish. Nix evaluation clears the GitHub token. This does not replace native
-Darwin validation or activate either host.
+request whose base is `main` and whose diff is `flake.lock` alone. The build
+checks out main and overlays that lock. A failed build can ask Copilot, in a
+read-only job, to edit ordinary `.nix` files; Nix runs only after Git metadata
+is restored and with tokens cleared. The publish job is the only
+`contents: write` job. It does not run Nix or Copilot. `COPILOT_GITHUB_TOKEN`
+is configured outside the repository. This does not replace native Darwin
+validation or activate either host.
 
 Fish `mkcd DIRECTORY` accepts exactly one nonempty literal path, creates its parents,
 and enters it only after mkdir succeeds. Relative paths resolve against the current

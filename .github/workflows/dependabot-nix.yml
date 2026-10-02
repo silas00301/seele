@@ -1,16 +1,15 @@
 name: Dependabot Nix
 
-# pull_request_target runs this file from the base branch. The job below
-# continues only when that ref is main, so the workflow definition is main's.
+# pull_request_target runs this file from the base branch. Every job below
+# continues only when that ref is main. Evaluation uses main's sources and
+# the pull request's flake.lock, and only when that lock is the entire diff.
 on:
   pull_request_target:
     types: [opened, reopened, synchronize]
     paths:
-      - flake.nix
       - flake.lock
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: dependabot-nix-${{ github.event.pull_request.number }}
@@ -24,41 +23,69 @@ jobs:
       github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      gate: ${{ steps.gate.outputs.ok }}
+      base_sha: ${{ steps.gate.outputs.base_sha }}
+      head_sha: ${{ steps.gate.outputs.head_sha }}
+      head_ref: ${{ steps.gate.outputs.head_ref }}
+      pr_number: ${{ steps.gate.outputs.pr_number }}
+      build_outcome: ${{ steps.initial-build.outcome }}
     steps:
-      - name: Require a flake-only Dependabot diff
+      - name: Require a lockfile-only Dependabot diff
+        id: gate
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          case "$BASE_SHA" in
-            [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
-            *) echo 'Unexpected base commit.' >&2; exit 1 ;;
-          esac
-          case "$HEAD_SHA" in
-            [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
-            *) echo 'Unexpected head commit.' >&2; exit 1 ;;
-          esac
-          gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE_SHA}...${HEAD_SHA}" > "$RUNNER_TEMP/compare.json"
           python3 - <<'PY'
-          import json
-          import os
-          data = json.load(open(os.environ["RUNNER_TEMP"] + "/compare.json"))
-          files = data.get("files") or []
-          names = [item.get("filename") for item in files]
-          allowed = {"flake.nix", "flake.lock"}
-          if not names or len(names) >= 300 or not set(names) <= allowed:
-              raise SystemExit("Refusing a Dependabot diff outside flake.nix and flake.lock.")
+          import json, os, re, subprocess
+          base, head = os.environ["BASE_SHA"], os.environ["HEAD_SHA"]
+          ref, number = os.environ["HEAD_REF"], os.environ["PR_NUMBER"]
+          if not re.fullmatch(r"[0-9a-f]{40}", base) or not re.fullmatch(r"[0-9a-f]{40}", head):
+              raise SystemExit("Unexpected commit id.")
+          if not re.fullmatch(r"dependabot/[A-Za-z0-9._/-]+", ref) or ".." in ref or ref.endswith("/"):
+              raise SystemExit("Unexpected Dependabot branch.")
+          if not re.fullmatch(r"[1-9][0-9]{0,8}", number):
+              raise SystemExit("Unexpected pull request number.")
+          raw = subprocess.check_output([
+              "gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/compare/{base}...{head}",
+          ])
+          data = json.loads(raw)
+          names = [item.get("filename") for item in (data.get("files") or [])]
+          if data.get("status") != "ahead" or names != ["flake.lock"] or len(data.get("files") or []) >= 300:
+              raise SystemExit("Refusing a pull request that does not only update flake.lock.")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"ok=ok\nbase_sha={base}\nhead_sha={head}\nhead_ref={ref}\npr_number={number}\n")
           PY
 
-      - name: Check out the Dependabot commit
+      - name: Check out main
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
+          ref: ${{ steps.gate.outputs.base_sha }}
+          fetch-depth: 1
           submodules: recursive
           persist-credentials: false
+
+      - name: Overlay the Dependabot lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ steps.gate.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.gate.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          git -c http.extraheader="AUTHORIZATION: bearer ${GH_TOKEN}" fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          mode=$(git ls-tree "$HEAD_SHA" flake.lock | awk '{print $1}')
+          test "$mode" = "100644"
+          git show "$HEAD_SHA:flake.lock" > flake.lock
+          test "$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")" = "flake.lock"
+          test "$(git diff --name-only)" = "flake.lock"
+          test -z "$(git ls-files --others --exclude-standard)"
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v21
@@ -66,17 +93,341 @@ jobs:
       - name: Restore the Nix store cache
         uses: DeterminateSystems/magic-nix-cache-action@v13
 
-      - name: Build the updated configuration
+      - name: Build main with the updated lock
+        id: initial-build
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ""
           GH_TOKEN: ""
+          COPILOT_GITHUB_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
         run: |
           set -euo pipefail
-          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}" ]; then
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${COPILOT_GITHUB_TOKEN}${ACTIONS_RUNTIME_TOKEN}" ]; then
             echo 'Refusing to evaluate Nix while a GitHub token is set.' >&2
             exit 1
           fi
-          nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath --no-write-lock-file
-          nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
-            --no-link \
-            --no-write-lock-file
+          set -o pipefail
+          {
+            nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath \
+              --no-write-lock-file \
+              --option accept-flake-config false \
+              --option sandbox true
+            nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
+              --no-link \
+              --no-write-lock-file \
+              --option accept-flake-config false \
+              --option sandbox true
+          } 2>&1 | tee dependabot-nix-build.log
+
+      - name: Upload the build log
+        if: steps.initial-build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependabot-nix-build-log
+          path: dependabot-nix-build.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Fail when the lockfile build failed
+        if: steps.initial-build.outcome == 'failure'
+        run: exit 1
+
+  repair:
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.build.result == 'failure' &&
+      needs.build.outputs.gate == 'ok' &&
+      needs.build.outputs.build_outcome == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.base_sha }}
+          fetch-depth: 1
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Overlay the Dependabot lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ needs.build.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.build.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          git -c http.extraheader="AUTHORIZATION: bearer ${GH_TOKEN}" fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          mode=$(git ls-tree "$HEAD_SHA" flake.lock | awk '{print $1}')
+          test "$mode" = "100644"
+          git show "$HEAD_SHA:flake.lock" > flake.lock
+          test "$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")" = "flake.lock"
+          test "$(git diff --name-only)" = "flake.lock"
+          sha256sum flake.lock > "$RUNNER_TEMP/lock.sha"
+
+      - name: Download the build log
+        uses: actions/download-artifact@v4
+        with:
+          name: dependabot-nix-build-log
+          path: .
+
+      - name: Snapshot Git metadata
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/git-meta"
+          mkdir -p "$RUNNER_TEMP/git-meta"
+          cp -a .git/. "$RUNNER_TEMP/git-meta/"
+
+      - name: Install GitHub Copilot CLI
+        run: npm install --global --ignore-scripts @github/copilot@1.0.91
+
+      - name: Ask GitHub Copilot to repair Nix sources
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+          COPILOT_ALLOW_ALL: "false"
+          COPILOT_AUTO_UPDATE: "false"
+          GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS: "false"
+          GITHUB_COPILOT_PROMPT_MODE_WORKSPACE_MCP: "false"
+          GITHUB_COPILOT_PROMPT_MODE_EXTENSIONS: "false"
+        run: |
+          set -euo pipefail
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${ACTIONS_RUNTIME_TOKEN}" ]; then
+            echo 'Copilot must not inherit a repository token.' >&2
+            exit 1
+          fi
+          test -n "$COPILOT_GITHUB_TOKEN" || { echo 'COPILOT_GITHUB_TOKEN is not configured.' >&2; exit 1; }
+          copilot \
+            --no-auto-update \
+            --no-custom-instructions \
+            --disable-builtin-mcps \
+            --no-ask-user \
+            --disallow-temp-dir \
+            --available-tools='view,edit,create,apply_patch,glob,grep' \
+            --allow-tool='read,write' \
+            --deny-tool='shell' \
+            --deny-tool='url' \
+            --deny-tool='write(flake.lock)' \
+            --deny-tool='write(.github)' \
+            --deny-tool='write(.git)' \
+            --deny-tool='write(.git/config)' \
+            --deny-tool='write(.git/hooks)' \
+            --deny-tool='write(.jj)' \
+            --deny-tool='write(.hg)' \
+            --deny-tool='write(.svn)' \
+            --deny-tool='write(.gitmodules)' \
+            --deny-tool='write(.gitattributes)' \
+            --excluded-tools='bash,powershell,task,skill,web_fetch,ask_user' \
+            --secret-env-vars='GITHUB_TOKEN,GH_TOKEN,ACTIONS_RUNTIME_TOKEN' \
+            --prompt "$(cat <<'PROMPT'
+          A Dependabot lockfile update failed to build this Nix flake. This
+          tree is main's Nix sources plus that updated flake.lock. Read
+          dependabot-nix-build.log and repair the build by editing ordinary
+          *.nix source files only.
+
+          Do not change flake.lock, submodules, .github, or version-control
+          metadata. Do not commit, push, or stage files. Keep the fix narrow.
+          A later step formats and builds this tree without credentials.
+          PROMPT
+          )"
+
+      - name: Restore Git metadata
+        env:
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          COPILOT_GITHUB_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+          GIT_CONFIG_NOSYSTEM: "1"
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_COUNT: "0"
+        run: |
+          set -euo pipefail
+          unset GIT_DIR GIT_WORK_TREE GIT_CONFIG_PARAMETERS || true
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${COPILOT_GITHUB_TOKEN}${ACTIONS_RUNTIME_TOKEN}" ]; then
+            echo 'Refusing to run Git while a token is set.' >&2
+            exit 1
+          fi
+          if [ -L .git ] || [ ! -d .git ]; then
+            rm -rf .git
+            mkdir .git
+          fi
+          find .git -mindepth 1 -delete
+          cp -a "$RUNNER_TEMP/git-meta/." .git/
+          rm -f dependabot-nix-build.log
+          sha256sum -c "$RUNNER_TEMP/lock.sha"
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v21
+
+      - name: Restore the Nix store cache
+        uses: DeterminateSystems/magic-nix-cache-action@v13
+
+      - name: Verify the repair without credentials
+        env:
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          COPILOT_GITHUB_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+          GIT_CONFIG_NOSYSTEM: "1"
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_COUNT: "0"
+        run: |
+          set -euo pipefail
+          unset GIT_DIR GIT_WORK_TREE GIT_CONFIG_PARAMETERS || true
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${COPILOT_GITHUB_TOKEN}${ACTIONS_RUNTIME_TOKEN}" ]; then
+            echo 'Refusing to evaluate Nix while a GitHub token is set.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import base64, json, os, pathlib, shutil, subprocess
+          def names(*args):
+              return [os.fsdecode(part) for part in subprocess.check_output(args).split(b"\0") if part]
+          def collect(stage):
+              changed = set(names("git", "diff", "--name-only", "--no-renames", "-z", "HEAD"))
+              untracked = set(names("git", "ls-files", "--others", "--exclude-standard", "-z"))
+              staged = set(names("git", "diff", "--cached", "--name-only", "--no-renames", "-z"))
+              if "flake.lock" not in changed:
+                  raise SystemExit("Lockfile overlay is missing.")
+              paths = sorted((changed | untracked | staged) - {"flake.lock"})
+              if not paths:
+                  raise SystemExit("Copilot did not produce a repair.")
+              if len(paths) > 40:
+                  raise SystemExit("Repair touches too many files.")
+              additions, deletions = [], []
+              for name in paths:
+                  path = pathlib.Path(name)
+                  if (
+                      path.is_absolute()
+                      or ".." in path.parts
+                      or any(part.startswith(".") for part in path.parts)
+                      or not name.endswith(".nix")
+                  ):
+                      raise SystemExit(f"Repair includes {name}.")
+                  if path.is_symlink() or (path.exists() and not path.is_file()):
+                      raise SystemExit(f"Refusing non-regular {name}.")
+                  if path.exists():
+                      if (path.stat().st_mode & 0o777) != 0o644:
+                          raise SystemExit(f"Refusing mode on {name}.")
+                      data = path.read_bytes()
+                      if b"\0" in data or len(data) > 1_000_000:
+                          raise SystemExit(f"Refusing contents of {name}.")
+                      additions.append({"path": name, "contents": base64.b64encode(data).decode()})
+                  else:
+                      deletions.append({"path": name})
+                  if stage:
+                      subprocess.check_call(["git", "add", "--", name])
+              return {"additions": additions, "deletions": deletions}
+          nix = shutil.which("nix")
+          if not nix or not nix.startswith("/nix/"):
+              raise SystemExit("Nix is not the installer binary.")
+          collect(stage=True)
+          subprocess.check_call([nix, "fmt"])
+          payload = collect(stage=True)
+          subprocess.check_call([
+              nix, "eval", "--raw", ".#nixosConfigurations.nerv.config.system.build.toplevel.drvPath",
+              "--no-write-lock-file", "--option", "accept-flake-config", "false", "--option", "sandbox", "true",
+          ])
+          subprocess.check_call([
+              nix, "build", ".#nixosConfigurations.nerv.config.system.build.toplevel",
+              "--no-link", "--no-write-lock-file", "--option", "accept-flake-config", "false", "--option", "sandbox", "true",
+          ])
+          if collect(stage=True) != payload:
+              raise SystemExit("The repair changed while it was being checked.")
+          os.makedirs("repair-out", exist_ok=True)
+          with open("repair-out/repair.json", "w") as handle:
+              json.dump(payload, handle)
+          PY
+
+      - name: Upload the repair payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependabot-nix-repair
+          path: repair-out/repair.json
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: [build, repair]
+    if: github.ref == 'refs/heads/main' && needs.repair.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Download the repair payload
+        uses: actions/download-artifact@v4
+        with:
+          name: dependabot-nix-repair
+          path: repair-in
+
+      - name: Publish the Nix repair
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.build.outputs.head_sha }}
+          HEAD_REF: ${{ needs.build.outputs.head_ref }}
+          PR_NUMBER: ${{ needs.build.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          if [ -n "${COPILOT_GITHUB_TOKEN:-}" ]; then
+            echo 'Publish must not receive the Copilot token.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import base64, json, os, pathlib, subprocess
+          payload = json.load(open("repair-in/repair.json"))
+          additions = payload.get("additions") or []
+          deletions = payload.get("deletions") or []
+          if not additions and not deletions:
+              raise SystemExit("Repair is empty.")
+          seen = set()
+          for item in additions + deletions:
+              name = item["path"]
+              path = pathlib.Path(name)
+              if name in seen or not name.endswith(".nix"):
+                  raise SystemExit(f"Refusing {name}.")
+              if path.is_absolute() or ".." in path.parts or any(part.startswith(".") for part in path.parts):
+                  raise SystemExit(f"Refusing {name}.")
+              seen.add(name)
+          for item in additions:
+              data = base64.b64decode(item["contents"], validate=True)
+              if b"\0" in data or len(data) > 1_000_000:
+                  raise SystemExit(f"Refusing contents of {item['path']}.")
+              item["contents"] = base64.b64encode(data).decode()
+          repo = os.environ["GITHUB_REPOSITORY"]
+          pull = json.loads(subprocess.check_output([
+              "gh", "api", f"repos/{repo}/pulls/{os.environ['PR_NUMBER']}",
+          ]))
+          if pull["state"] != "open" or pull["user"]["login"] != "dependabot[bot]":
+              raise SystemExit("Pull request is no longer an open Dependabot update.")
+          if pull["base"]["ref"] != "main" or pull["head"]["repo"]["full_name"] != repo:
+              raise SystemExit("Pull request target changed.")
+          if pull["head"]["sha"] != os.environ["HEAD_SHA"] or pull["head"]["ref"] != os.environ["HEAD_REF"]:
+              raise SystemExit("Pull request head changed.")
+          mutation = {
+              "query": "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid signature { isValid } } } }",
+              "variables": {"input": {
+                  "branch": {"repositoryNameWithOwner": repo, "branchName": os.environ["HEAD_REF"]},
+                  "expectedHeadOid": os.environ["HEAD_SHA"],
+                  "message": {"headline": "fix(nix): repair dependency update"},
+                  "fileChanges": {"additions": additions, "deletions": deletions},
+              }},
+          }
+          response = json.loads(subprocess.check_output(
+              ["gh", "api", "graphql", "--input", "-"],
+              input=json.dumps(mutation).encode(),
+          ))
+          if response.get("errors"):
+              raise SystemExit("GitHub refused the repair commit.")
+          commit = response["data"]["createCommitOnBranch"]["commit"]
+          if not (commit.get("signature") or {}).get("isValid"):
+              raise SystemExit("GitHub did not verify the repair signature.")
+          print("Published signed repair " + commit["oid"])
+          PY

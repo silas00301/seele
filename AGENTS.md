@@ -613,11 +613,15 @@ After every repository change, review `AGENTS.md` and `.agents/skills/seele/` ag
 ## Dependency update CI
 
 Dependabot schedules weekly Nix flake updates. `.github/workflows/dependabot-nix.yml`
-runs from `main` through `pull_request_target` and validates the native Linux
-closure only for a same-repository Dependabot pull request whose base is `main`
-and whose diff against that base is exclusively `flake.nix` and/or `flake.lock`.
-The job is `contents: read`, has no secrets, and does not repair or publish.
-Nix evaluation clears the GitHub token from its environment. Darwin needs
+runs from `main` through `pull_request_target`. It builds `nerv` only for a
+same-repository Dependabot pull request whose base is `main` and whose diff is
+`flake.lock` alone, using main's Nix sources plus that lock. The build job is
+`contents: read` and clears GitHub tokens before Nix. When that build fails,
+Copilot may edit ordinary `*.nix` files in a later read-only job; Git metadata
+is restored before Nix runs again, still with tokens cleared. `contents: write`
+belongs only to the publish job, which sends those files with
+`createCommitOnBranch` and does not run Nix or Copilot. `COPILOT_GITHUB_TOKEN`
+is an external setup requirement, never a repository file. Darwin needs
 separate native validation.
 
 ## Validation
