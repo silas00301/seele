@@ -97,6 +97,18 @@ in
     }
     {
       mode = "n";
+      key = "<leader>sr";
+      options.desc = "Resume last search";
+      action = "<cmd>Telescope resume<CR>";
+    }
+    {
+      mode = "n";
+      key = "<leader>sb";
+      options.desc = "Search open buffers";
+      action = "<cmd>Telescope buffers sort_mru=true ignore_current_buffer=true<CR>";
+    }
+    {
+      mode = "n";
       key = "<leader>sf";
       options.desc = "Find frequent files";
       action = "<cmd>Telescope frecency<CR>";
