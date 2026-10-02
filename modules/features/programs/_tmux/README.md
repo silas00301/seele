@@ -39,3 +39,35 @@ it never contacts the live tmux server. It checks pane identity, history and byt
 bounds, wrap and newline handling, search, scratch privacy, cancel, linewise and
 characterwise copy, terminal OSC 52, missing-pane failure and the actual popup
 binding. `checks.<system>.tmux-scrollback` packages this same fixture.
+
+## Failed panes
+
+A pane whose command exits unsuccessfully keeps its scrollback and shows the
+exit status or signal with the recovery keys. **Ctrl+s, Shift+R** restarts that
+pane's original command; it never restarts a running pane. **Ctrl+s, q** closes
+it. **Ctrl+s, H** opens the existing scrollback search, and **Ctrl+s, y** enters
+copy mode. Successful command exits close their panes normally.
+
+This observes the process running the pane, not a command inside an interactive
+shell: a failed command that returns to the Fish prompt does not retain a pane
+or change the prompt. Deliberately exiting Fish with a nonzero status does retain
+its pane; use the close key to dismiss it. Restart repeats the original command
+and its original working directory, so choose it deliberately for commands with
+side effects. Nothing automatically retries a failed command.
+
+The policy is in `failed-panes.conf`, read directly by the managed and portable
+tmux configurations. The `tmux-failed-panes` flake check exercises real private
+servers, attached keyboard bindings, successful and failed task/Fish exits,
+signal termination, preserved history, restart, dismissal and running-pane
+refusal. Run it with existing binaries:
+
+```sh
+python3 modules/features/programs/_tmux/test-failed-panes.py modules/features/programs/_tmux/failed-panes.conf tmux fish
+```
+
+The fixture was validated with the flake's tmux 3.7c and Fish 4.9.3 versions,
+with tmux built standalone and Fish from its verified official release.
+The older system tmux 3.4 intermittently retained fast successful panes with no
+exit status or signal; it does not establish the packaged behavior. The fixture
+keeps fast commands in its coverage and does not delay them to mask that failure.
+

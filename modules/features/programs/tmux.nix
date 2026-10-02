@@ -35,6 +35,8 @@ let
           set-option -g status-right-length 80
           set-option -g focus-events on
 
+          ${builtins.readFile ./_tmux/failed-panes.conf}
+
           # Copy through the terminal so the same keys work locally and over SSH.
           set-option -s set-clipboard external
           set-option -as terminal-features ',xterm-ghostty:clipboard'
@@ -90,6 +92,20 @@ in
   perSystem =
     { pkgs, ... }:
     {
+      checks.tmux-failed-panes =
+        pkgs.runCommand "seele-tmux-failed-panes-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+              pkgs.fish
+            ];
+          }
+          ''
+            python3 ${./_tmux/test-failed-panes.py} ${./_tmux/failed-panes.conf} tmux fish
+            touch "$out"
+          '';
+
       checks.tmux-scrollback =
         pkgs.runCommand "seele-tmux-scrollback-check"
           {

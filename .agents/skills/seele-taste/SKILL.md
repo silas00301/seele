@@ -159,6 +159,7 @@ mouse-button remap as equivalent: browser links must retain their action.
 - Keep editor diagnostics and symbols in the existing Telescope search layer: lowercase `sd`/`ss` after the leader search the buffer/document, uppercase `sD`/`sS` search the workspace. Give shortcuts readable which-key descriptions.
 - Keep completion user-controlled: offer strong suggestions and fuzzy matching without silently accepting the first item.
 - Integrate navigation boundaries. Pane movement should flow between Neovim and tmux instead of trapping focus.
+- Retain failed tmux panes for inspection. Restart is an explicit key that refuses a running pane; successful exits close normally. A deliberately nonzero shell exit counts as a failure too.
 - In tmux copy mode, use `v` to select, `Ctrl-v` for a rectangle, `y` to copy and close, and Escape to cancel. Copy through the terminal clipboard so the workflow also works over SSH; the terminal retains its clipboard permission policy.
 - Prefer previews and structured dashboards for changes, pull requests, files, and sessions.
 - Keep project text search in Television beside file search: F2 selects the text channel, Enter opens a match at its line, and Ctrl+S reveals hidden files without disabling ignore rules.
