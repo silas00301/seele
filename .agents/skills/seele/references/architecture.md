@@ -175,6 +175,30 @@ directory macOS neither shows nor empties. There is no `seele.portable.trash`
 entry — a trash is machine state, not configuration worth carrying to a borrowed
 machine.
 
+`modules/features/programs/ssh.nix` publishes the `ssh` Home Manager feature,
+imported by `modules/profiles/home/common.nix`. The locked Home Manager writes
+ssh_config from `programs.ssh.settings`, a DAG of freeform blocks keyed by
+upstream directive names; `matchBlocks` and the camel-case options are
+deprecated aliases that warn, and `enableDefaultConfig = false` drops the
+legacy defaults that also warn. The renderer emits `extraOptionOverrides` and
+the `includes` line first, then the other blocks in DAG order, then
+`settings."*"`, then `extraConfig`, which Home Manager rejects unless
+`settings."*"` exists. That order is the design: `Include
+~/.ssh/config.local` precedes every block, so under ssh's first-obtained-value
+rule a local `Host` entry overrides the managed defaults, and anything a leaf
+adds to `settings."*"` stays a fallback. Password manager leaves contribute
+`programs.ssh.settings."*".IdentityAgent`; the freeform block merges their key
+with the feature's, and two active agents fail evaluation on the conflicting
+value. Never use `extraOptionOverrides` for defaults: it lands above the
+include and beats every host. `ControlPath` avoids `${XDG_RUNTIME_DIR}`
+because OpenSSH treats an unset variable there as fatal for every connection,
+and a missing control directory makes a would-be master exit 255, which is why
+Linux uses logind's own `/run/user/%i` and macOS a directory that
+`home.activation.sshDirectories` creates between `writeBoundary` and
+`linkGeneration`. `programs.ssh.package` stays null, so each host keeps its
+system client: nixpkgs OpenSSH on `nerv` and Apple's on `asuka`. Nothing set
+here needs Apple's `UseKeychain`, so no `IgnoreUnknown` is required.
+
 The shell submodule's `projects/shell/SystemState.qml` owns status fields and publishes changes per field. Full snapshots and optimistic patches go through its `apply()` method: Rust's `system.patch` schema validates allowed fields/types, and the Qt adapter retains unchanged engine object references so unrelated updates leave list models and delegates alone. `tests/system-state.sh` checks change-signal counts, delegate reuse, and unchanged rendered pixels. Agent CPU sampling reuses the process name in `/proc/<pid>/stat` instead of opening each process's `comm` separately; command-line fallback discovery stays in place.
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and wraps the native screenshot helper from `projects/desktop-tools/`. It sets `configType = "lua"`, and that choice reaches every caller rather than only the config file: Hyprland evaluates `hyprctl dispatch` as Lua, so a dispatch is one `hl.dsp` call — `hl.dsp.exit()`, `hl.dsp.focus({ workspace = "9" })`, `hl.dsp.window.close({ window = "address:0x…" })` — and the legacy `hyprctl dispatch <name> <args>` form resolves to an undefined global. hyprctl still exits zero on that error, so a stale call fails in silence; `hyprctl repl` evaluates a candidate without dispatching it. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it. Each completed capture gets a collision-safe timestamped path under `Pictures/Screenshots` and is copied after optional Satty annotation. The upload variant uses a native consent dialog before sending the saved image to 0x0.st with a secret URL and 24-hour expiry; declining or a failed upload copies the image locally. Its native package runs `projects/desktop-tools/tests/screenshot.py` against the raw Rust executable.

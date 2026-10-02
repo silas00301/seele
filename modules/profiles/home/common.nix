@@ -44,6 +44,7 @@ let
       modules.nixvim
       modules.ripgrep
       modules.sesh
+      modules.ssh
       modules.starship
       modules.television
       modules.tmux

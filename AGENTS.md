@@ -102,6 +102,20 @@ daemon already reports each successful release.
 
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
+The outgoing SSH client is the `ssh` Home Manager feature, imported by the
+`common` profile, so `~/.ssh/config` is managed on both hosts. It carries only
+defaults for every destination: multiplexing with a ten-minute
+`ControlPersist`, server keepalives, hashed known hosts and `UpdateHostKeys`.
+Control sockets sit in logind's runtime directory, named through `%i`, on Linux,
+and in an activation-created `~/.ssh/control` on macOS. Host entries are machine
+state and never enter the flake: the file first `Include`s the unmanaged
+`~/.ssh/config.local`, so its `Host` blocks win under ssh's first-match rule.
+The password manager feature a profile imports sets `IdentityAgent` in the
+managed `Host *` block, which is 1Password on `nerv` and Bitwarden on `asuka`,
+and keeps exporting `SSH_AUTH_SOCK` for `ssh-keygen` signing. There is no
+portable entry. See [the SSH client guide](docs/ssh-client.md) for the generated
+file and for moving an existing configuration into the local include.
+
 Containers on `nerv` are rootless Podman only. `modules/features/system/containers.nix`
 publishes `flake.modules.nixos.podman` and a matching `homeManager.podman`; the
 `nerv` system aggregate and the `nerv` home profile import them, and `asuka`
