@@ -861,6 +861,22 @@ Secret Service entry and includes it in authorization-code and refresh-token
 exchanges. Keep only its presence in the private cache, and clear it on
 disconnect.
 
+## Weather
+
+`projects/integrations/src/weather/` owns the clock popup's forecast: `mod.rs`
+the place, schedule, backoff, status and Health, `open_meteo.rs` the requests,
+endpoint guard and validated projection, `cache.rs` the private state file,
+`units.rs` the locale's measurement system, and `view.rs` conditions, glyphs,
+place-local times, the hourly strip and the week's shared scale.
+`WeatherStore.qml` assigns the sections and `WeatherCard.qml` only draws, with
+`MeterBar`'s `from` drawing each day's span. The default place comes from
+`seele_runtime::timezone`, shared with `seele-theme`; keep one copy of that
+lookup there. Read `projects/integrations/WEATHER.md` before changing the
+protocol, units, the refresh schedule or the cache, and run its Rust tests and
+`tests/weather-card.sh`. The Rust tests run the fetch path and worker loop
+against a local fake Open-Meteo and must never touch the real state file or the
+network.
+
 ## Commit and push the submodule
 
 Commit and push only when the user asked for a rebuild-ready result or otherwise authorized those history and remote changes.

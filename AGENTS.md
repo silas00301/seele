@@ -466,6 +466,24 @@ Clock planner reads the same cache as busy time. See
 worker protocol, sync windows, cache limits and the fake-API and QtTest checks.
 Use the `seele-credentials` skill for future integration credentials.
 
+Local weather is one line under the same popup's header, unfolding in place into
+the next eight hours, the week on one shared temperature scale and a place
+search. The resident native `seele-weather` worker in the integrations crate
+owns Open-Meteo forecasts and geocoding (no key, no account), a private
+`$XDG_STATE_HOME/seele-weather/state.json`, units from the locale's own
+measurement data (metric by default), WMO conditions and glyphs, place-local
+times and every label, and publishes changed-only sections that QML only draws.
+The default place is the system timezone's reference city in the tz database,
+shared with the theme switcher through `seele_runtime::timezone`; no location is
+asked for or stored, and Open-Meteo receives that city's rounded coordinates.
+A place picked from the search, by result id only, lives in the worker's state
+file until Use timezone city clears it, never in the flake. Refreshes run every
+half hour with jitter and after a resume. A failed fetch keeps the last forecast,
+marks it stale and backs off quietly, with no notification and no bar item. The
+shell feature registers Weather in Integration Health; its Settings opens the
+popup unfolded. See `seele-shell/projects/integrations/WEATHER.md` for the
+protocol, presentation, cache bounds and the fake-API and QtTest checks.
+
 On `nerv`, the Control Center's Ports tile opens a local TCP listener
 inspector. The resident `seele-ports` worker in the shell submodule's `tools`
 crate owns discovery, ownership, privilege and action policy; QML owns the

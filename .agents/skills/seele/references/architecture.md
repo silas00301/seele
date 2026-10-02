@@ -652,7 +652,9 @@ integration identities, freshness deadlines, setup destinations and typed recove
 actions. The owning integration enables its registration; installed executables
 and running processes never create rows. Source callbacks publish current
 sanitized metadata through `IntegrationHealthStore` or the `health` IPC target.
-The store derives stale state and holds no history. Validate its contract with
+The store derives stale state and holds no history. Calendar and Weather register
+from the shell feature; Weather's `setup` is `weather`, which the shell routes to
+the clock popup rather than to a panel of its own. Validate its contract with
 `node seele-shell/tests/health.js seele-shell/projects/shell/health.js` and the
 existing GitHub/Home Assistant source suites, then build the shell and host.
 

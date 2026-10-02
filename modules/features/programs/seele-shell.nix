@@ -104,6 +104,18 @@ let
               "settings"
             ];
           };
+          # The resident seele-weather worker republishes every two minutes;
+          # the shell routes its Settings to the clock popup's weather card.
+          weather = {
+            enable = lib.mkDefault true;
+            name = "Weather";
+            deadline = 600000;
+            setup = "weather";
+            actions = [
+              "retry"
+              "settings"
+            ];
+          };
         };
         xdg.configFile."seele-shell/health.json".text = builtins.toJSON (
           lib.mapAttrsToList (id: provider: (builtins.removeAttrs provider [ "enable" ]) // { inherit id; }) (
