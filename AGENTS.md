@@ -524,6 +524,14 @@ an existing backup directory cannot redirect the operation. All launch declarati
 validate before configuration publication. See
 `seele-shell/projects/config-tools/README.md` before changing these boundaries.
 
+On Linux, the Brave feature contributes an owned managed policy file at
+`/etc/brave/policies/managed/seele.json`, imported by the NixOS `linux` profile.
+It disables product analytics and anonymous usage pings through
+`BraveP3AEnabled` and `BraveStatsPingEnabled`. Both policies apply after Brave
+restarts; `brave://policy` reports their effective state. The Home Manager
+feature still owns the browser package, extensions and Qt integration, and
+this machine-policy contribution does not reach macOS.
+
 On Linux, `modules/features/desktop/default-applications.nix` is the single
 owner of file-type defaults. It associates images with imv, video and audio with
 mpv, PDFs and EPUBs with zathura, text with the configured Neovim, and a
