@@ -212,6 +212,15 @@ pins 1.3.1, and a `global:` keybind needs global-shortcut support Hyprland
 0.55.4 lacks. Retire this feature for `toggle_quick_terminal` once both pins
 move.
 
+`modules/features/programs/meeting-scratchpad.nix` publishes the
+`meeting-scratchpad` Home Manager feature, imported only by the `nerv` profile.
+It names one recurring event through `seele.meetingScratchpad.event.{id,title}`
+and, when either is set, writes `seele-shell/meeting-scratchpad.json` for the
+calendar worker. The note stays in the local state directory. The opener is a
+`writeShellScript` that runs Neovim inside a Ghostty of class
+`org.seele.meeting-scratchpad`, and a `lib.mkAfter` window rule floats that
+class centered. `asuka` does not import it.
+
 Yazi’s `gd`, `go`, and `gp` open Downloads, Documents, and Pictures. The bindings
 use enabled Home Manager XDG user-directory settings, otherwise runtime-home
 fallbacks, including standalone portable evaluations. `gD` still invokes diff.

@@ -466,6 +466,8 @@ Clock planner reads the same cache as busy time. See
 worker protocol, sync windows, cache limits and the fake-API and QtTest checks.
 Use the `seele-credentials` skill for future integration credentials.
 
+On `nerv`, one configured meeting opens a local scratchpad. `seele.meetingScratchpad.event.id` and `.title` name that recurring event; with both empty, nothing is configured. From two minutes before it starts until it ends, the calendar worker writes a private markdown note under `$XDG_STATE_HOME/seele-meetings` with the title, the attendees, and empty Who, What and When sections, and opens it in Neovim. The guest list is fetched for that occurrence only and is not stored in the calendar cache. When the meeting ends, the same file stays where a later status draft can read it, including edits made in the open note. The feature is not imported on `asuka`, the note is not written into the Obsidian vault, and nothing is sent by email or chat. See `modules/features/programs/meeting-scratchpad.nix` and the calendar guide's meeting-scratchpad section.
+
 On `nerv`, the Control Center's Ports tile opens a local TCP listener
 inspector. The resident `seele-ports` worker in the shell submodule's `tools`
 crate owns discovery, ownership, privilege and action policy; QML owns the
