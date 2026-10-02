@@ -600,6 +600,11 @@ including in portable tmux. Capture is limited to 10,000 history rows and 8 MiB,
 soft wraps join, and only an explicit yank changes the terminal clipboard.
 `modules/features/programs/_tmux/README.md` documents the isolated editor and the
 private-server fixture packaged as `checks.<system>.tmux-scrollback`.
+Native prefix + `m` marks a running pane; prefix + `j` / `J` brings that pane
+below / beside the current one, including across windows and sessions. Both
+bindings require a mark rather than accepting an implicit source. The same README
+documents native mark/window lifetime and `checks.<system>.tmux-pane-move`, whose
+private-server fixture checks actual key events and preserved process identity.
 
 Two things the evaluation cannot know are the foreign machine's user and home, so the builder supplies a sentinel `home.homeDirectory` that nothing in the built output may depend on; Home Manager only uses it to derive the relative layout of `home-files`, which the wrapper re-roots at runtime.
 

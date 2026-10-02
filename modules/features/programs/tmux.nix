@@ -54,6 +54,8 @@ let
           bind-key q kill-pane
           bind-key y copy-mode
 
+          ${builtins.readFile ./_tmux/pane-move.conf}
+
           # q shell-quotes each originating identity before run-shell expands it.
           bind-key -N 'Search and copy pane scrollback in Neovim' H run-shell '${scrollback} #{q:socket_path} #{q:pane_id} #{q:client_name}'
 
@@ -90,6 +92,22 @@ in
   perSystem =
     { pkgs, ... }:
     {
+      checks.tmux-pane-move =
+        pkgs.runCommand "seele-tmux-pane-move-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+              pkgs.bash
+            ];
+          }
+          ''
+            cp ${./_tmux/pane-move.conf} pane-move.conf
+            cp ${./_tmux/test-pane-move.py} test-pane-move.py
+            python3 test-pane-move.py
+            touch "$out"
+          '';
+
       checks.tmux-scrollback =
         pkgs.runCommand "seele-tmux-scrollback-check"
           {
