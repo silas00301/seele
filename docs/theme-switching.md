@@ -52,6 +52,17 @@ the machine slept is caught up when it wakes. Choosing Light or Dark in the
 panel turns Auto off. The `seele-theme-auto` user service runs the schedule in
 the graphical session.
 
+A running `nix build` or `nix-build` holds that scheduled step. `seele-theme tick`
+reads the process list and, while one of those commands is running, leaves the
+mode and the last boundary untouched, so the publication happens on a later
+pass. A list that cannot be read holds too, because treating that as idle would
+repaint the desktop during the build. A theme or mode chosen by hand still
+publishes immediately. On nerv, Fish calls `seele-build-idle notify` after a
+foreground `nix build`; when that terminal's window is not focused, one ordinary
+notification says the build finished or failed. An SSH session stays quiet, and
+the command's other arguments are not part of the notification. SIL-116's
+general long-command hook is a separate path.
+
 The launcher applies the theme for the mode on screen. It shows the applied
 theme first, groups the rest by light and dark, and describes each palette's
 roles beside what a switch reaches. No surface publishes anything itself: each
