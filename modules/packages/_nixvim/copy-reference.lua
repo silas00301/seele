@@ -14,7 +14,7 @@ local function project_root(directory)
   end
 end
 
-local function reference(absolute, first, last)
+function M.reference(absolute, first, last)
   if vim.bo.buftype ~= "" then return nil, "This buffer is not a source file" end
   local path = vim.api.nvim_buf_get_name(0)
   if path == "" then return nil, "Name this file before copying a reference" end
@@ -34,7 +34,7 @@ end
 function M.copy(absolute, first, last)
   first = first or vim.api.nvim_win_get_cursor(0)[1]
   last = last or first
-  local value, err = reference(absolute, math.min(first, last), math.max(first, last))
+  local value, err = M.reference(absolute, math.min(first, last), math.max(first, last))
   if not value then
     vim.notify(err, vim.log.levels.WARN, { title = "Source reference" })
     return

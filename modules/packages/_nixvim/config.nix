@@ -208,7 +208,9 @@ in
   extraConfigLua = ''
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
-    dofile("${./copy-reference.lua}").setup()
+    local source_reference = dofile("${./copy-reference.lua}")
+    source_reference.setup()
+    dofile("${./copy-diagnostics.lua}").setup(source_reference.reference)
 
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then
