@@ -211,6 +211,22 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+On `nerv`, `Super + scroll` zooms the output under the pointer in and out,
+`Super + Plus` and `Super + Minus` step it, and `Super + 0` resets it. The
+German layout puts `=` on Shift + 0 and Hyprland matches the unshifted symbol,
+so the dedicated + key stands in for it. The `screen-zoom` Home Manager feature
+owns the binds, which also work while locked because the lock screen is
+magnified with everything else. Each runs `seele-shellctl zoom`, whose native
+helper reads Hyprland's `cursor:zoom_factor` back on every step rather than
+keeping a level of its own, and writes it through one `hl.config` call, since a
+Lua configuration refuses `hyprctl keyword`. Steps are quarter octaves for a
+scroll notch and half octaves for a key, clamped from 1x to 8x on one grid, so
+stepping down always reaches exactly 1. The shell's level OSD shows the factor
+and withdraws at 1x; Hyprland magnifies that layer with the rest of the output,
+so it is only legible while the view includes the top edge. Nothing resets the
+zoom at login: a new session and a configuration reload both start at
+Hyprland's default of 1.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned

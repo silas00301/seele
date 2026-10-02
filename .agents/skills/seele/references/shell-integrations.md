@@ -271,6 +271,12 @@ directly. See [the theme switching guide](../../../../docs/theme-switching.md).
   volume and bounded playback-speed presets. Respect each selected player's
   capabilities; live streams never receive seeking writes. Volume writes stay
   within 0–100%, and speed presets use the player's positive minRate/maxRate range.
+- `seele-shellctl zoom <in|out|reset> [--fine]` steps Hyprland's own
+  `cursor:zoom_factor` and sends the result to `showZoom`, which draws it in
+  the level OSD strip and withdraws that strip at 1x. `zoom.rs` in the tools
+  crate owns the steps, the clamp, the label and the meter ratio; the shell
+  only draws. `tests/screen-zoom.sh` drives the raw helper against a fake
+  `hyprctl` and `tests/screen-zoom.js` runs the shell's callback.
 - Copying network details is an explicit action. Clipboard payloads go through
   process stdin and UI success follows successful process completion.
 - The Audio panel's microphone test runs `seele-mic-test` for exactly as long as
