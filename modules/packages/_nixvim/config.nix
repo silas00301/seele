@@ -41,6 +41,7 @@ in
     smartcase = true;
     smartindent = true;
     autoindent = true;
+    autoread = true;
     winborder = "rounded";
   };
 
@@ -208,6 +209,7 @@ in
   extraConfigLua = ''
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
+    dofile("${./refresh.lua}")
     dofile("${./copy-reference.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")

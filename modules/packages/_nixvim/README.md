@@ -1,5 +1,31 @@
 # Neovim helpers
 
+## Refresh files edited by other tools
+
+On focus returning to Neovim, or leaving/closing its terminal, loaded file buffers
+that have no unsaved changes refresh through native `:checktime`. This includes
+hidden buffers, without changing the current window, directory or view. Native
+reload keeps the previous text available through ordinary undo. No timer polls
+the filesystem, and entering a buffer does not trigger this helper.
+
+Buffers with unsaved edits, `:setlocal noautoread`, special buffers and URI-backed
+buffers stay untouched. The helper only checks in Normal mode, so a focus event
+during insertion or command entry waits for a later supported event. If a clean
+file disappears, Neovim keeps its text and shows its native deletion warning; it
+does not recreate the file. Native timestamp detection still governs when a
+change is recognized.
+
+Run the private fixture with an existing Neovim:
+
+```sh
+NVIM=/path/to/nvim python3 modules/packages/_nixvim/test-refresh.py
+```
+
+The same fixture is `checks.<system>.nixvim-refresh` in the flake. It exercises
+real reloads and atomic replacements, view/undo preservation, hidden buffers,
+unsaved edits, local opt-outs, special buffers, deletion and actual Insert and
+Command-line modes. It creates and deletes its own HOME, files and editor logs.
+
 ## Compare unsaved text with the saved file
 
 Press **Space c s** (`<leader>cs`) or run `:SavedDiff`. A dedicated tab shows the
