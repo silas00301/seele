@@ -21,7 +21,7 @@
     {
       home.packages = [
         proton-vpn
-        pkgs.proton-vpn-cli
+        (pkgs.proton-vpn-cli.override { python3Packages = python.pkgs; })
       ];
     };
 }
