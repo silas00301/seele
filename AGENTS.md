@@ -537,6 +537,11 @@ vi-shaped bindings, and a Linux-only portable application.
 
 Theme ownership is split deliberately. Catppuccin themes supported application ports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, fonts, and active targets without a Catppuccin module. Qt's qt5ct and qt6ct settings reuse the Catppuccin Papirus icon theme. `stylix.autoEnable` stays off, and each platform profile lists its active Stylix targets explicitly so dormant applications do not add configuration or packages. Seele QML clients receive the selected palette through generated `theme.json`; `seele-shell/projects/shared/Palette.js` is their single unmanaged fallback and shared assignment path. The pointer belongs to Stylix as well: `modules/features/themes/cursor.nix` derives the `catppuccin-cursors` output and theme name from the shared flavor and accent and sets `stylix.cursor`, which is not a target and therefore applies while `stylix.autoEnable` is off, reaching GTK, Qt/KDE, and X11 through the targets already listed. Its Home Manager module additionally gives Hyprland the theme in the compositor's own environment, and its NixOS module installs the theme system-wide, points the `default` cursor theme at it, and exports `XCURSOR_THEME`/`XCURSOR_SIZE`, because the greeter runs before any user profile exists. One declared size covers every surface. macOS draws its own pointer and stays untouched.
 
+On `asuka`, the Homebrew feature sets `HOMEBREW_NO_ANALYTICS=1` both in the
+system shell environment and in nix-darwin's `homebrew.onActivation.extraEnv`.
+The latter covers privileged `brew bundle` calls, which do not inherit the
+user's shell environment.
+
 ## Native runtime ownership
 
 First-party services and command helpers live in the single Rust workspace under
