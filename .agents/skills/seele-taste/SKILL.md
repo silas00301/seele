@@ -118,7 +118,7 @@ When the request does not select a tool, preserve these active defaults:
 | --- | --- |
 | Version control | Jujutsu for daily work; Git for interoperability; `gh` for GitHub |
 | Interactive shell | Fish with vi bindings; keep Zsh as the system/compatibility bridge |
-| Editor | Neovim/Nixvim |
+| Editor | Neovim/Nixvim by default; Cursor as an additional graphical editor with `cursor-agent` available alongside the other CLI agents |
 | Terminal | Ghostty |
 | Multiplexer | tmux |
 | Search and selection | ripgrep, fd, fzf, Television, Telescope |

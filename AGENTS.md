@@ -578,8 +578,8 @@ start no subprocesses, retain no policy state and make no security decisions.
 Spicetify's accent adapter requires browser localStorage. Upstream applications
 such as Proton VPN retain their own runtimes. Python/Node fixture tools remain
 build/test dependencies of native services, with no first-party Python workers.
-Pi/OpenCode lifecycle adapters call the shared native `seele-agent-hook`; they
-never write state files themselves. Native lock/greeter/Notes launchers live in
+Pi/OpenCode lifecycle adapters and Cursor's system-layer hooks call the shared
+native `seele-agent-hook`; the adapters never write state files themselves. Native lock/greeter/Notes launchers live in
 `projects/tools/src/launch.rs`. A detached lock must survive launcher completion
 and confirmation failure; run the synthetic launcher fixtures after changing
 subprocess ownership. Never exercise these tests against a real desktop.
