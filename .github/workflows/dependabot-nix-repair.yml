@@ -1,0 +1,358 @@
+# Trusted repair path. Dispatch this workflow from main.
+# Jobs that evaluate pull request Nix do not receive COPILOT_GITHUB_TOKEN or
+# contents: write. Publish is the only contents: write job, and it does not
+# run Nix. It sends only the allowlisted regular *.nix files.
+
+name: Dependabot Nix repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Open same-repository Dependabot pull request number
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: dependabot-nix-repair-${{ inputs.pull_request }}
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Refuse a dispatch that is not from main
+        run: |
+          echo 'Dispatch the Dependabot Nix repair workflow from main.' >&2
+          exit 1
+
+  resolve:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+    steps:
+      - name: Check out the trusted repair helper
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: true
+          path: trusted
+
+      - name: Resolve the Dependabot pull request
+        id: pr
+        env:
+          PR_NUMBER: ${{ inputs.pull_request }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -I trusted/.github/scripts/dependabot_nix_repair.py resolve \
+            --pull-request "$PR_NUMBER"
+
+  build:
+    needs: resolve
+    if: github.ref == 'refs/heads/main' && needs.resolve.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    outputs:
+      result: ${{ steps.nix.outcome }}
+    steps:
+      - name: Check out the pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v21
+
+      - name: Restore the Nix store cache
+        uses: DeterminateSystems/magic-nix-cache-action@v13
+        with:
+          use-gha-cache: "enabled"
+          use-flakehub: "false"
+          diagnostic-endpoint: ""
+
+      - name: Build the pull request head
+        id: nix
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+          COPILOT_GITHUB_TOKEN: ""
+        run: |
+          set -euo pipefail
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${COPILOT_GITHUB_TOKEN}" ]; then
+            echo 'Refusing to evaluate Nix while a GitHub token is set.' >&2
+            exit 1
+          fi
+          {
+            nix eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath \
+              --no-write-lock-file \
+              --option accept-flake-config false \
+              --option sandbox true
+            nix build .#nixosConfigurations.nerv.config.system.build.toplevel \
+              --no-link \
+              --no-write-lock-file \
+              --option accept-flake-config false \
+              --option sandbox true
+          } 2>&1 | tee dependabot-nix-build.log
+
+      - name: Upload the build log
+        if: steps.nix.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependabot-nix-build-log
+          path: dependabot-nix-build.log
+          if-no-files-found: error
+          retention-days: 1
+
+  propose:
+    needs: [resolve, build]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.resolve.result == 'success' &&
+      needs.build.result == 'success' &&
+      needs.build.outputs.result == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    timeout-minutes: 30
+    steps:
+      - name: Check out the trusted repair helper
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: true
+          path: trusted
+
+      - name: Check out the pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: recursive
+          path: work
+
+      - name: Download the build log
+        uses: actions/download-artifact@v4
+        with:
+          name: dependabot-nix-build-log
+          path: work
+
+      - name: Install GitHub Copilot CLI
+        run: npm install --global --ignore-scripts @github/copilot
+
+      - name: Propose a Nix source repair
+        working-directory: work
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+          COPILOT_ALLOW_ALL: "false"
+          COPILOT_AUTO_UPDATE: "false"
+          GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS: "false"
+          GITHUB_COPILOT_PROMPT_MODE_WORKSPACE_MCP: "false"
+          GITHUB_COPILOT_PROMPT_MODE_EXTENSIONS: "false"
+        run: |
+          set -euo pipefail
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}" ]; then
+            echo 'Copilot must not inherit a repository token.' >&2
+            exit 1
+          fi
+          if [ -z "${COPILOT_GITHUB_TOKEN}" ]; then
+            echo 'COPILOT_GITHUB_TOKEN is not configured.' >&2
+            exit 1
+          fi
+          copilot \
+            --no-auto-update \
+            --no-custom-instructions \
+            --disable-builtin-mcps \
+            --no-ask-user \
+            --disallow-temp-dir \
+            --available-tools='view,edit,create,apply_patch,glob,grep' \
+            --allow-tool='read,write' \
+            --deny-tool='shell' \
+            --deny-tool='url' \
+            --deny-tool='write(flake.lock)' \
+            --deny-tool='write(.github)' \
+            --deny-tool='write(.gitmodules)' \
+            --excluded-tools='bash,powershell,task,skill,web_fetch,ask_user' \
+            --secret-env-vars='GITHUB_TOKEN,GH_TOKEN,ACTIONS_RUNTIME_TOKEN' \
+            --prompt "$(cat <<'PROMPT'
+          A Dependabot update failed to build this Nix flake. Read
+          dependabot-nix-build.log in this directory and repair the build by
+          editing ordinary *.nix source files only.
+
+          Do not change flake.lock, submodules, .github, or hidden files. Do
+          not commit, push, stage files, or run Nix. Do not copy the build log
+          into a source file. A separate unprivileged job checks formatting and
+          builds this tree without credentials. Keep the fix narrow.
+          PROMPT
+          )"
+
+      - name: Collect the allowlisted repair
+        env:
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          rm -f work/dependabot-nix-build.log
+          mkdir -p repair-out
+          python3 -I trusted/.github/scripts/dependabot_nix_repair.py collect \
+            --repo work \
+            --head "$HEAD_SHA" \
+            --output repair-out/repair.json
+
+      - name: Upload the repair payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependabot-nix-repair
+          path: repair-out/repair.json
+          if-no-files-found: error
+          retention-days: 1
+
+  verify:
+    needs: [resolve, propose]
+    if: github.ref == 'refs/heads/main' && needs.propose.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out the trusted repair helper
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: true
+          path: trusted
+
+      - name: Check out the pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: recursive
+          path: work
+
+      - name: Download the repair payload
+        uses: actions/download-artifact@v4
+        with:
+          name: dependabot-nix-repair
+          path: repair-in
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v21
+
+      - name: Verify the repair without credentials
+        env:
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+          COPILOT_GITHUB_TOKEN: ""
+        run: |
+          set -euo pipefail
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${COPILOT_GITHUB_TOKEN}" ]; then
+            echo 'Refusing to evaluate Nix while a GitHub token is set.' >&2
+            exit 1
+          fi
+          python3 -I trusted/.github/scripts/dependabot_nix_repair.py apply \
+            --repo work \
+            --head "$HEAD_SHA" \
+            --input repair-in/repair.json \
+            --stage
+          before=$(git -C work status --porcelain=v1 --untracked-files=all | sha256sum)
+          nix_bin=$(command -v nix)
+          trusted=$(mktemp)
+          cp "$nix_bin" "$trusted"
+          chmod 700 "$trusted"
+          sum=$(sha256sum "$trusted" | awk '{print $1}')
+          (
+            cd work
+            "$trusted" fmt
+          )
+          now=$(sha256sum "$trusted" | awk '{print $1}')
+          test "$sum" = "$now"
+          after=$(git -C work status --porcelain=v1 --untracked-files=all | sha256sum)
+          test "$before" = "$after"
+          (
+            cd work
+            "$trusted" eval --raw .#nixosConfigurations.nerv.config.system.build.toplevel.drvPath \
+              --no-write-lock-file \
+              --option accept-flake-config false \
+              --option sandbox true
+            "$trusted" build .#nixosConfigurations.nerv.config.system.build.toplevel \
+              --no-link \
+              --no-write-lock-file \
+              --option accept-flake-config false \
+              --option sandbox true
+          )
+
+  publish:
+    needs: [resolve, propose, verify]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.propose.result == 'success' &&
+      needs.verify.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: read
+    steps:
+      - name: Check out the trusted repair helper
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: true
+          path: trusted
+
+      - name: Download the repair payload
+        uses: actions/download-artifact@v4
+        with:
+          name: dependabot-nix-repair
+          path: repair-in
+
+      - name: Publish the allowlisted Nix repair
+        env:
+          PR_NUMBER: ${{ inputs.pull_request }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -n "${COPILOT_GITHUB_TOKEN:-}" ]; then
+            echo 'Publish must not receive the Copilot token.' >&2
+            exit 1
+          fi
+          python3 -I trusted/.github/scripts/dependabot_nix_repair.py publish \
+            --input repair-in/repair.json \
+            --pull-request "$PR_NUMBER"
