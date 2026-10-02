@@ -50,6 +50,12 @@ opens the actual application. Vicinae's Hermes command opens the same panel.
 Idle, listening, thinking and speaking come from Desktop's real transport,
 active-work, wake-word and playback stores. The active session is an opaque
 SHA-256 identity. A missing heartbeat for 15 seconds becomes disconnected.
+Only the primary Desktop window publishes lifecycle, so an idle secondary
+window cannot overwrite the active state or session. Desktop store transitions
+publish between heartbeats. The Electron framework
+bridge keeps one publisher in flight and at most one newest pending report,
+with a 500ms rate limit and a two-second child timeout. Burst updates cannot
+spawn unbounded workers or lose the final idle/disconnected state.
 No prompt, title, transcript, screenshot or audio reaches the Shell service.
 Wake word and voice remain explicit Desktop features; Seele enables neither.
 

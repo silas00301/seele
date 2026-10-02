@@ -15,4 +15,12 @@ function publish() {
 }
 // A heartbeat also retires a killed client honestly in the resident service.
 setInterval(publish, 3000)
+// Store listeners report real state transitions between heartbeats. The main
+// process coalesces bursts to one newest metadata record while a child runs.
+$activeSessionId.listen(publish)
+$connection.listen(publish)
+$gatewayState.listen(publish)
+$workingSessionIds.listen(publish)
+$voicePlayback.listen(publish)
+$wakeWord.listen(publish)
 publish()

@@ -22,7 +22,8 @@ def insert(name, needle, replacement):
     path.write_text(text.replace(needle, replacement))
 for source, target in [("desktop-theme.ts", "apps/desktop/electron/seele-theme.ts"), ("renderer-theme.ts", "apps/desktop/src/store/seele-theme.ts"), ("desktop-lifecycle.ts", "apps/desktop/electron/seele-lifecycle.ts"), ("renderer-lifecycle.ts", "apps/desktop/src/store/seele-lifecycle.ts")]:
     (root / target).write_text((assets / source).read_text())
-insert("apps/desktop/electron/main.ts", "import fs from 'node:fs'", "import './seele-lifecycle'\nimport './seele-theme'\nimport fs from 'node:fs'")
+insert("apps/desktop/electron/main.ts", "import fs from 'node:fs'", "import { setPrimaryWebContentsId } from './seele-lifecycle'\nimport './seele-theme'\nimport fs from 'node:fs'")
+insert("apps/desktop/electron/main.ts", "  const createdMainWindow = mainWindow", "  const createdMainWindow = mainWindow\n  setPrimaryWebContentsId(createdMainWindow.webContents.id)")
 insert("apps/desktop/electron/preload.ts", "contextBridge.exposeInMainWorld('hermesDesktop', {", "contextBridge.exposeInMainWorld('hermesDesktop', {\n  seeleTheme: () => ipcRenderer.invoke('seele:hermes-theme'),\n  seeleLifecycle: payload => ipcRenderer.send('seele:hermes-lifecycle', payload),")
 insert("apps/desktop/src/global.d.ts", "    hermesDesktop: {", "    hermesDesktop: {\n      seeleTheme?: () => Promise<Record<string, string> | null>\n      seeleLifecycle?: (payload: { state: string; session: string }) => void")
 insert("apps/desktop/src/main.tsx", "import './store/active-work'", "import './store/active-work'\nimport './store/seele-lifecycle'\nimport './store/seele-theme'")
