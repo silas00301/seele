@@ -160,8 +160,14 @@ jobs:
           name: dependabot-nix-build-log
           path: work
 
+      - name: Snapshot Git metadata
+        run: |
+          python3 -I trusted/.github/scripts/dependabot_nix_repair.py snapshot-git \
+            --repo work \
+            --output "$RUNNER_TEMP/git-snapshot"
+
       - name: Install GitHub Copilot CLI
-        run: npm install --global --ignore-scripts @github/copilot
+        run: npm install --global --ignore-scripts @github/copilot@1.0.91
 
       - name: Propose a Nix source repair
         working-directory: work
@@ -198,7 +204,15 @@ jobs:
             --deny-tool='url' \
             --deny-tool='write(flake.lock)' \
             --deny-tool='write(.github)' \
+            --deny-tool='write(.git)' \
+            --deny-tool='write(.git/config)' \
+            --deny-tool='write(.git/hooks)' \
+            --deny-tool='write(.jj)' \
+            --deny-tool='write(.jj/repo)' \
+            --deny-tool='write(.hg)' \
+            --deny-tool='write(.svn)' \
             --deny-tool='write(.gitmodules)' \
+            --deny-tool='write(.gitattributes)' \
             --excluded-tools='bash,powershell,task,skill,web_fetch,ask_user' \
             --secret-env-vars='GITHUB_TOKEN,GH_TOKEN,ACTIONS_RUNTIME_TOKEN' \
             --prompt "$(cat <<'PROMPT'
@@ -206,18 +220,35 @@ jobs:
           dependabot-nix-build.log in this directory and repair the build by
           editing ordinary *.nix source files only.
 
-          Do not change flake.lock, submodules, .github, or hidden files. Do
-          not commit, push, stage files, or run Nix. Do not copy the build log
-          into a source file. A separate unprivileged job checks formatting and
-          builds this tree without credentials. Keep the fix narrow.
+          Do not change flake.lock, submodules, .github, .git, or other
+          version-control metadata. Do not commit, push, stage files, or run
+          Nix. Do not copy the build log into a source file. A separate
+          unprivileged job checks formatting and builds this tree without
+          credentials. Keep the fix narrow.
           PROMPT
           )"
 
-      - name: Collect the allowlisted repair
+      - name: Restore Git metadata and collect the repair
         env:
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          ACTIONS_RUNTIME_TOKEN: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+          COPILOT_GITHUB_TOKEN: ""
+          GIT_CONFIG_NOSYSTEM: "1"
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_COUNT: "0"
         run: |
           set -euo pipefail
+          unset GIT_DIR GIT_WORK_TREE GIT_CONFIG_PARAMETERS || true
+          if [ -n "${GITHUB_TOKEN}${GH_TOKEN}${COPILOT_GITHUB_TOKEN}" ]; then
+            echo 'Refusing to run Git while a repository token is set.' >&2
+            exit 1
+          fi
+          python3 -I trusted/.github/scripts/dependabot_nix_repair.py restore-git \
+            --repo work \
+            --input "$RUNNER_TEMP/git-snapshot"
           rm -f work/dependabot-nix-build.log
           mkdir -p repair-out
           python3 -I trusted/.github/scripts/dependabot_nix_repair.py collect \

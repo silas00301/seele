@@ -13,6 +13,7 @@ import base64
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -28,6 +29,8 @@ _PR = re.compile(r"^[1-9][0-9]{0,8}$")
 _REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _FORBIDDEN_BRANCHES = frozenset({"HEAD", "main", "master"})
 _BLOB_MODES = frozenset({b"100644", b"100755"})
+_VCS_NAMES = frozenset({".git", ".jj", ".hg", ".svn"})
+_TOKEN_ENV = ("GITHUB_TOKEN", "GH_TOKEN")
 
 
 class RepairRejected(Exception):
@@ -75,6 +78,11 @@ def validate_branch(name: str) -> str:
 def reject_copilot_token_on_publish() -> None:
     if os.environ.get("COPILOT_GITHUB_TOKEN"):
         raise RepairRejected("Publish must not receive the Copilot token.")
+
+
+def reject_repository_tokens() -> None:
+    if any(os.environ.get(name) for name in _TOKEN_ENV):
+        raise RepairRejected("Refusing to inspect the checkout while a repository token is set.")
 
 
 def assess_pull_request(pull_request: dict, repository: str) -> tuple[str, str]:
@@ -185,12 +193,32 @@ def graphql_body(payload: dict, repository: str, branch: str, expected_sha: str)
     }
 
 
+def _git_env() -> dict[str, str]:
+    env = os.environ.copy()
+    for name in (
+        *_TOKEN_ENV,
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_COMMON_DIR",
+    ):
+        env.pop(name, None)
+    env["GIT_CONFIG_NOSYSTEM"] = "1"
+    env["GIT_CONFIG_GLOBAL"] = os.devnull
+    env["GIT_CONFIG_COUNT"] = "0"
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    return env
+
+
 def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(
         ["git", "-C", str(repo), *args],
         check=check,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=_git_env(),
     )
 
 
@@ -279,6 +307,115 @@ def _parse_name_status(blob: bytes) -> list[tuple[str, str]]:
     return entries
 
 
+def _vcs_relative(path: str) -> str:
+    if not isinstance(path, str) or path.startswith("/") or "\\" in path:
+        raise RepairRejected("Git snapshot path is not usable.")
+    parts = path.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise RepairRejected("Git snapshot path is not usable.")
+    if parts[-1] not in _VCS_NAMES:
+        raise RepairRejected("Git snapshot path is not usable.")
+    return path
+
+
+def _iter_vcs(repo: Path) -> list[Path]:
+    found: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(repo, followlinks=False):
+        current = Path(dirpath)
+        kept = []
+        for name in dirnames:
+            if name in _VCS_NAMES:
+                found.append(current / name)
+            else:
+                kept.append(name)
+        dirnames[:] = kept
+        for name in filenames:
+            if name in _VCS_NAMES:
+                found.append(current / name)
+    return found
+
+
+def _outside_checkout(repo: Path, path: Path) -> None:
+    resolved = path.resolve()
+    if resolved == repo or repo in resolved.parents:
+        raise RepairRejected("Git snapshot must stay outside the checkout.")
+
+
+def _remove_vcs_path(path: Path) -> None:
+    if not os.path.lexists(path):
+        return
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        path.unlink()
+        return
+    shutil.rmtree(path)
+
+
+def snapshot_vcs(repo: Path, destination: Path) -> None:
+    """Copy Git and other VCS metadata without invoking Git."""
+    repo = repo.resolve()
+    destination = destination.resolve()
+    _outside_checkout(repo, destination)
+    if destination.exists():
+        raise RepairRejected("Git snapshot destination already exists.")
+    destination.mkdir(mode=0o700)
+    manifest = []
+    for path in _iter_vcs(repo):
+        relative = _vcs_relative(path.relative_to(repo).as_posix())
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        info = path.lstat()
+        if stat.S_ISLNK(info.st_mode):
+            target.symlink_to(os.readlink(path))
+            kind = "link"
+        elif stat.S_ISDIR(info.st_mode):
+            shutil.copytree(path, target, symlinks=True, copy_function=shutil.copy2)
+            kind = "dir"
+        elif stat.S_ISREG(info.st_mode):
+            shutil.copy2(path, target, follow_symlinks=False)
+            kind = "file"
+        else:
+            raise RepairRejected("Git snapshot found unexpected metadata.")
+        manifest.append({"path": relative, "kind": kind})
+    (destination / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def restore_vcs(repo: Path, destination: Path) -> None:
+    """Replace VCS metadata from a snapshot. Does not invoke Git."""
+    repo = repo.resolve()
+    destination = destination.resolve()
+    _outside_checkout(repo, destination)
+    manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
+    if not isinstance(manifest, list):
+        raise RepairRejected("Git snapshot is unusable.")
+    current = _iter_vcs(repo)
+    current.sort(key=lambda path: len(path.parts), reverse=True)
+    for path in current:
+        _remove_vcs_path(path)
+    for item in manifest:
+        if not isinstance(item, dict):
+            raise RepairRejected("Git snapshot is unusable.")
+        relative = _vcs_relative(item.get("path"))
+        kind = item.get("kind")
+        if kind not in {"link", "dir", "file"}:
+            raise RepairRejected("Git snapshot is unusable.")
+        source = destination / relative
+        current = repo
+        for part in relative.split("/")[:-1]:
+            current = current / part
+            if current.is_symlink():
+                raise RepairRejected("Refusing to restore Git metadata through a symlink.")
+            if not current.is_dir():
+                current.mkdir(mode=0o755)
+        leaf = current / relative.split("/")[-1]
+        if kind == "link":
+            leaf.symlink_to(os.readlink(source))
+        elif kind == "dir":
+            shutil.copytree(source, leaf, symlinks=True, copy_function=shutil.copy2)
+        else:
+            shutil.copy2(source, leaf, follow_symlinks=False)
+
+
 def collect_repair(
     repo: Path,
     head: str,
@@ -286,6 +423,7 @@ def collect_repair(
     max_bytes: int = MAX_FILE_BYTES,
     max_files: int = MAX_FILES,
 ) -> dict:
+    reject_repository_tokens()
     repo = repo.resolve()
     _ensure_head(repo, head)
     _reject_staged(repo)
@@ -354,6 +492,7 @@ def _stage_exact(repo: Path, paths: list[str]) -> None:
 
 
 def apply_repair(repo: Path, payload: dict, head: str, *, stage: bool = False) -> dict:
+    reject_repository_tokens()
     repo = repo.resolve()
     payload = normalize_payload(payload)
     _ensure_head(repo, head)
@@ -465,6 +604,14 @@ def _command_publish(args: argparse.Namespace) -> None:
     publish_repair(Path(args.input), args.pull_request)
 
 
+def _command_snapshot(args: argparse.Namespace) -> None:
+    snapshot_vcs(Path(args.repo), Path(args.output))
+
+
+def _command_restore(args: argparse.Namespace) -> None:
+    restore_vcs(Path(args.repo), Path(args.input))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Allowlisted Dependabot Nix repair helper.")
     parser.add_argument("--repo", default=".", help="Git checkout to read or modify.")
@@ -489,6 +636,14 @@ def main(argv: list[str] | None = None) -> int:
     publish.add_argument("--input", required=True)
     publish.add_argument("--pull-request", required=True)
     publish.set_defaults(func=_command_publish)
+
+    snapshot = subparsers.add_parser("snapshot-git")
+    snapshot.add_argument("--output", required=True)
+    snapshot.set_defaults(func=_command_snapshot)
+
+    restore = subparsers.add_parser("restore-git")
+    restore.add_argument("--input", required=True)
+    restore.set_defaults(func=_command_restore)
 
     args = parser.parse_args(argv)
     try:

@@ -618,7 +618,9 @@ It runs on `pull_request` with read-only repository contents, no secrets, and no
 Copilot, so lockfile inputs are evaluated without a write token.
 
 `.github/workflows/dependabot-nix-repair.yml` is dispatched by hand from `main`.
-The Copilot job holds `COPILOT_GITHUB_TOKEN` but cannot run Nix and cannot push.
+The Copilot job holds `COPILOT_GITHUB_TOKEN` but cannot run Nix, cannot push,
+and cannot write Git metadata. Collect restores the pre-Copilot Git directory
+before it runs Git, and that step has no repository token.
 A later job with no secrets builds the proposed tree. The only `contents: write`
 job publishes ordinary `*.nix` files through `createCommitOnBranch` and does not
 evaluate Nix. `COPILOT_GITHUB_TOKEN` is an external setup requirement, never a

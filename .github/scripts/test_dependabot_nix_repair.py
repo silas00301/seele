@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import importlib.util
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -13,6 +14,8 @@ import unittest
 from pathlib import Path
 
 os.environ.pop("COPILOT_GITHUB_TOKEN", None)
+os.environ.pop("GITHUB_TOKEN", None)
+os.environ.pop("GH_TOKEN", None)
 
 _SPEC = importlib.util.spec_from_file_location(
     "dependabot_nix_repair",
@@ -186,6 +189,47 @@ class AllowlistTests(unittest.TestCase):
                 os.environ.pop("COPILOT_GITHUB_TOKEN", None)
             else:
                 os.environ["COPILOT_GITHUB_TOKEN"] = previous
+
+    def test_restore_discards_poisoned_git_metadata(self) -> None:
+        temporary, repo, head = _init()
+        self.addCleanup(temporary.cleanup)
+        vendor = repo / "vendor"
+        vendor.mkdir()
+        (vendor / ".git").write_text("gitdir: ../.git/modules/vendor\n", encoding="utf-8")
+        holder = Path(tempfile.mkdtemp(prefix="dependabot-nix-git-"))
+        self.addCleanup(lambda: shutil.rmtree(holder, ignore_errors=True))
+        snapshot = holder / "snapshot"
+        repair.snapshot_vcs(repo, snapshot)
+        config = repo / ".git" / "config"
+        config.write_text(
+            config.read_text(encoding="utf-8") + "\n[core]\n\tfsmonitor = /tmp/not-a-helper\n",
+            encoding="utf-8",
+        )
+        (vendor / ".git").write_text("gitdir: /tmp/evil\n", encoding="utf-8")
+        (repo / ".jj").mkdir()
+        outside = Path(tempfile.mkdtemp(prefix="dependabot-nix-outside-"))
+        self.addCleanup(lambda: shutil.rmtree(outside, ignore_errors=True))
+        (outside / "sentinel").write_text("keep", encoding="utf-8")
+        parked = Path(tempfile.mkdtemp(prefix="dependabot-nix-realgit-"))
+        self.addCleanup(lambda: shutil.rmtree(parked, ignore_errors=True))
+        shutil.move(repo / ".git", parked / "git")
+        (repo / ".git").symlink_to(outside, target_is_directory=True)
+        repair.restore_vcs(repo, snapshot)
+        self.assertFalse((repo / ".git").is_symlink())
+        self.assertTrue((repo / ".git").is_dir())
+        self.assertTrue((outside / "sentinel").is_file())
+        self.assertNotIn("fsmonitor", (repo / ".git" / "config").read_text(encoding="utf-8"))
+        self.assertEqual((vendor / ".git").read_text(encoding="utf-8"), "gitdir: ../.git/modules/vendor\n")
+        self.assertFalse((repo / ".jj").exists())
+        (repo / "modules" / "example.nix").write_text("2\n", encoding="utf-8")
+        payload = repair.collect_repair(repo, head)
+        self.assertEqual(payload["additions"][0]["path"], "modules/example.nix")
+        os.environ["GH_TOKEN"] = "present"
+        try:
+            with self.assertRaisesRegex(repair.RepairRejected, "repository token"):
+                repair.collect_repair(repo, head)
+        finally:
+            os.environ.pop("GH_TOKEN", None)
 
 
 if __name__ == "__main__":

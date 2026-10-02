@@ -707,9 +707,10 @@ Python/JavaScript validation, including the Linux Taildrop API limitations.
 `.github/dependabot.yml` schedules weekly Nix updates. The pull request workflow
 evaluates and builds `nerv` for same-repository Dependabot updates with read-only
 contents and no secrets. Repair is a separate workflow dispatched from `main`:
-Copilot may edit files but cannot run Nix or push, an unprivileged job verifies
-the tree, and only then does `createCommitOnBranch` publish ordinary `.nix`
-files. The publish job does not evaluate Nix. `COPILOT_GITHUB_TOKEN` is
+Copilot may edit files but cannot run Nix, push, or write Git metadata. Collect
+restores the pre-Copilot Git directory and runs Git with no repository token. An
+unprivileged job verifies the tree, and only then does `createCommitOnBranch`
+publish ordinary `.nix` files. The publish job does not evaluate Nix. `COPILOT_GITHUB_TOKEN` is
 configured outside the repository and is not present on any Nix evaluation job.
 This does not replace native Darwin validation or activate either host.
 
