@@ -72,6 +72,36 @@ and visual mappings, range semantics, project boundaries and hostile filenames,
 checks provider failure/fallback, and verifies unchanged repository data and editor
 state. A real desktop/terminal clipboard still needs validation in that session.
 
+## Trim trailing whitespace
+
+`<leader>cw` trims trailing ASCII spaces and tabs from the buffer. In Visual
+mode it trims the complete selected lines (including character/block selections).
+`:TrimWhitespace` does the same for the whole buffer, or accepts an explicit
+range such as `:12,18TrimWhitespace`. It never saves or runs automatically.
+Leading indentation, nonbreaking spaces, search and yank registers, unchanged
+text marks, and the window view stay intact; one undo restores the cleanup.
+If the cursor was inside removed whitespace, Neovim clamps it to the new line end.
+Read-only, unmodifiable and special buffers are refused, even with `!`.
+
+For Markdown and MDX filetypes, nonblank lines ending in at least two spaces
+are preserved because those spaces can encode hard line breaks. This deliberately
+conservative rule also preserves such lines inside code fences; it is not a
+Markdown parser. The result reports preserved lines. `:TrimWhitespace!` removes
+those suffixes too, and accepts the same ranges. Other filetypes trim all trailing
+ASCII spaces/tabs. Cleanup is explicit because whitespace can carry meaning in
+other formats too.
+
+The `nixvim-whitespace` flake check runs the isolated real-editor fixture. With
+an existing Neovim it can also run directly:
+
+```sh
+NVIM=/path/to/nvim python3 modules/packages/_nixvim/test-trim-whitespace.py
+```
+
+It covers normal and visual mappings, line ranges, one-step undo/redo, unchanged
+registers and extmarks, no-op undo preservation, Unicode, Markdown, refusal paths,
+and the absence of writes to the source file.
+
 ## Persistent undo
 
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.

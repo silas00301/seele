@@ -209,6 +209,7 @@ in
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
     dofile("${./copy-reference.lua}").setup()
+    dofile("${./trim-whitespace.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then

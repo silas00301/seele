@@ -77,6 +77,12 @@ nearest Jujutsu/Git ancestor marker without invoking VCS commands; register `r`
 retains the reference even when the existing clipboard provider is unavailable.
 See the adjacent README and real Neovim fixture for path and clipboard boundaries.
 
+Neovim's `<leader>cw` / `:TrimWhitespace[!]` explicitly cleans trailing spaces
+and tabs from a buffer or selected line range without saving it. Markdown hard
+breaks are preserved unless `!` is supplied. The in-process helper and real-editor
+fixture live in `modules/packages/_nixvim/`, documented in its README and exposed
+as `checks.<system>.nixvim-whitespace`.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:
