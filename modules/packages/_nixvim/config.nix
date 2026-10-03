@@ -9,6 +9,7 @@ let
   colors =
     (builtins.fromJSON (builtins.readFile "${catppuccinPalette}/palette.json"))
     .${catppuccin.flavor}.colors;
+  germanSpell = pkgs.callPackage ./german-spell.nix { };
 in
 {
   colorschemes.catppuccin = {
@@ -17,6 +18,7 @@ in
       flavour = catppuccin.flavor;
       transparent_background = false;
       integrations = {
+        grug_far = true;
         harpoon = true;
         noice = true;
         notify = true;
@@ -34,13 +36,26 @@ in
 
   extraConfigVim = "source ${./undo.vim}";
 
+  # Neovim ships the English spell file; the German one and the query that
+  # makes a Jujutsu description's message spellable join the runtime path.
+  extraFiles = {
+    "spell/de.utf-8.spl".source = "${germanSpell}/spell/de.utf-8.spl";
+    "spell/de.utf-8.sug".source = "${germanSpell}/spell/de.utf-8.sug";
+    "after/queries/jjdescription/highlights.scm".source = ./jjdescription-spell.scm;
+  };
+
   opts = {
     number = true;
     relativenumber = true;
     shiftwidth = 2;
+    expandtab = true;
+    tabstop = 2;
+    softtabstop = -1;
+    ignorecase = true;
     smartcase = true;
     smartindent = true;
     autoindent = true;
+    autoread = true;
     winborder = "rounded";
   };
 
@@ -53,6 +68,12 @@ in
   ];
 
   keymaps = [
+    {
+      mode = "n";
+      key = "<leader>cf";
+      action = "<cmd>FormatToggle<CR>";
+      options.desc = "Toggle automatic formatting";
+    }
     {
       mode = "n";
       key = "<leader>cs";
@@ -94,6 +115,18 @@ in
       key = "<leader>sg";
       options.desc = "Search project text";
       action = "<cmd>Telescope live_grep<CR>";
+    }
+    {
+      mode = "n";
+      key = "<leader>sr";
+      options.desc = "Resume last search";
+      action = "<cmd>Telescope resume<CR>";
+    }
+    {
+      mode = "n";
+      key = "<leader>sb";
+      options.desc = "Search open buffers";
+      action = "<cmd>Telescope buffers sort_mru=true ignore_current_buffer=true<CR>";
     }
     {
       mode = "n";
@@ -208,7 +241,13 @@ in
   extraConfigLua = ''
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
-    dofile("${./copy-reference.lua}").setup()
+    dofile("${./refresh.lua}")
+    local source_reference = dofile("${./copy-reference.lua}")
+    source_reference.setup()
+    dofile("${./copy-diagnostics.lua}").setup(source_reference.reference)
+    dofile("${./trim-whitespace.lua}").setup()
+    dofile("${./replace.lua}").setup()
+    dofile("${./spell.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then
@@ -236,6 +275,8 @@ in
         end
       end, { desc = "Open GitHub dashboard" })
     end
+
+    dofile("${./line-origin.lua}").setup()
   '';
 
   plugins = {
@@ -267,6 +308,22 @@ in
             "diff"
           ];
           lualine_x = [
+            {
+              __unkeyed-1.__raw = ''
+                function()
+                  local formatter = require("lsp-format")
+                  if formatter.disabled then
+                    return "format off"
+                  end
+                  for _, filetype in ipairs(vim.split(vim.bo.filetype, ".", { plain = true })) do
+                    if formatter.disabled_filetypes[filetype] then
+                      return "format off"
+                    end
+                  end
+                  return ""
+                end
+              '';
+            }
             {
               __unkeyed-1.__raw = ''
                 require("noice").api.statusline.mode.get
@@ -304,6 +361,13 @@ in
     };
 
     rainbow-delimiters.enable = true;
+
+    grug-far = {
+      enable = true;
+      # Name ripgrep by store path so the portable editor replaces on a
+      # machine that has none on PATH.
+      settings.engines.ripgrep.path = lib.getExe pkgs.ripgrep;
+    };
 
     hunk.enable = true;
 
@@ -599,7 +663,7 @@ in
         notify.enabled = true;
         lsp.override = {
           "cmp.entry.get_documentation" = true;
-          "vim.lsp.util_convert_input_to_markdown_lines" = true;
+          "vim.lsp.util.convert_input_to_markdown_lines" = true;
           "vim.lsp.util.stylize_markdown" = true;
         };
         popupmenu = {
@@ -661,6 +725,8 @@ in
       enable = true;
       autoEnableSources = true;
       settings = {
+        preselect = "cmp.PreselectMode.None";
+        completion.completeopt = "menu,menuone,noselect";
         sources = [
           { name = "nvim_lsp"; }
           { name = "path"; }
@@ -676,7 +742,6 @@ in
         window = {
           completion = {
             scrollbar = false;
-            completeopt = "menu,menuone,preview,noselect";
             winhighlight = "Normal:Pmenu,FloatBorder:Pmenu,Search:None";
             col_offset = -3;
             side_padding = 0;
@@ -705,22 +770,10 @@ in
         };
         mapping = {
           "<CR>" = ''
-            cmp.mapping({
-              i = function(fallback)
-                if cmp.visible() then
-                  cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false })
-                else
-                  fallback()
-                end
-              end,
-              s = cmp.mapping.confirm({ 
-                select = true 
-              }),
-              c = cmp.mapping.confirm({ 
-                behavior = cmp.ConfirmBehavior.Replace, 
-                select = false
-              })
-            })
+            cmp.mapping(
+              cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false }),
+              { "i", "s", "c" }
+            )
           '';
           "<Tab>" = ''
             cmp.mapping(
