@@ -11,7 +11,10 @@
     config.flake.modules.homeManager.codex-broker
     config.flake.modules.homeManager.maintenance
     config.flake.modules.homeManager.seele-shell
+    config.flake.modules.homeManager.command-notifications-seele
+    config.flake.modules.homeManager.meeting-scratchpad
     config.flake.modules.homeManager.quicklook
+    config.flake.modules.homeManager.screen-zoom
     config.flake.modules.homeManager.theme-switching
     config.flake.modules.homeManager.seele-transfers
     config.flake.modules.homeManager.seele-caffeinate

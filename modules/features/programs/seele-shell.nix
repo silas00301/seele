@@ -12,6 +12,9 @@ let
     let
       package = selfPackages.seele-shell;
       lockPackage = selfPackages.seele-lock;
+      # SIL-171 smallest slice: one open pull request on nerv. Entering focus
+      # stays explicit. This module is imported only by the nerv home profile.
+      focusPull = "https://github.com/silas00301/seele/pull/183";
       polkitPackage = selfPackages.seele-polkit;
       librepodsPackage = package.librepods;
       # The Shure MV7+, which gates its own capsule when its touch panel is
@@ -117,6 +120,9 @@ let
             ];
           };
         };
+        xdg.configFile."seele-shell/focus.json".text = builtins.toJSON {
+          url = focusPull;
+        };
         xdg.configFile."seele-shell/health.json".text = builtins.toJSON (
           lib.mapAttrsToList (id: provider: (builtins.removeAttrs provider [ "enable" ]) // { inherit id; }) (
             lib.filterAttrs (_: provider: provider.enable) config.seele.health.providers
@@ -201,6 +207,7 @@ let
                 "SEELE_LOCK=${lib.getExe lockPackage}"
                 "SEELE_SHELL_NH=${lib.getExe config.programs.nh.package}"
                 "SEELE_SHELL_REPO=${config.programs.nh.flake}"
+                "SEELE_FOCUS_PULL=${focusPull}"
               ];
               ExecStart = lib.getExe package;
               LimitCORE = 0;

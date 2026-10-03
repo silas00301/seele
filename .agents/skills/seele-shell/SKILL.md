@@ -349,6 +349,19 @@ arithmetic. `tests/quicklook.sh` exercises classification, bounds, private page
 modes, supersession and cleanup against the raw worker with fake Poppler tools;
 `tests/quicklook.js` covers the presentation and the production QML callbacks.
 
+## Leave the screen zoom to the compositor
+
+`seele-shellctl zoom` changes Hyprland's `cursor:zoom_factor` and nothing else.
+`projects/tools/src/zoom.rs` reads the option back with `getoption -j` before
+every step and writes it through one `hl.config` eval, under a runtime advisory
+lock that holds no level; never cache the factor, add a state file, or reach
+for `hyprctl keyword`, which a Lua configuration refuses. Keep levels on the
+quarter-octave grid so stepping down ends on exactly `1`. The helper also words
+the OSD; `showZoom` in `shell.qml` only draws it in the level strip and closes
+that strip at 1x. A step must not depend on the shell answering, so the OSD
+call is quiet. Run `tests/screen-zoom.sh` against the raw `seele-shellctl`
+and `tests/screen-zoom.js` against `shell.qml` after changing either side.
+
 ## Keep the quick AI prompt lazy and private
 
 `seele-shellctl prompt` reaches `AiPrompt.qml`; the parent binds it to
@@ -415,7 +428,15 @@ Do Not Disturb has two forms, and one control in the panel header sets both.
 Its button drops a menu whose rows are every way to set silence: the quiet
 presets — 15 minutes, 1 hour, 4 hours — silence the shell until a deadline,
 `Until I turn it off` holds it with no end, and `Turn off` appears only while
-something is running. The check marks whichever is on. `snooze()` stores an absolute `dndUntil`
+something is running. While the focus timer is running, `Sync with focus` is
+added; choosing it turns shell Do Not Disturb on with the timer and puts the
+previous silence back when the timer leaves `running`. While a timed calendar
+event is underway, `Until the current meeting ends` is added and highlighted.
+Choosing it holds silence until that event's end and then puts the previous
+silence back. The row is only a suggestion: opening the menu does not arm it,
+and outside a meeting it is absent. A later manual choice replaces either hold.
+The menu does not start or stop the focus timer, so the two cannot re-enable
+each other. The check marks whichever is on. `snooze()` stores an absolute `dndUntil`
 plus the `dndMinutes` that asked for it, so suspending does not extend the
 period and the panel lights the preset that started it rather than guessing
 from a deadline that keeps moving. The button carries the live countdown
@@ -455,6 +476,13 @@ withdrawing it, ends the reminder, and history never carries one. Reminders
 survive QML reloads through the same `save()` metadata as pins, and are never
 written to disk. `seele-shellctl notification remind <id> <minutes|cancel>`
 reaches the same store.
+
+`seele-shellctl pr-focus` is separate from the focus timer. It pins one
+configured pull request in the Control Center and, while that pin is up, holds
+desktop toasts that are not @-mentions. The notifications stay in the inbox and
+toast when focus ends. A summary or body that contains an @-mention, or GitHub's
+"mentioned you", is not held. Exit clears the pin. Do not post the focus
+anywhere, and do not enter it from a push or an opened URL.
 
 `NotificationStore.qml` owns the desktop notification service through
 Quickshell. `projects/qml-core/src/notifications.rs` owns presentation and the
