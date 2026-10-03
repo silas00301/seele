@@ -244,6 +244,8 @@ in
         end
       end, { desc = "Open GitHub dashboard" })
     end
+
+    dofile("${./line-origin.lua}").setup()
   '';
 
   plugins = {
