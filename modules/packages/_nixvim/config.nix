@@ -670,6 +670,8 @@ in
       enable = true;
       autoEnableSources = true;
       settings = {
+        preselect = "cmp.PreselectMode.None";
+        completion.completeopt = "menu,menuone,noselect";
         sources = [
           { name = "nvim_lsp"; }
           { name = "path"; }
@@ -685,7 +687,6 @@ in
         window = {
           completion = {
             scrollbar = false;
-            completeopt = "menu,menuone,preview,noselect";
             winhighlight = "Normal:Pmenu,FloatBorder:Pmenu,Search:None";
             col_offset = -3;
             side_padding = 0;
@@ -714,22 +715,10 @@ in
         };
         mapping = {
           "<CR>" = ''
-            cmp.mapping({
-              i = function(fallback)
-                if cmp.visible() then
-                  cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false })
-                else
-                  fallback()
-                end
-              end,
-              s = cmp.mapping.confirm({ 
-                select = true 
-              }),
-              c = cmp.mapping.confirm({ 
-                behavior = cmp.ConfirmBehavior.Replace, 
-                select = false
-              })
-            })
+            cmp.mapping(
+              cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false }),
+              { "i", "s", "c" }
+            )
           '';
           "<Tab>" = ''
             cmp.mapping(

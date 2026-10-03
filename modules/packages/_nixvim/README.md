@@ -99,3 +99,17 @@ charwise selection becomes a literal search, and non-file buffers open nothing.
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.
 `test-undo.py` exercises real editor writes and reloads; see its header for the
 writable-directory requirement and Vim fallback.
+
+## Completion confirmation
+
+Completion suggestions start unselected. Tab and Shift-Tab select a candidate;
+Enter accepts only that explicit selection. With an unselected or closed popup,
+Enter keeps its normal action instead of swallowing a newline or accepting the
+first suggestion. The same confirmation policy covers Insert, Select and command
+modes.
+
+Run the isolated real-plugin fixture with Neovim and nvim-cmp available:
+
+```sh
+NVIM=/path/to/nvim CMP_DIR=/path/to/nvim-cmp python3 modules/packages/_nixvim/test-completion.py
+```
