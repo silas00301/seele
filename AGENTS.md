@@ -401,6 +401,8 @@ On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control
 Center module, conditional progress bar item, and provider-neutral contract.
+The panel's layershell namespace is `seele-shell-transfers`, and it belongs in
+the Hyprland blur rule.
 The service selects only currently available targets owned by the logged-in
 Tailscale user. It retains seven days of metadata, never file contents; clearing
 history never deletes files. `asuka` has no transfer service. See the submodule's
@@ -581,8 +583,8 @@ start no subprocesses, retain no policy state and make no security decisions.
 Spicetify's accent adapter requires browser localStorage. Upstream applications
 such as Proton VPN retain their own runtimes. Python/Node fixture tools remain
 build/test dependencies of native services, with no first-party Python workers.
-Pi/OpenCode lifecycle adapters call the shared native `seele-agent-hook`; they
-never write state files themselves. Native lock/greeter/Notes launchers live in
+Pi/OpenCode lifecycle adapters and Cursor's system-layer hooks call the shared
+native `seele-agent-hook`; the adapters never write state files themselves. Native lock/greeter/Notes launchers live in
 `projects/tools/src/launch.rs`. A detached lock must survive launcher completion
 and confirmation failure; run the synthetic launcher fixtures after changing
 subprocess ownership. Never exercise these tests against a real desktop.
@@ -659,7 +661,7 @@ nix build .#nixosConfigurations.nerv.config.system.build.toplevel --no-link --no
 nix build .#darwinConfigurations.asuka.system --no-link --no-write-lock-file                     # Darwin
 ```
 
-Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary.
+Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary. `nix flake show` and `nix flake check` evaluate `darwinConfigurations.asuka`, so on Linux they stop on that Catppuccin palette mismatch. The Linux host check that completes is the `nixosConfigurations.nerv` derivation above.
 
 Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
 
@@ -681,3 +683,7 @@ and explicit repair confirmation are enforced by the service as well as the UI.
 AI analysis is explicit and goes through the shared Codex broker, with repair IDs
 restricted to the finding's registered actions. It never executes a proposal.
 See `seele-shell/projects/maintenance/README.md` for source policy and validation.
+
+## Cursor Cloud specific instructions
+
+Cloud agents run on x86_64 Linux without systemd. The environment installs Determinate Nix and starts `nix-daemon` before work begins, and `install` checks out the `seele-shell` submodule. Use the Validation commands. On this machine, the Linux host check is the `nerv` derivation eval. `nix flake show` and `nix flake check` stop on the Darwin palette boundary above. Do not activate either host.

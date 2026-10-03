@@ -27,6 +27,8 @@ let
       modules.bat
       modules.bottom
       modules.brave
+      modules.cursor-agent
+      modules.cursor-editor
       modules.determinate
       modules.direnv
       modules.eza
