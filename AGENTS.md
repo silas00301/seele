@@ -170,7 +170,7 @@ controller, but starts Codex only after Send. The panel takes exclusive
 keyboard focus while it is open, so typing reaches its field immediately and
 only Super + Space, Close or Escape gives the keyboard back. `@window` exposes only the
 captured application name and title, and `@dir` resolves only a focused
-terminal through `/proc`. Explicit `@clip`, `@select`, `@dir`, and `@screen` mentions resolve only on Send,
+terminal through `/proc`. Typing `@` opens a completion list of those sources and inserts the chosen mention without reading it. Explicit `@clip`, `@select`, `@dir`, and `@screen` mentions resolve only on Send,
 then submit together after all sources succeed. Screen collection hides the panel
 and captures only its pinned output. A failed source preserves the prompt;
 edits or closing invalidate the collection. Model-requested context still needs
@@ -459,6 +459,16 @@ conditional coffee bar item and a compact panel with the same session and Stop.
 See `seele-shell/projects/caffeinate/README.md` for the inhibition boundary, the
 protocol and its validation.
 
+Presentation mode on `nerv` holds back toasts and takes personal text off the
+bar. It covers the active window's title, the calendar event's title, media
+track text and artwork, and the Home Assistant readings. A `Presenting` bar item
+says the mode is on. It is chosen through `seele-shellctl presentation` or
+Vicinae's **Seele Presentation Mode**. It is also implied, without keeping the
+session awake, while the screen is shared. A chosen mode keeps the session awake
+by borrowing Caffeinate: it starts a session only when none is running and ends
+only that one. It never writes Do Not Disturb, so ending it has nothing else to
+restore. See the `seele-shell` skill for ownership and tests.
+
 The Audio panel's microphone test is the resident `seele-mic-test` worker,
 started by the panel and ended with it. It offers a five-second sample held only
 in memory and replayed through the chosen test output, and a live monitor that
@@ -627,7 +637,10 @@ directly. Every Control Center module is reachable from the keyboard.
 Resources, Network activity and Sensors are local, read-only shell panels. Their native
 workers sample only while the owning panel is open and retain bounded histories
 in memory. Resources reads CPU, memory and process names without command-line
-arguments. Network activity reads interface counters without contacting a host
+arguments, and lists the space on each mounted block-device filesystem from
+`statvfs`, one row per device, on a sampler thread of its own so a stalled disk
+marks only that group stale. Its meters turn at the Maintenance disk source's
+85% and 95%. Network activity reads interface counters without contacting a host
 or examining packets. Sensors, opened from the Resources header, reads hwmon
 temperatures and fan speeds with only the limits their drivers state, and leaves
 `drivetemp` disks alone because reading them can reset a spin-down timer.

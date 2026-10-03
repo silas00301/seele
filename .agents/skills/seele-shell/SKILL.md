@@ -132,7 +132,11 @@ Resources, Network activity and Sensors sample local kernel data only while
 their panel is open. Each opening owns a fresh worker; generation guards reject queued
 stdout and exit callbacks after closing or reopening. PID/start time and
 interface index/sysfs identity protect selections from reuse. Gaps and unknown
-first rates stay visible. `HistoryChart` paints bounded native series and
+first rates stay visible. Resources' Storage group comes from
+`projects/tools/src/resources/storage.rs`: mountinfo plus `statvfs` on its own
+five-second thread, so a filesystem stalled in the kernel leaves the other
+readings running and reports `stale` instead; keep blocking filesystem calls off
+the publishing loop. `HistoryChart` paints bounded native series and
 `ChoiceBox` supplies the native keyboard selector; neither owns sampling policy.
 Sensors keeps a hwmon device's identity as its chip and canonical device path,
 orders devices by kind rather than reading, and uses only driver-stated limits;
@@ -205,6 +209,36 @@ labels, the bar text and the failure messages; the shell store and
 `seele-control vicinae-caffeinate` read that one projection, and neither QML nor
 React keeps a clock or parses a duration. Keep `tests/caffeinate.js` and
 `tests/vicinae-caffeinate.cjs` passing, and see `projects/caffeinate/README.md`.
+
+Presentation mode (SIL-55) is `root.presenting`. It is on when the user chose it
+through `seele-shellctl presentation on|off|toggle|status` or Vicinae's **Seele
+Presentation Mode**, and also while `systemData.screenRecording` reports a
+running PipeWire `Stream/Output/Video`, because a screen share is when bar text
+reaches other people.
+
+While it is on, toasts are held back but not dismissed: ordinary ones time out
+into the panel as usual, and permanent ones appear once the mode ends. The bar
+also drops personal text:
+- the active window's title, keeping only the application name;
+- the calendar event's title, which becomes "Event" while its time stays;
+- the media track text and artwork;
+- the Home Assistant readings;
+- the tooltips that repeat any of these.
+
+A `󰐯 Presenting` or `󰐯 Sharing` bar item says the mode is on, and a click ends a
+mode chosen by hand. The mode never writes Do Not Disturb or the focus timer, so
+ending it restores nothing but the keep-awake session.
+
+`projects/qml-core/src/presenting.rs` owns the state, the labels and that
+session's ownership. A chosen mode starts a `manual` Caffeinate session only when
+none is running, and records when. On the way out it stops the session only if a
+manual session's elapsed time still matches that start, within the watcher's
+20-second heartbeat. A session the user already had, or started since, is never
+replaced or ended. The choice and the session start survive QML reloads through
+`PersistentProperties`. `tests/presenting.js` runs the production
+`setPresenting()` against the native policy and pins each concealment. Spoken AI
+interruptions (the issue's Hermes) have no implementation to pause yet;
+`presentation status` is the state such a speaker should read.
 
 ## Keep the launcher extension a readout as well as a set of verbs
 
@@ -385,8 +419,12 @@ in memory, resume
 follow-ups only while this panel stays open, and validate the UUID before
 passing it to `codex delete --force`.
 
-Explicit user `@mentions` authorize their sources for one Send. Opening or typing
-must not read sources, including `@dir`. The QML coordinator collects every
+Explicit user `@mentions` authorize their sources for one Send. Typing `@` opens
+a completion list of `clip`, `select`, `window`, `dir` and `screen`. `qml-core`
+owns that match: arrows move, Enter or Tab inserts the highlighted mention, and
+Escape dismisses the list before it can close the panel. A mention that is
+already complete stays out of the list so Enter still sends. Opening, typing,
+or accepting a completion must not read sources, including `@dir`. The QML coordinator collects every
 mention before starting one model turn, displays Collecting, and rejects duplicate
 Send inputs. `@window` carries only the pinned app/title; `@dir` resolves the
 focused terminal. Clipboard and selection use bounded exact text. `@screen`
@@ -395,7 +433,7 @@ without a separate preview step. Keep source-specific one-time approval and
 Capture/preview controls for context requested by the model. Failed collection
 preserves the prompt and identifies the mention; edits, closing, and reopening
 invalidate tokens and remove captures. The production-function tests in
-`tests/ai-prompt.js` cover collection, duplicate sends, failures and stale replies.
+`tests/ai-prompt.js` cover mention completion, collection, duplicate sends, failures and stale replies.
 
 Context blocks are JSON-quoted reference data and never commands. Keep Codex
 argv fixed, pass prompts and clipboard payloads through stdin, and bound
