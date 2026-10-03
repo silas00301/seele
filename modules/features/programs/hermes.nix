@@ -1,7 +1,13 @@
 { ... }:
 {
   flake.modules.homeManager.hermes =
-    { config, lib, pkgs, selfPackages, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      selfPackages,
+      ...
+    }:
     let
       cfg = config.seele.hermes;
       desktop = selfPackages.hermes-desktop;
@@ -20,7 +26,10 @@
           default = "hermes";
           description = "Exact Tailscale node DNS name (or its first label) allowed to call MCP. Use the full tailnet name to disambiguate peers.";
         };
-        port = lib.mkOption { type = lib.types.port; default = 8766; };
+        port = lib.mkOption {
+          type = lib.types.port;
+          default = 8766;
+        };
         flake = lib.mkOption {
           type = lib.types.str;
           default = "${config.home.homeDirectory}/Developer/seele";
@@ -46,7 +55,10 @@
           deadline = 15000;
           setup = "hermes";
           service = "seele-hermes.service";
-          actions = [ "settings" "restart" ];
+          actions = [
+            "settings"
+            "restart"
+          ];
           disruptive = [ "restart" ];
         };
         # All GUI entry points get the default URL, without overriding saved
@@ -62,7 +74,17 @@
           Service = {
             ExecStart = "${shell}/bin/seele-hermes serve";
             Environment = [
-              "PATH=${lib.makeBinPath [ desktop shell pkgs.ghostty pkgs.jujutsu pkgs.nvd pkgs.systemd pkgs.tailscale ]}:${config.home.profileDirectory}/bin:/run/current-system/sw/bin"
+              "PATH=${
+                lib.makeBinPath [
+                  desktop
+                  shell
+                  pkgs.ghostty
+                  pkgs.jujutsu
+                  pkgs.nvd
+                  pkgs.systemd
+                  pkgs.tailscale
+                ]
+              }:${config.home.profileDirectory}/bin:/run/current-system/sw/bin"
               "SEELE_HERMES_GATEWAY=${cfg.gatewayUrl}"
               "SEELE_HERMES_PEER=${cfg.peer}"
               "SEELE_HERMES_PORT=${toString cfg.port}"
@@ -83,9 +105,16 @@
       };
     };
   flake.modules.nixos.hermes =
-    { config, username, lib, ... }:
-    let cfg = config.home-manager.users.${username}.seele.hermes;
-    in {
+    {
+      config,
+      username,
+      lib,
+      ...
+    }:
+    let
+      cfg = config.home-manager.users.${username}.seele.hermes;
+    in
+    {
       # Bound to the Tailscale address and authenticated by tailscaled per
       # request; no public TCP opening or incoming SSH mode is added.
       networking.firewall.interfaces.tailscale0.allowedTCPPorts = lib.mkIf cfg.enable [ cfg.port ];

@@ -1,6 +1,8 @@
 { ... }:
 let
-  analyticsEnvironment = { HOMEBREW_NO_ANALYTICS = "1"; };
+  analyticsEnvironment = {
+    HOMEBREW_NO_ANALYTICS = "1";
+  };
   module = {
     homebrew = {
       enable = true;
