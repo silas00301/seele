@@ -113,6 +113,13 @@ breaks are preserved unless `!` is supplied. The in-process helper and real-edit
 fixture live in `modules/packages/_nixvim/`, documented in its README and exposed
 as `checks.<system>.nixvim-whitespace`.
 
+Neovim's event-driven external-file refresh lives in
+`modules/packages/_nixvim/refresh.lua`. The native timestamp/reload engine retains
+ownership of file changes and undo; the helper only selects eligible clean file
+buffers. `modules/packages/nixvim.nix` publishes its isolated real-editor fixture
+as `checks.<system>.nixvim-refresh`; the helper README covers event and opt-out
+boundaries.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:

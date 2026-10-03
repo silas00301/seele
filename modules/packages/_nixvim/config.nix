@@ -52,6 +52,7 @@ in
     smartcase = true;
     smartindent = true;
     autoindent = true;
+    autoread = true;
     winborder = "rounded";
   };
 
@@ -225,6 +226,7 @@ in
   extraConfigLua = ''
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
+    dofile("${./refresh.lua}")
     dofile("${./copy-reference.lua}").setup()
     dofile("${./trim-whitespace.lua}").setup()
     dofile("${./replace.lua}").setup()
