@@ -6,6 +6,17 @@
 let
   module = (
     { pkgs, ... }:
+    let
+      copyImage = pkgs.writeShellApplication {
+        name = "seele-imv-copy-image";
+        runtimeInputs = [
+          pkgs.coreutils
+          pkgs.imagemagick
+          pkgs.wl-clipboard
+        ];
+        text = builtins.readFile ./_imv/copy-image.sh;
+      };
+    in
     {
       home.packages = [ pkgs.imv ];
 
@@ -23,6 +34,7 @@ let
         l = next
         k = zoom 1
         j = zoom -1
+        <Shift+Y> = exec ${copyImage}/bin/seele-imv-copy-image
         y = exec printf '%s' "$imv_current_file" | ${pkgs.wl-clipboard}/bin/wl-copy
       '';
     }
@@ -30,6 +42,24 @@ let
 in
 {
   flake.modules.homeManager."imv" = module;
+
+  perSystem =
+    { pkgs, ... }:
+    {
+      checks.imv-copy-image =
+        pkgs.runCommand "imv-copy-image-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.bash
+              pkgs.coreutils
+            ];
+          }
+          ''
+            python3 ${./_imv/test-copy-image.py} ${./_imv/copy-image.sh}
+            touch "$out"
+          '';
+    };
 
   seele.portable.imv = {
     systems = lib.filter (lib.hasSuffix "-linux") config.systems;
