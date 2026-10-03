@@ -1008,8 +1008,8 @@ workspaces, symlinks and literal newline paths. Run its fixture directly with
 
 ## Local shell workbenches
 
-Calculator, Colour Lab, Text workbench, meeting planning, Resources and Network
-activity live in the shell submodule. The parent contributes only the Hyprland
+Calculator, Colour Lab, Text workbench, meeting planning, Resources, Network
+activity and Sensors live in the shell submodule. The parent contributes only the Hyprland
 layer blur namespaces and the published gitlink. Keep transforms, timezone
 policy and kernel sampling native; QML owns rendering and interaction. Details
 and validation boundaries are in `docs/shell-workbenches.md`.

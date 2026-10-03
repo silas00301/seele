@@ -656,15 +656,19 @@ Health, Transfers, Resources, Network activity, Ports and the three workbenches
 and scrolls only on an output too short for it; Vicinae exposes each workbench
 directly. Every Control Center module is reachable from the keyboard.
 
-Resources and Network activity are local, read-only shell panels. Their native
+Resources, Network activity and Sensors are local, read-only shell panels. Their native
 workers sample only while the owning panel is open and retain bounded histories
 in memory. Resources reads CPU, memory and process names without command-line
 arguments, and lists the space on each mounted block-device filesystem from
 `statvfs`, one row per device, on a sampler thread of its own so a stalled disk
 marks only that group stale. Its meters turn at the Maintenance disk source's
 85% and 95%. Network activity reads interface counters without contacting a host
-or examining packets. Kernel identities and fresh baselines keep restarted
-processes and replaced interfaces from inheriting a previous object's rates.
+or examining packets. Sensors, opened from the Resources header, reads hwmon
+temperatures and fan speeds with only the limits their drivers state, and leaves
+`drivetemp` disks alone because reading them can reset a spin-down timer.
+Kernel identities and fresh baselines keep restarted
+processes, replaced interfaces and rebound sensor drivers from inheriting a
+previous object's rates or peaks.
 The parent supplies the new layer namespaces to the existing Hyprland blur rule;
 no service or host keybinding is needed. See `docs/shell-workbenches.md` for entry
 points, validation and the source-only PR integration boundary.

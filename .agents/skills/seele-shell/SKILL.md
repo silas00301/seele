@@ -128,8 +128,8 @@ explicit. Closing Calculator or Text workbench destroys its editor and undo
 history. The tools README and `projects/shell/CALCULATOR.md` describe their
 bounds and focused fixtures.
 
-Resources and Network activity sample local kernel data only while their panel
-is open. Each opening owns a fresh worker; generation guards reject queued
+Resources, Network activity and Sensors sample local kernel data only while
+their panel is open. Each opening owns a fresh worker; generation guards reject queued
 stdout and exit callbacks after closing or reopening. PID/start time and
 interface index/sysfs identity protect selections from reuse. Gaps and unknown
 first rates stay visible. Resources' Storage group comes from
@@ -138,7 +138,10 @@ five-second thread, so a filesystem stalled in the kernel leaves the other
 readings running and reports `stale` instead; keep blocking filesystem calls off
 the publishing loop. `HistoryChart` paints bounded native series and
 `ChoiceBox` supplies the native keyboard selector; neither owns sampling policy.
-Run the resource/network real-worker fixtures and production Qt lifecycle
+Sensors keeps a hwmon device's identity as its chip and canonical device path,
+orders devices by kind rather than reading, and uses only driver-stated limits;
+`projects/tools/README.md` owns its protocol and bounds.
+Run the resource/network/sensors real-worker fixtures and production Qt lifecycle
 checks after changing these boundaries. Keep `tests/control-center-layout.js`
 passing when adding utility tiles or changing the output-bounded viewport.
 
