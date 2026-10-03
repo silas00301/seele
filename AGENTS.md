@@ -251,6 +251,10 @@ so it is only legible while the view includes the top edge. Nothing resets the
 zoom at login: a new session and a configuration reload both start at
 Hyprland's default of 1.
 
+On `nerv`, `Super + Ctrl + Tab` returns to the previous workspace through
+Hyprland's native workspace history. `Super + Tab` and `Super + Shift + Tab`
+still move the current workspace to the next and previous monitor.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
