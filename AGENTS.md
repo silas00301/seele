@@ -651,7 +651,7 @@ the selected calendars' busy time. The planner reads that calendar and never
 writes it; Open in Google Calendar hands a prefilled draft to Google's editor.
 Colour Lab accepts opaque sRGB colours and can explicitly use the
 last screen-picked colour. The Control Center sets its utilities -- System
-Health, Transfers, Resources, Network activity, Ports and the three workbenches
+Health, Fix me, Transfers, Resources, Network activity, Ports and the three workbenches
 -- four to a row as glyph tiles under the module tiles, fits the focused output
 and scrolls only on an output too short for it; Vicinae exposes each workbench
 directly. Every Control Center module is reachable from the keyboard.
