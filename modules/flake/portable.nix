@@ -111,15 +111,24 @@ let
       profile = hm.config.home.path;
 
       configDirectory = "\${SEELE_PORTABLE_HOME:-\${XDG_CACHE_HOME:-$HOME/.cache}/seele/portable}/${name}";
+      # Home Manager emits paths such as RIPGREP_CONFIG_PATH and STARSHIP_CONFIG
+      # beneath the synthetic home. Match only the declared config directory,
+      # and embed its destination directly: these variables sort before XDG_*.
+      configEnvironment = import ./_portable/config-environment.nix {
+        inherit lib configDirectory;
+        configHome = hm.config.xdg.configHome;
+      };
       manifest = pkgs.writeText "seele-${name}-launch.json" (
         builtins.toJSON {
           version = 1;
           program = "${profile}/bin/${app.binary}";
           path = hm.config.home.sessionPath ++ [ "${profile}/bin" ];
-          environment = lib.mapAttrs (_: value: toString value) (
-            hm.config.home.sessionVariables
-            // lib.optionalAttrs (writesConfig hm) { XDG_CONFIG_HOME = configDirectory; }
-          );
+          environment =
+            lib.mapAttrs (_: value: if writesConfig hm then configEnvironment value else toString value)
+              (
+                hm.config.home.sessionVariables
+                // lib.optionalAttrs (writesConfig hm) { XDG_CONFIG_HOME = configDirectory; }
+              );
           configuration =
             if writesConfig hm then
               {
@@ -170,8 +179,14 @@ in
     '';
   };
 
-  config.perSystem = { config, ... }: {
+  config.perSystem = { config, pkgs, ... }: {
     checks.portable-config = config.packages.config-tools;
+    checks.portable-environment =
+      let
+        failures = import ./_portable/test-config-environment.nix { inherit lib; };
+      in
+      assert lib.assertMsg (failures == [ ]) (builtins.toJSON failures);
+      pkgs.runCommand "portable-environment" { } "touch $out";
   };
 
   config.flake.packages = lib.genAttrs config.systems packagesFor;
