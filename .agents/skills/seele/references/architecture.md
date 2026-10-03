@@ -757,6 +757,11 @@ fail validation. Jujutsu tracks the local change, then GitHub publishes a signed
 commit through `createCommitOnBranch`, refusing a branch whose head changed during
 the build. This does not replace native Darwin validation or activate either host.
 
+Fish `gitignore TEMPLATE [TEMPLATE ...]` prints ignore templates to standard output
+without editing files. Space- or comma-separated names form one request; invalid
+names fail before networking, and HTTP errors fail without printing their body.
+The function pins curl in its closure, including portable Fish.
+
 Fish `mkcd DIRECTORY` accepts exactly one nonempty literal path, creates its parents,
 and enters it only after mkdir succeeds. Relative paths resolve against the current
 directory rather than CDPATH; dash-prefixed names are ordinary directory names.
