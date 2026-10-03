@@ -14,6 +14,7 @@ in
       "nushell"
       "atuin"
       "direnv"
+      "nix-your-shell"
       "starship"
       "yazi"
       "zoxide"
