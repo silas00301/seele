@@ -1,5 +1,19 @@
 # Neovim helpers
 
+## Automatic formatting
+
+Press **Space c f** to toggle automatic formatting for the editor session. The
+statusline shows **format off** while the active buffer is affected; otherwise
+it stays quiet. Toggling does not change text. `:FormatDisable FILETYPE` and
+`:FormatEnable FILETYPE` keep the plugin’s native per-filetype controls, and
+`:FormatEnable!` resets all disabled states. These settings are session-local.
+
+Validate the mapping and status with the real lsp-format plugin:
+
+```sh
+NVIM=/path/to/nvim LSP_FORMAT_DIR=/path/to/lsp-format.nvim python3 modules/packages/_nixvim/test-format-control.py
+```
+
 ## Compare unsaved text with the saved file
 
 Press **Space c s** (`<leader>cs`) or run `:SavedDiff`. A dedicated tab shows the
