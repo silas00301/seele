@@ -146,6 +146,8 @@ alias — put it there when you add it, not after the second caller appears.
 | `RefreshGlyph` | An in-place spinner for asynchronous work. |
 | `HoverTip` | A tooltip. Inside a panel it needs `inOverlay: true`. |
 | `FocusRing` | Where the keyboard is when a control has no focus indication of its own, laid over that control on its own corner. Tracks may instead state focus through their border. |
+| `ActionArea` | A custom pointer action with keyboard activation through `onTriggered`; retain one focus stop when its parent already handles the same action. |
+| `KeyboardNavigation` | One per application, routing keyboard movement through the Qt adapter and drawing the existing focus ring on the active control. |
 | `PanelPicker` | The shell's dropdown: well material, the rule's fold arrow, and a list on the floating material with the current row lit. Shell-only for now, because the callers are both in `shell.qml`. |
 | `CenteredGlyph` | A font glyph centred by its visible ink rather than its advance width. |
 | `BarLabel` | A menu bar label carrying arbitrary text, baseline-anchored to the primary font. |

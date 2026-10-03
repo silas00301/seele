@@ -49,7 +49,9 @@ It validates declarations before materializing files and then execs without
 changing PID or argument bytes. Repository commands reuse the caller's Nix.
 
 `qml-core` owns pure UI policy and resident notification state; `markdown-core`
-owns editor formatting. QML and thin JavaScript adapters retain only the Qt
+owns editor formatting. The small `navigation` Qt module owns in-process key
+events, scene focus and item-model traversal for every first-party UI; its
+QML adapter draws the existing shared focus ring. QML and thin JavaScript adapters retain only the Qt
 scene, object/callback bindings, locale/date conversion and item-model operations. Pi/OpenCode/Vicinae
 extensions remain small adapters to their upstream in-process APIs. Pi footer
 policy shares `qml-core` through the Unix `node-core` package's stable Node-API

@@ -49,6 +49,12 @@ for scope, ownership and application reload boundaries.
 
 ## Architecture
 
+Every first-party Qt UI shares Vim-shaped keyboard navigation through
+`seele-shell/projects/navigation/` and the shared QML components. The
+[navigation guide](seele-shell/projects/navigation/README.md) owns its bindings
+and validation; `Super + Ctrl + B` enters the bar on `nerv`. Preserve text entry,
+field-level cancellation, and the existing UI material when adding controls.
+
 - `flake.nix`: inputs and the `flake-parts`/`import-tree` bootstrap.
 - `modules/flake/`: repository options, systems, package-set policy, overlays, the formatter, the portable-application builder, and repository helper apps.
 - `modules/features/`: program, service, theme, and system leaves. Each leaf publishes deferred modules through `flake.modules.<class>.<name>`.
