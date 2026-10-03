@@ -822,8 +822,17 @@ The System Health Maintenance tab reads the private `seele-maintenance` user
 socket. `seele-shell/projects/maintenance/` owns the typed lifecycle, seven-day
 metadata history, source adapters and explicit Codex analysis. Each registered
 source publishes complete snapshots; a failed probe retains prior findings.
-`seele.maintenance` declares per-host disk, backup-age, certificate, flake-check
-and critical-input policy. No source probes live in QML. Each finding is a card
+`seele.maintenance` declares per-host disk, backup-age, certificate, flake-check,
+critical-input and restart-required policy. No source probes live in QML.
+The `restart` source reads `/run/booted-system` and `/run/current-system`
+directly from the user service, since both are world-readable, so it has no
+NixOS half, activation hook or root-to-user channel; its polling interval is
+what makes it see every activation path, including rollbacks. Keep its part set
+to what `switch-to-configuration` cannot replace: kernel, module tree, initrd,
+kernel parameters, firmware, the systemd build logind keeps, the bus binary and
+declared switch inhibitors. PID 1 itself is re-executed by the switch and is
+deliberately not reported. Its one action, `open-power`, runs the fixed
+`seele-shellctl power`, an idempotent open of the Power panel. Each finding is a card
 that leads with one graded urgency mark — red now, yellow soon, quiet for what
 can wait, its own mark for something merely worth knowing, a check once resolved
 — and folds open from its own head rather than from a button beside it. Check

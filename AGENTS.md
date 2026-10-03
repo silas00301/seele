@@ -293,6 +293,22 @@ through fwupd's own EFI binary, which this host's custom Secure Boot keys do not
 sign. `systemctl start seele-firmware-test` sends the same message without a
 vendor publishing one.
 
+A rebuild that only takes effect after a restart says so in System Health on
+`nerv`. The maintenance service's `restart` source compares
+`/run/booted-system` with `/run/current-system` once the session starts and on
+its shared 60-second interval, so it follows every way of activating without a
+hook in any of them. It looks only at what `switch-to-configuration` cannot
+replace in place: the kernel, its module tree, the initrd, kernel parameters and
+firmware, which only a boot loads; the systemd build that `systemd-logind` keeps,
+because NixOS re-executes PID 1 but never restarts logind; the system bus binary,
+which NixOS only reloads; and the switch inhibitors modules declare. One
+`eventually` finding names each change, such as "Linux 6.12.8 → 6.12.10", never
+notifies, and resolves after a reboot into the current generation or a rollback
+to the booted one. Its Open Power action runs `seele-shellctl power`, and nothing
+restarts on its own. Both links are world-readable, so unlike the firmware and
+disk-health reporters it needs no root publisher. See
+`seele-shell/projects/maintenance/README.md` for the reasoning behind each part.
+
 Seele Notes is a separate desktop app from the shell submodule's `notes`
 package, exposed as `packages.<system>.seele-notes` and installed on Linux by
 its own `flake.modules.homeManager.seele-notes` feature. It is a quick-capture
