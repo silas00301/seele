@@ -29,6 +29,14 @@ payloads, logs and arguments. Reuse the existing `gh` login and fixture/fake-gh
 tests rather than a real account. See `projects/github/README.md` for public API
 boundaries, account settings, native tests and the rendered Qt inbox fixture.
 
+`seele-shellctl pr-focus` is the explicit enter/exit for one configured pull
+request on `nerv`. `seele-github-status focus <url>` reads that request's check
+rollup and latest review comment, and the Control Center pin shows them only
+while focus is on. Exit clears the pin. Non-@ desktop notifications stay in the
+inbox without a toast until focus ends; @-mentions are not held. The command
+does not post to chat or email, and it does not enter focus from a push or an
+opened URL.
+
 ## Home Assistant
 
 `seele-shellctl control home-assistant` opens the always-visible house entry's
