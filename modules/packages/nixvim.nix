@@ -8,6 +8,21 @@
       ...
     }:
     {
+      checks.nixvim-whitespace =
+        pkgs.runCommand "seele-nixvim-whitespace-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.neovim-unwrapped
+            ];
+          }
+          ''
+            cp ${./_nixvim/trim-whitespace.lua} trim-whitespace.lua
+            cp ${./_nixvim/test-trim-whitespace.py} test-trim-whitespace.py
+            python3 test-trim-whitespace.py
+            touch "$out"
+          '';
+
       checks.nixvim-refresh =
         pkgs.runCommand "nixvim-refresh"
           {
