@@ -84,6 +84,11 @@ snapshots without touching the source window or its undo/diff state. The helper
 and its isolated real-Neovim fixture live in `modules/packages/_nixvim/`; see
 that directory's README for limits and validation.
 
+Neovim's `<leader>cd` / `<leader>cD` and `:CopyDiagnostics[!]` explicitly copy
+line/range or buffer diagnostics through the existing clipboard provider and a
+local register fallback. `copy-diagnostics.lua` shares source-reference path
+validation; its README and real-Neovim fixture specify overlap and output limits.
+
 Neovim's `<leader>cp` and `<leader>cP` copy project-relative and absolute source
 references, including selected line ranges. `:CopyReference[!]` accepts an Ex
 range. The in-process `modules/packages/_nixvim/copy-reference.lua` discovers the
