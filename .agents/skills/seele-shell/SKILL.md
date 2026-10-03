@@ -435,6 +435,27 @@ manual choice replaces a timed one, and `restore()` drops a period that ran out
 while the shell was down. `seele-shellctl notification snooze <minutes>`
 reaches the same store; the minute count travels in the `id` argument.
 
+A notification still waiting in the panel can carry one reminder (SIL-58).
+`Remind me` on a panel card unfolds preset chips in its button row: 15
+minutes, 1 hour, 4 hours and tomorrow at 09:00. They hide the card's other
+actions until one is chosen or `Cancel` puts them away. `notifications.js`
+resolves the choice to an absolute time only when it is clicked, because the
+local morning belongs to Qt. The Rust `remind` transition then accepts only a
+time ahead and within `MAX_REMINDER_DELAY` (7 days); zero cancels.
+Transient notifications, toasts and history are never remindable.
+
+The state rides on the entry. A pending `remind_at` shows as a chip on the
+summary line, and a sender's in-place replacement keeps it. When it comes due,
+`advance()` moves the notification to the top of the list and toasts it again
+with `reminder: true`. That makes the toast permanent until hidden, and
+`retire()` clears the flag. DND holds a due reminder until the quiet ends, and
+the chip then reads "After quiet"; application silence does not hold it,
+because the user asked for it. Dismissing the notification, or the sender
+withdrawing it, ends the reminder, and history never carries one. Reminders
+survive QML reloads through the same `save()` metadata as pins, and are never
+written to disk. `seele-shellctl notification remind <id> <minutes|cancel>`
+reaches the same store.
+
 `NotificationStore.qml` owns the desktop notification service through
 Quickshell. `projects/qml-core/src/notifications.rs` owns presentation and the
 complete state machine in a Rust object owned by a Qt QObject. `notifications.js`
