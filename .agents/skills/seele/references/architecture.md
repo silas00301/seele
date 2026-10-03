@@ -594,7 +594,14 @@ view is a clean Neovim `nofile` buffer in a centered Ghostty transient service.
 The shared Codex broker receives a redacted copy over its private socket with
 its common no-tools policy. `seele-rebuild` wraps the configured
 `nh os switch`; both Fish's `rebuild` abbreviation and `seele-os-session` reach
-that wrapper. `seele-failure-test.service` stays dormant for end-to-end checks.
+that wrapper. Fish's `rb` reaches `seele-rb` from the same package (SIL-25). It
+takes `nvd` by store path and the caller's own `jj` and `nix`, and runs `jj log -r @`
+to record the working copy, `nix flake check --no-build --no-write-lock-file`,
+`nh os build --diff never --out-link <private runtime dir>` and `nvd diff`. It
+then passes the built `/nix/store` path to `nh os switch`, which nh 4.4 treats
+as a store installable and does not evaluate again. `--dry-run` stops after the
+diff, `--switch` skips the question, and without a terminal nothing activates.
+`seele-failure-test.service` stays dormant for end-to-end checks.
 
 The Audio panel's Multiple outputs switch and Vicinae's Play Here Too action
 share `seele-control audio-outputs <JSON node names>`. The shell's

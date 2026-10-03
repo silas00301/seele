@@ -256,6 +256,12 @@ Only the AI action passes a redacted report to a shared no-tools Codex broker ov
 its private socket. The `rebuild` Fish abbreviation and Seele OS session use
 `seele-rebuild`, which forwards progress bytes unchanged and retains a bounded
 failure tail for the same consent path. `systemctl start seele-failure-test` deliberately exercises it.
+The `rb` Fish abbreviation runs `seele-rb`, the reviewed workflow: it records
+the Jujutsu working copy, runs the flake checks, builds with `nh os build`, shows
+`nvd diff` against `/run/current-system`, and then activates only that built
+store path. `rb --dry-run` never activates, `rb --switch` activates without
+asking, and plain `rb` asks on a terminal. A failed step activates nothing and
+enters the same consent path.
 
 On `nerv`, `modules/hosts/nerv/memory-pressure.nix` decides who dies when
 memory runs out. NixOS starts systemd-oomd by default but places no cgroup
@@ -695,7 +701,7 @@ nix build .#darwinConfigurations.asuka.system --no-link --no-write-lock-file    
 
 Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary. `nix flake show` and `nix flake check` evaluate `darwinConfigurations.asuka`, so on Linux they stop on that Catppuccin palette mismatch. The Linux host check that completes is the `nixosConfigurations.nerv` derivation above.
 
-Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
+Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, `darwin-rebuild`, `rb` or `rb --switch` only when the user explicitly requests activation. `rb --dry-run` builds and diffs without activating.
 
 Known baseline warnings include the nixvim/nixpkgs `follows` warning and upstream option/deprecation warnings. Compare with the baseline before attributing warnings to a change.
 
