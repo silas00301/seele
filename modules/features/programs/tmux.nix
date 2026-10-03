@@ -46,7 +46,9 @@ let
           set -g extended-keys on
           set -g extended-keys-format csi-u
 
-          bind-key r source-file ~/.config/tmux/tmux.conf \; display-message "~/.config/tmux/tmux.conf reloaded"
+          # Remember this file, including a portable wrapper's private XDG path.
+          set-option -gF @seele-config-file '#{current_file}'
+          bind-key r source-file -F '#{q:@seele-config-file}'
           # Continue in the active pane's project, even after it changed cwd.
           bind-key c new-window -c '#{pane_current_path}'
           bind-key < split-window -h -c '#{pane_current_path}'
@@ -92,6 +94,22 @@ in
   perSystem =
     { pkgs, ... }:
     {
+      checks.tmux-config-reload =
+        pkgs.runCommand "seele-tmux-config-reload-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+            ];
+          }
+          ''
+            mkdir -p programs/_tmux
+            cp ${./_tmux/test-reload.py} programs/_tmux/test-reload.py
+            cp ${./tmux.nix} programs/tmux.nix
+            python3 programs/_tmux/test-reload.py
+            touch "$out"
+          '';
+
       checks.tmux-scrollback =
         pkgs.runCommand "seele-tmux-scrollback-check"
           {

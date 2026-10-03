@@ -1,5 +1,13 @@
 # Pane scrollback viewer
 
+**Ctrl+s, r** reloads the configuration file that installed the binding, including
+a portable or custom XDG configuration. The path is captured during loading and
+quoted for tmux’s native file expansion, so spaces and glob characters stay
+literal. Included plugin files do not replace it. Errors remain visible instead
+of being followed by an unconditional success message.
+
+Validate with `python3 modules/features/programs/_tmux/test-reload.py`.
+
 Press **Ctrl+s, H** in tmux to browse the originating pane's screen and up to
 10,000 retained history rows in a temporary Neovim popup. Use `/` and `?` to
 search, `n`/`N` to move between matches, `v`, `V`, or Ctrl+v to select, and `y`
