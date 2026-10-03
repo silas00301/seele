@@ -172,6 +172,7 @@ in
       "atuin"
       "bat"
       "bottom"
+      "command-notifications"
       "direnv"
       "eza"
       "fd"
