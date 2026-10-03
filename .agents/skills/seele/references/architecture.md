@@ -305,6 +305,15 @@ left at its 300 ms default. A Lua reload resets every option before re-running
 the configuration and a new session starts from defaults, so the zoom needs no
 reset at login.
 
+`modules/features/programs/meeting-scratchpad.nix` publishes the
+`meeting-scratchpad` Home Manager feature, imported only by the `nerv` profile.
+It names one recurring event through `seele.meetingScratchpad.event.{id,title}`
+and, when either is set, writes `seele-shell/meeting-scratchpad.json` for the
+calendar worker. The note stays in the local state directory. The opener is a
+`writeShellScript` that runs Neovim inside a Ghostty of class
+`org.seele.meeting-scratchpad`, and a `lib.mkAfter` window rule floats that
+class centered. `asuka` does not import it.
+
 Yazi’s `gd`, `go`, and `gp` open Downloads, Documents, and Pictures. The bindings
 use enabled Home Manager XDG user-directory settings, otherwise runtime-home
 fallbacks, including standalone portable evaluations. `gD` still invokes diff.
