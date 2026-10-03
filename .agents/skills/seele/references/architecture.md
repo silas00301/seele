@@ -712,8 +712,10 @@ explicit Lock and Suspend are unaffected. The shell submodule's
 `modules/features/programs/seele-transfers.nix` publishes the nerv-only Home
 Manager service and file-manager send entries. It uses the shell package's
 `seele-transfers` binary and passes `xdg.userDirs.download`; the existing
-nerv Tailscale operator configuration supplies daemon access. Source-only
-shell updates still require a published gitlink refresh. No new flake input,
+nerv Tailscale operator configuration supplies daemon access. The blur rule in
+`modules/features/programs/hypr.nix` lists the `seele-shell-transfers`
+namespace. Source-only shell updates still require a published gitlink refresh.
+No new flake input,
 root receiver, private content inbox or mobile client is involved. The shell
 submodule's `projects/transfers/README.md` owns the provider contract and focused
 Python/JavaScript validation, including the Linux Taildrop API limitations.
