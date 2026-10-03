@@ -657,6 +657,10 @@ the same configured package.
 
 `PATH` carries the evaluation's own `home.path`, which is what makes an entry's module list the whole answer: whatever those features install is what the wrapped program finds. A compiled wrapper pins a versioned JSON manifest for native `seele-launch`. The launcher materializes the config, prefixes PATH, exports session variables in name order and execs the application without an intermediate shell or child. Variables support bounded data substitutions and unset/empty defaults; command substitution and other executable shell syntax fail closed. Glow uses the same launcher for its runtime XDG fallback. See `seele-shell/projects/config-tools/README.md` for the exact supported forms and exec/argument tests.
 
+The GitHub Dashboard diff action feeds its unified diff into a pinned `bat`
+command and pinned `less` pager. Portable `gh-dash` includes `bat` for the same
+theme configuration; it does not rely on a host `batdiff` helper or pager.
+
 The mechanism has two known limits. It re-roots `XDG_CONFIG_HOME` only, so a Home Manager module that writes outside `.config` — nushell's Darwin path under `~/Library` is the example — is unconfigured in its wrapper on that platform. And features that only make sense as part of a running system, the compositor, the greeter, the shell, and the browsers with heavy profile state, have no portable entry.
 
 ## Validation boundaries
