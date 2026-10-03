@@ -237,7 +237,14 @@ opened notification panel takes keyboard focus. Do Not Disturb is one control in
 header: its mark reports silence, the time beside it counts a running period
 down, and it drops a menu of every way to set that silence -- 15 minutes, 1
 hour, 4 hours, no end, and the way out -- so no row below the title is spent
-on it. Notification state and DND
+on it. Two further rows appear only while they apply. While the focus timer is
+running, the menu can sync silence with it: focus on turns shell Do Not Disturb
+on, and focus off puts back the silence from before that sync. While a timed
+calendar event is underway, the menu offers holding silence until that event
+ends and highlights the row; choosing it arms the hold, and the meeting's end
+puts the previous silence back. Opening the menu never arms either hold. A
+later manual choice replaces both and does not start or stop the focus timer.
+The shell is imported on `nerv` only, so `asuka` does not carry the menu. Notification state and DND
 belong to a resident Rust policy object owned by Qt; the QML store holds native
 notification objects and delivers callbacks. The hardware feed is independent. History,
 pins, reminders, and a running quiet period survive QML reloads in memory; notification
