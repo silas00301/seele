@@ -149,6 +149,13 @@ and diff actions, stale-result handling, highlight restoration, refusals and the
 exact argv of every command. It then verifies that the jj operation log, both
 `.git` directories and the saved file are unchanged.
 
+## Indentation defaults
+
+Ordinary files use two-space indentation with spaces for Tab input. Tab displays
+at two columns, and its editing/backspace step follows the buffer's `shiftwidth`.
+Language filetypes and project EditorConfig files can override these defaults;
+Make recipes and Go files retain their native hard tabs.
+
 ## Copy source reference
 
 `<leader>cp` copies the current buffer's project-relative `path:line`; in Visual
