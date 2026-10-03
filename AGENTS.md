@@ -214,6 +214,18 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+Fish reports a command that ran for more than ten seconds and finished while
+its terminal window was not focused. The `command-notifications` Home Manager
+feature in the `common` profile loads the `done` plugin, which times commands,
+compares the focused window at start and end, and stays silent over SSH. On
+`nerv`, `command-notifications-seele` replaces the plugin's own notify-send call:
+the shell never lists a transient notification in its panel and withdraws it when
+its toast retires, which the plugin sets to three seconds, and the plugin raises
+failures as critical, which the shell keeps on screen until dismissed. The hook sends an ordinary notification whose Show action
+focuses the originating Ghostty window through `seele-control vicinae-focus`
+and, inside tmux, selects the command's pane without switching any client. The
+command line reaches the hook as arguments and is never evaluated.
+
 On `nerv`, the case's power key opens Seele Shell's Power panel instead of
 shutting the machine down, and a second press puts the panel away. The
 `power-key` Home Manager feature owns this. Its `seele-power-key` user service
@@ -240,7 +252,14 @@ opened notification panel takes keyboard focus. Do Not Disturb is one control in
 header: its mark reports silence, the time beside it counts a running period
 down, and it drops a menu of every way to set that silence -- 15 minutes, 1
 hour, 4 hours, no end, and the way out -- so no row below the title is spent
-on it. Notification state and DND
+on it. Two further rows appear only while they apply. While the focus timer is
+running, the menu can sync silence with it: focus on turns shell Do Not Disturb
+on, and focus off puts back the silence from before that sync. While a timed
+calendar event is underway, the menu offers holding silence until that event
+ends and highlights the row; choosing it arms the hold, and the meeting's end
+puts the previous silence back. Opening the menu never arms either hold. A
+later manual choice replaces both and does not start or stop the focus timer.
+The shell is imported on `nerv` only, so `asuka` does not carry the menu. Notification state and DND
 belong to a resident Rust policy object owned by Qt; the QML store holds native
 notification objects and delivers callbacks. The hardware feed is independent. History,
 pins, reminders, and a running quiet period survive QML reloads in memory; notification
