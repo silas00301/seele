@@ -275,6 +275,29 @@ pins 1.3.1, and a `global:` keybind needs global-shortcut support Hyprland
 0.55.4 lacks. Retire this feature for `toggle_quick_terminal` once both pins
 move.
 
+`modules/features/programs/screen-zoom.nix` publishes the `screen-zoom` Home
+Manager feature, imported only by the `nerv` profile, and appends five locked
+binds with `lib.mkAfter`: `SUPER + mouse_up` and `SUPER + mouse_down` run
+`seele-shellctl zoom in|out --fine`, the repeating `SUPER + plus` and
+`SUPER + minus` run `zoom in|out`, and `SUPER + 0` runs `zoom reset`. Against
+Hyprland 0.56.2, the version the pinned nixpkgs builds, binds match the
+keysym the configured `de` layout produces without modifiers, which is why
+`plus` stands in for `equal`. `cursor:zoom_factor` is a float from 1 to 10
+whose change animates through the `zoomFactor` animation node, inherited from
+`global`; only the monitor under the pointer is drawn magnified, and the whole
+frame is, layer surfaces and the lock screen included. `cursor:zoom_rigid`,
+`zoom_detached_camera` and `zoom_disable_aa` keep their defaults, so the view
+pans once the pointer nears its edge. The native helper is
+`projects/tools/src/zoom.rs` in the shell submodule: `hyprctl getoption
+cursor:zoom_factor -j` reads the level, `hyprctl eval 'hl.config({ cursor = {
+zoom_factor = … } })'` writes it, and a private advisory lock in
+`$XDG_RUNTIME_DIR` serializes the two so overlapping notches each count. The
+lock holds no level and no state file exists, so nothing can drift from what
+Hyprland draws. Hyprland passes one wheel bind per `binds:scroll_event_delay`,
+left at its 300 ms default. A Lua reload resets every option before re-running
+the configuration and a new session starts from defaults, so the zoom needs no
+reset at login.
+
 Yazi’s `gd`, `go`, and `gp` open Downloads, Documents, and Pictures. The bindings
 use enabled Home Manager XDG user-directory settings, otherwise runtime-home
 fallbacks, including standalone portable evaluations. `gD` still invokes diff.
