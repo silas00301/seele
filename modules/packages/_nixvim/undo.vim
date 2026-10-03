@@ -17,9 +17,26 @@ endtry
 function! s:IsSensitiveUndoPath(path) abort
   if a:path =~# '\v(^|/)(\.ssh|\.gnupg|\.aws|\.kube)/'
         \ || a:path =~# '\v(^|/)(\.env($|\.)|.*\.(pem|key|gpg)$)'
+        \ || a:path =~# '\v(^|/)(\.netrc|\.npmrc|\.pypirc|\.git-credentials)$'
+        \ || a:path =~# '\v(^|/)(\.config/gh/hosts\.yml|\.docker/config\.json)$'
         \ || a:path =~# '/sops/age/'
     return 1
   endif
+  " Tools can move their auth files outside the conventional home paths.
+  let config_home = empty($XDG_CONFIG_HOME) ? $HOME .. '/.config' : $XDG_CONFIG_HOME
+  let auth_files = [config_home .. '/gh/hosts.yml']
+  if !empty($GH_CONFIG_DIR)
+    call add(auth_files, $GH_CONFIG_DIR .. '/hosts.yml')
+  endif
+  if !empty($DOCKER_CONFIG)
+    call add(auth_files, $DOCKER_CONFIG .. '/config.json')
+  endif
+  for file in auth_files
+    let file = fnamemodify(file, ':p')
+    if a:path ==# file || a:path ==# resolve(file)
+      return 1
+    endif
+  endfor
   for directory in ['/tmp', '/var/tmp', '/private/tmp', '/private/var/tmp', '/dev/shm', '/run/user', $TMPDIR, $XDG_RUNTIME_DIR]
     if empty(directory)
       continue
