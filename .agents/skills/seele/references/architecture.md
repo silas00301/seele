@@ -771,6 +771,39 @@ listeners honour the inhibitor, and the blur rule lists the
 explicit Lock and Suspend are unaffected. The shell submodule's
 `projects/caffeinate/README.md` owns the protocol, task identity and fixtures.
 
+## Power key
+
+`modules/features/desktop/power-key.nix` publishes the `power-key` Home Manager
+feature, imported by the `nerv` profile. Its `seele-power-key` user service runs
+`systemd-inhibit --what=handle-power-key --mode=block` around `sleep infinity`,
+both by store path, and is bound to `graphical-session.target` like Caffeinate;
+it appends one `XF86PowerOff` Lua bind running `seele-shellctl controls`, the
+same Power panel toggle as `Super + Escape`. Nothing touches logind.conf, so
+`HandlePowerKey=` keeps its `poweroff` default wherever the inhibitor is not
+held: the greeter's own Hyprland instance, a TTY login while no graphical
+session runs, and a session whose unit failed. The facts this rests on, from systemd 261.2 and polkit 127:
+
+- `logind-button.c` opens the input device without `EVIOCGRAB`, so Hyprland
+  still receives the key, and both the short and the long press go through
+  `INHIBIT_HANDLE_POWER_KEY`.
+- `manager_is_inhibited` skips inhibitors from inactive sessions, but a process
+  in no session counts as active on every seat. A user service is in no
+  session, so the lock holds for as long as the unit runs, including while the
+  session is locked or switched away.
+- The `org.freedesktop.login1.inhibit-handle-power-key` polkit action is
+  `allow_any=no`. polkit resolves a process outside a session to its owner's
+  display session, so the uwsm-launched session qualifies. A process with no
+  display session is refused, which this sandbox's user manager reproduces.
+- A refusal is final for the session, so `StartLimitBurst = 3` over sixty
+  seconds stops the unit instead of restarting it every two seconds forever.
+
+The bind is not `locked`, so the key does nothing while Seele Lock holds the
+session. Pressing it without a working unit powers off cleanly, as before this
+feature, and also opens the panel on the way. The fallback Plasma session
+starts the unit too, and PowerDevil draws its own dialog there. Validate
+activation with `systemd-inhibit --list`, which should name `Seele Shell` with
+`handle-power-key` and `block`.
+
 ## Personal transfers
 
 `modules/features/programs/seele-transfers.nix` publishes the nerv-only Home

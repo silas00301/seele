@@ -211,6 +211,18 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+On `nerv`, the case's power key opens Seele Shell's Power panel instead of
+shutting the machine down, and a second press puts the panel away. The
+`power-key` Home Manager feature owns this. Its `seele-power-key` user service
+holds a logind `handle-power-key` block inhibitor for as long as the graphical
+session runs, and its `XF86PowerOff` binding runs the same toggle as
+`Super + Escape`. logind.conf is left alone on purpose. The greeter, a bare TTY,
+and a session whose unit polkit refused keep logind's clean poweroff, so a
+failure falls back to the old behaviour rather than to a dead key. While the
+session is locked the key does nothing, because the lock screen carries its own
+Power grid. The firmware's hold-to-off override is untouched. See the Seele
+skill's architecture reference for the logind and polkit facts it rests on.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
