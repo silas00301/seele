@@ -39,3 +39,17 @@ it never contacts the live tmux server. It checks pane identity, history and byt
 bounds, wrap and newline handling, search, scratch privacy, cancel, linewise and
 characterwise copy, terminal OSC 52, missing-pane failure and the actual popup
 binding. `checks.<system>.tmux-scrollback` packages this same fixture.
+
+## Broadcast input to a window's panes
+
+Press **Ctrl+s, Shift+s** to toggle tmux's native pane synchronization for the
+current window. While enabled, the status bar shows **BROADCAST** in reverse bold
+text and typed input reaches every eligible pane in that window. Press the same
+keys again to stop; the bar label disappears. Other windows keep their own state,
+so switching away hides the label and returning to a synchronized window restores
+it. Synchronization starts off and is not persisted across servers.
+
+Run `python3 modules/features/programs/_tmux/test-broadcast.py` to exercise the
+actual binding through an attached private PTY, verify input duplication and
+window isolation, and check the live status label. The existing
+`checks.<system>.tmux-scrollback` also runs this fixture.

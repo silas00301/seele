@@ -53,6 +53,7 @@ let
           bind-key > split-window -c '#{pane_current_path}'
           bind-key q kill-pane
           bind-key y copy-mode
+          bind-key -N 'Toggle broadcasting input to every pane in this window' S set-window-option synchronize-panes \; display-message "Pane broadcasting #{?synchronize-panes,on,off}"
 
           # q shell-quotes each originating identity before run-shell expands it.
           bind-key -N 'Search and copy pane scrollback in Neovim' H run-shell '${scrollback} #{q:socket_path} #{q:pane_id} #{q:client_name}'
@@ -77,7 +78,8 @@ let
         set -g @catppuccin_status_connect_separator "yes"
         set -g @catppuccin_status_background "default"
         set -g @catppuccin_directory_text "#{pane_current_path}"
-        set -g status-left ""
+        set -g status-left-length 20
+        set -g status-left "#[bold,reverse]#{?synchronize-panes, BROADCAST ,}#[default]"
         set -g status-right "#{E:@catppuccin_status_date_time}"
         set -ag status-right "#{E:@catppuccin_status_session}"
       '';
@@ -107,6 +109,7 @@ in
             export NVIM_BIN=${pkgs.neovim-unwrapped}/bin/nvim
             export TMUX_BIN=${pkgs.tmux}/bin/tmux
             python3 programs/_tmux/test-scrollback.py
+            python3 programs/_tmux/test-broadcast.py
             touch "$out"
           '';
     };
