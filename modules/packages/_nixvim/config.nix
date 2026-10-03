@@ -9,6 +9,7 @@ let
   colors =
     (builtins.fromJSON (builtins.readFile "${catppuccinPalette}/palette.json"))
     .${catppuccin.flavor}.colors;
+  germanSpell = pkgs.callPackage ./german-spell.nix { };
 in
 {
   colorschemes.catppuccin = {
@@ -35,14 +36,26 @@ in
 
   extraConfigVim = "source ${./undo.vim}";
 
+  # Neovim ships the English spell file; the German one and the query that
+  # makes a Jujutsu description's message spellable join the runtime path.
+  extraFiles = {
+    "spell/de.utf-8.spl".source = "${germanSpell}/spell/de.utf-8.spl";
+    "spell/de.utf-8.sug".source = "${germanSpell}/spell/de.utf-8.sug";
+    "after/queries/jjdescription/highlights.scm".source = ./jjdescription-spell.scm;
+  };
+
   opts = {
     number = true;
     relativenumber = true;
     shiftwidth = 2;
+    expandtab = true;
+    tabstop = 2;
+    softtabstop = -1;
     ignorecase = true;
     smartcase = true;
     smartindent = true;
     autoindent = true;
+    autoread = true;
     winborder = "rounded";
   };
 
@@ -102,6 +115,18 @@ in
       key = "<leader>sg";
       options.desc = "Search project text";
       action = "<cmd>Telescope live_grep<CR>";
+    }
+    {
+      mode = "n";
+      key = "<leader>sr";
+      options.desc = "Resume last search";
+      action = "<cmd>Telescope resume<CR>";
+    }
+    {
+      mode = "n";
+      key = "<leader>sb";
+      options.desc = "Search open buffers";
+      action = "<cmd>Telescope buffers sort_mru=true ignore_current_buffer=true<CR>";
     }
     {
       mode = "n";
@@ -216,8 +241,11 @@ in
   extraConfigLua = ''
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
+    dofile("${./refresh.lua}")
     dofile("${./copy-reference.lua}").setup()
+    dofile("${./trim-whitespace.lua}").setup()
     dofile("${./replace.lua}").setup()
+    dofile("${./spell.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then

@@ -305,6 +305,12 @@ shell package. Neither touches the real state file or the network.
   volume and bounded playback-speed presets. Respect each selected player's
   capabilities; live streams never receive seeking writes. Volume writes stay
   within 0–100%, and speed presets use the player's positive minRate/maxRate range.
+- `seele-shellctl zoom <in|out|reset> [--fine]` steps Hyprland's own
+  `cursor:zoom_factor` and sends the result to `showZoom`, which draws it in
+  the level OSD strip and withdraws that strip at 1x. `zoom.rs` in the tools
+  crate owns the steps, the clamp, the label and the meter ratio; the shell
+  only draws. `tests/screen-zoom.sh` drives the raw helper against a fake
+  `hyprctl` and `tests/screen-zoom.js` runs the shell's callback.
 - Copying network details is an explicit action. Clipboard payloads go through
   process stdin and UI success follows successful process completion.
 - The Audio panel's microphone test runs `seele-mic-test` for exactly as long as
@@ -338,6 +344,18 @@ catcher available. Keep their namespaces in the blur rule in
 `modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant,
 Caffeinate, Ports, Quick Look, Themes and Transfers.
 Changing QML alone cannot add compositor blur.
+
+## Meeting scratchpad
+
+On `nerv` only, `seele.meetingScratchpad.event.id` and `.title` name one
+recurring meeting. Both empty leaves the feature dormant, and `asuka` does not
+import it. The calendar worker writes a private markdown note, with the title,
+attendees and empty who/what/when sections, under `$XDG_STATE_HOME/seele-meetings`
+and opens it from two minutes before the start until the meeting ends. The end
+leaves that file in place for a later local status draft. The guest list is
+requested for that one occurrence and is not cached with the agenda. The note
+stays out of the Obsidian vault, and nothing is sent onward. See
+`seele-shell/projects/integrations/CALENDAR.md`.
 
 ## Validation
 

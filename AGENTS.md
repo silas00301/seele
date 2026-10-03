@@ -238,6 +238,26 @@ session is locked the key does nothing, because the lock screen carries its own
 Power grid. The firmware's hold-to-off override is untouched. See the Seele
 skill's architecture reference for the logind and polkit facts it rests on.
 
+On `nerv`, `Super + scroll` zooms the output under the pointer in and out,
+`Super + Plus` and `Super + Minus` step it, and `Super + 0` resets it. The
+German layout puts `=` on Shift + 0 and Hyprland matches the unshifted symbol,
+so the dedicated + key stands in for it. The `screen-zoom` Home Manager feature
+owns the binds, which also work while locked because the lock screen is
+magnified with everything else. Each runs `seele-shellctl zoom`, whose native
+helper reads Hyprland's `cursor:zoom_factor` back on every step rather than
+keeping a level of its own, and writes it through one `hl.config` call, since a
+Lua configuration refuses `hyprctl keyword`. Steps are quarter octaves for a
+scroll notch and half octaves for a key, clamped from 1x to 8x on one grid, so
+stepping down always reaches exactly 1. The shell's level OSD shows the factor
+and withdraws at 1x; Hyprland magnifies that layer with the rest of the output,
+so it is only legible while the view includes the top edge. Nothing resets the
+zoom at login: a new session and a configuration reload both start at
+Hyprland's default of 1.
+
+On `nerv`, `Super + Ctrl + Tab` returns to the previous workspace through
+Hyprland's native workspace history. `Super + Tab` and `Super + Shift + Tab`
+still move the current workspace to the next and previous monitor.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
@@ -553,6 +573,8 @@ shell feature registers Weather in Integration Health; its Settings opens the
 popup unfolded. See `seele-shell/projects/integrations/WEATHER.md` for the
 protocol, presentation, cache bounds and the fake-API and QtTest checks.
 
+On `nerv`, one configured meeting opens a local scratchpad. `seele.meetingScratchpad.event.id` and `.title` name that recurring event; with both empty, nothing is configured. From two minutes before it starts until it ends, the calendar worker writes a private markdown note under `$XDG_STATE_HOME/seele-meetings` with the title, the attendees, and empty Who, What and When sections, and opens it in Neovim. The guest list is fetched for that occurrence only and is not stored in the calendar cache. When the meeting ends, the same file stays where a later status draft can read it, including edits made in the open note. The feature is not imported on `asuka`, the note is not written into the Obsidian vault, and nothing is sent by email or chat. See `modules/features/programs/meeting-scratchpad.nix` and the calendar guide's meeting-scratchpad section.
+
 On `nerv`, the Control Center's Ports tile opens a local TCP listener
 inspector. The resident `seele-ports` worker in the shell submodule's `tools`
 crate owns discovery, ownership, privilege and action policy; QML owns the
@@ -624,14 +646,14 @@ this machine-policy contribution does not reach macOS.
 
 On Linux, `modules/features/desktop/default-applications.nix` is the single
 owner of file-type defaults. It associates images with imv, video and audio with
-mpv, PDFs and EPUBs with zathura, text with the configured Neovim, and a
-directory with Yazi, and it declares the two entries those terminal
+mpv, PDFs and EPUBs with zathura, text (including JSON) with the configured
+Neovim, and directories with Yazi. It declares the two entries those terminal
 applications lack: `seele-editor.desktop` and `seele-files.desktop` open the
 configured terminal through explicit store paths rather than the launching
 process's `PATH`. The Zen feature keeps only the web documents and URL schemes
-it owns and no longer claims `text/plain`, so the two features cannot define the
-same association twice. Each viewer keeps its own feature leaf, its own
-vi-shaped bindings, and a Linux-only portable application. The image entry,
+it owns and claims neither `text/plain` nor `application/json`, so the two
+features cannot define the same association twice. Each viewer keeps its own
+feature leaf, its own vi-shaped bindings, and a Linux-only portable application. The image entry,
 `seele-images.desktop`, opens one picture with its neighboring files in imv,
 starting at the selected picture; multiple selections stay limited to those
 files. Directory navigation remains nonrecursive.

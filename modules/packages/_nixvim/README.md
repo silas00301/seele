@@ -1,5 +1,31 @@
 # Neovim helpers
 
+## Refresh files edited by other tools
+
+On focus returning to Neovim, or leaving/closing its terminal, loaded file buffers
+that have no unsaved changes refresh through native `:checktime`. This includes
+hidden buffers, without changing the current window, directory or view. Native
+reload keeps the previous text available through ordinary undo. No timer polls
+the filesystem, and entering a buffer does not trigger this helper.
+
+Buffers with unsaved edits, `:setlocal noautoread`, special buffers and URI-backed
+buffers stay untouched. The helper only checks in Normal mode, so a focus event
+during insertion or command entry waits for a later supported event. If a clean
+file disappears, Neovim keeps its text and shows its native deletion warning; it
+does not recreate the file. Native timestamp detection still governs when a
+change is recognized.
+
+Run the private fixture with an existing Neovim:
+
+```sh
+NVIM=/path/to/nvim python3 modules/packages/_nixvim/test-refresh.py
+```
+
+The same fixture is `checks.<system>.nixvim-refresh` in the flake. It exercises
+real reloads and atomic replacements, view/undo preservation, hidden buffers,
+unsaved edits, local opt-outs, special buffers, deletion and actual Insert and
+Command-line modes. It creates and deletes its own HOME, files and editor logs.
+
 ## Automatic formatting
 
 Press **Space c f** to toggle automatic formatting for the editor session. The
@@ -13,6 +39,17 @@ Validate the mapping and status with the real lsp-format plugin:
 ```sh
 NVIM=/path/to/nvim LSP_FORMAT_DIR=/path/to/lsp-format.nvim python3 modules/packages/_nixvim/test-format-control.py
 ```
+
+## Return to a search or an open buffer
+
+`<leader>sr` resumes the last Telescope picker, retaining its query and selection
+so a search can continue after opening a result. This is Telescope's in-memory
+picker cache; it does not survive restarting Neovim.
+
+`<leader>sb` searches listed buffers, including unsaved and unnamed buffers, in
+most-recently-used order. It omits the current buffer and does not restrict results
+to the current directory. Enter switches to the selected buffer through Telescope's
+normal action. Both shortcuts appear in which-key under the existing search prefix.
 
 ## Compare unsaved text with the saved file
 
@@ -123,6 +160,13 @@ and diff actions, stale-result handling, highlight restoration, refusals and the
 exact argv of every command. It then verifies that the jj operation log, both
 `.git` directories and the saved file are unchanged.
 
+## Indentation defaults
+
+Ordinary files use two-space indentation with spaces for Tab input. Tab displays
+at two columns, and its editing/backspace step follows the buffer's `shiftwidth`.
+Language filetypes and project EditorConfig files can override these defaults;
+Make recipes and Go files retain their native hard tabs.
+
 ## Copy source reference
 
 `<leader>cp` copies the current buffer's project-relative `path:line`; in Visual
@@ -162,6 +206,36 @@ and visual mappings, range semantics, project boundaries and hostile filenames,
 checks provider failure/fallback, and verifies unchanged repository data and editor
 state. A real desktop/terminal clipboard still needs validation in that session.
 
+## Trim trailing whitespace
+
+`<leader>cw` trims trailing ASCII spaces and tabs from the buffer. In Visual
+mode it trims the complete selected lines (including character/block selections).
+`:TrimWhitespace` does the same for the whole buffer, or accepts an explicit
+range such as `:12,18TrimWhitespace`. It never saves or runs automatically.
+Leading indentation, nonbreaking spaces, search and yank registers, unchanged
+text marks, and the window view stay intact; one undo restores the cleanup.
+If the cursor was inside removed whitespace, Neovim clamps it to the new line end.
+Read-only, unmodifiable and special buffers are refused, even with `!`.
+
+For Markdown and MDX filetypes, nonblank lines ending in at least two spaces
+are preserved because those spaces can encode hard line breaks. This deliberately
+conservative rule also preserves such lines inside code fences; it is not a
+Markdown parser. The result reports preserved lines. `:TrimWhitespace!` removes
+those suffixes too, and accepts the same ranges. Other filetypes trim all trailing
+ASCII spaces/tabs. Cleanup is explicit because whitespace can carry meaning in
+other formats too.
+
+The `nixvim-whitespace` flake check runs the isolated real-editor fixture. With
+an existing Neovim it can also run directly:
+
+```sh
+NVIM=/path/to/nvim python3 modules/packages/_nixvim/test-trim-whitespace.py
+```
+
+It covers normal and visual mappings, line ranges, one-step undo/redo, unchanged
+registers and extmarks, no-op undo preservation, Unicode, Markdown, refusal paths,
+and the absence of writes to the source file.
+
 ## Search and replace
 
 `<leader>sr` opens grug-far on the current file and `<leader>sR` on the working
@@ -193,8 +267,70 @@ still force sensitive and insensitive matching respectively.
 ## Persistent undo
 
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.
-`test-undo.py` exercises real editor writes and reloads; see its header for the
-writable-directory requirement and Vim fallback.
+Alongside SSH, GPG, AWS, Kubernetes, SOPS and `.env` files, it excludes `.netrc`,
+`.npmrc`, `.pypirc`, `.git-credentials`, `.config/gh/hosts.yml` and
+`.docker/config.json`. GitHub CLI authentication in `GH_CONFIG_DIR` or
+`XDG_CONFIG_HOME/gh` (falling back to `~/.config/gh`) and Docker authentication in
+`DOCKER_CONFIG` receive the same protection. Adjacent ordinary configuration
+files retain persistent undo.
+
+The policy checks both the displayed filename and its resolved symlink target
+before reading, renaming or writing, including an alternate `:write` destination.
+A protected buffer keeps undo in memory, and `:setlocal noundofile` remains a
+manual opt-out for other sensitive files. This controls automatic persistence;
+it does not remove old undo files, prevent an explicit `:wundo`, or inspect file
+contents for secrets stored under arbitrary names.
+
+Run the isolated write/reload fixture from a writable directory outside runtime
+or temporary paths:
+
+```sh
+python3 modules/packages/_nixvim/test-undo.py
+```
+
+It uses synthetic files and a private HOME/config/state environment, covering
+actual undo files, auth path overrides, symlinks, renames, alternate write targets,
+buffer opt-outs and ordinary neighboring files. See its header for the Vim
+fallback when Neovim is unavailable.
+
+## Spell checking
+
+Commit messages, Jujutsu descriptions, Markdown, plain text and mail open with
+`spell` on; every other filetype, source code included, stays unchecked.
+Treesitter queries and syntax files decide what counts as prose inside those
+buffers, so code spans, URLs, wikilinks, a `type(scope):` prefix, change IDs and
+the generated file lists are not flagged. Use Neovim's own `]s`/`[s`, `z=` and
+`zg`; `:setlocal spell` turns it on anywhere else.
+
+`spelllang` is `en_us,de_de`. English comes from Neovim's runtime.
+`german-spell.nix` builds `de.utf-8.spl` and its suggestion file with `:mkspell`
+from the frami word lists adapted for Vim, the source Vim's own published German
+file is built from, including the Austrian and Swiss lists as regions. A
+spelling that is only right across a border is therefore marked regional rather
+than wrong, and Neovim never offers to download a spell file. The build checks
+that both files exist, because `:mkspell` can abandon a word list and still exit
+successfully.
+
+nvim-treesitter's `jjdescription` query marks only hand-written `JJ:` comments
+as spellable. With a Treesitter highlighter active, Neovim checks nothing else,
+so `jjdescription-spell.scm` extends it to the subject and body.
+
+`zg` writes to `stdpath('data')/spell/personal.utf-8.add`. The directory is
+created with mode `0700`, because Neovim does not create it and the list can
+hold people's names. The store-built runtime path is never written.
+
+Run the real Neovim fixture with a built German spell directory and
+nvim-treesitter's `jjdescription` parser and base highlights query:
+
+```sh
+NVIM=/path/to/nvim python3 modules/packages/_nixvim/test-spell.py \
+  SPELL_DIR PARSER.so highlights.scm
+```
+
+It isolates every XDG directory and walks each buffer with `]s`/`]S`, so syntax
+and Treesitter decide the result exactly as they do on screen. It covers both
+languages and their regions, prose versus code, the description query, and a
+`zg` word that a later session accepts.
 
 ## Completion confirmation
 
