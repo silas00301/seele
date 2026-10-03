@@ -91,6 +91,15 @@ nearest Jujutsu/Git ancestor marker without invoking VCS commands; register `r`
 retains the reference even when the existing clipboard provider is unavailable.
 See the adjacent README and real Neovim fixture for path and clipboard boundaries.
 
+Neovim spell checks prose filetypes (commit and Jujutsu descriptions, Markdown,
+plain text, mail) in `en_us` and `de_de`, and leaves source code alone.
+`modules/packages/_nixvim/spell.lua` sets that up and keeps `zg` words in a
+private `stdpath('data')/spell` file. `german-spell.nix` builds the German spell
+file with `:mkspell` from the frami source Vim's own runtime uses, so nothing is
+downloaded at run time, and `jjdescription-spell.scm` extends nvim-treesitter's
+query, which otherwise leaves a description's subject and body unchecked. See
+the adjacent README for the real-Neovim fixture.
+
 Neovim's `<leader>sr` and `<leader>sR` open grug-far on the current file and the
 working directory, seeded with the word under the cursor or, from Visual mode, a
 literal search for the selection. `modules/packages/_nixvim/replace.lua` builds
