@@ -635,6 +635,15 @@ stopping PipeWire from starting at all.
 
 Bluetooth follows the same hardware gate in both places: without a BlueZ adapter, neither its Control Center row nor its menu bar entry is shown. The hidden tray group opens only when its arrow is clicked, so moving the pointer across the arrow cannot reflow the bar. The network panel links to Allestörungen through the desktop's default URL handler.
 
+Television's file channel uses a shared complex argument template for preview
+and edit. Each entry receives POSIX single quoting (with embedded apostrophes
+closed and reopened) and both commands explicitly use Bash and `--`. Edit joins
+selections with newlines before quoting them individually, bypassing Television's
+simple-placeholder autoquoting. The existing `fd` source remains line-delimited;
+filenames containing newlines are not represented by that source. The real-picker
+PTY fixture is `checks.<system>.television-file-arguments` and can run directly as
+`python3 modules/features/programs/_television/test_file_arguments.py tv modules/features/programs/_television/file-arguments.txt`.
+
 ## Portable applications
 
 `modules/flake/portable.nix` is the second route from a feature to a public output, and it exists so `nix run github:silas00301/seele#<command>` reaches a configured application on a machine this flake does not manage. Each program leaf that is worth running that way contributes `seele.portable.<command>` beside its `flake.modules.homeManager` definition, named after the command rather than the feature — `btm` rather than `bottom`, `jj` rather than `jujutsu` — because the attribute is what gets typed. An entry carries the Home Manager features to evaluate, the binary to wrap, the systems to publish for, and any extra environment.
