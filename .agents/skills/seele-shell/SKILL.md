@@ -95,8 +95,15 @@ changing process ownership or launcher packaging.
 Pure UI policy lives in `qml-core`; `projects/qml` exposes it through the shared
 C ABI and `Seele.Core`. Preserve real JS arrays and own object keys on return:
 the bridge uses the engine's captured JSON parser because QVariant conversion
-breaks `Array.isArray`, filtering and list-model behavior. `Native.js` and
-`ListModels.js` retain only Qt value/object/model binding. Native notifications
+breaks `Array.isArray`, filtering and list-model behavior. On the way in, the
+boundary refuses the whole call when any argument holds a Qt type it cannot
+inspect: a D-Bus variant or argument, a byte string, a URL. An adapter that
+copies a live object's data projects it to strings, numbers and lists of
+strings first. `media.js` does this for MPRIS metadata, because every media
+selection carries every player, so one client's unusual metadata would
+otherwise blank the bar entries, the Now Playing panel and the Control Center
+card together. `Native.js` and `ListModels.js` retain only Qt
+value/object/model binding. Native notifications
 have one opaque Rust state per owning Qt object, with no retained event replay.
 
 Pi footer policy uses the same library through `projects/node` and stable
