@@ -40,6 +40,17 @@ Validate the mapping and status with the real lsp-format plugin:
 NVIM=/path/to/nvim LSP_FORMAT_DIR=/path/to/lsp-format.nvim python3 modules/packages/_nixvim/test-format-control.py
 ```
 
+## Return to a search or an open buffer
+
+`<leader>sr` resumes the last Telescope picker, retaining its query and selection
+so a search can continue after opening a result. This is Telescope's in-memory
+picker cache; it does not survive restarting Neovim.
+
+`<leader>sb` searches listed buffers, including unsaved and unnamed buffers, in
+most-recently-used order. It omits the current buffer and does not restrict results
+to the current directory. Enter switches to the selected buffer through Telescope's
+normal action. Both shortcuts appear in which-key under the existing search prefix.
+
 ## Compare unsaved text with the saved file
 
 Press **Space c s** (`<leader>cs`) or run `:SavedDiff`. A dedicated tab shows the
