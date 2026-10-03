@@ -26,7 +26,8 @@ let
         {
           "if" = {
             app-id = "com.microsoft.teams2";
-            app-name-regex-substring = "^((Activity|Settings|Chat | .*|Teams and Channels | .*|Calendar|Calls|Copilot|OneDrive)?( \\| ))?Microsoft Teams$";
+            # Distinguish the main window from calls/popouts of the same app.
+            window-title-regex-substring = "^((Activity|Settings|Chat \\| .*|Teams and Channels \\| .*|Calendar|Calls|Copilot|OneDrive)?( \\| ))?Microsoft Teams$";
           };
           check-further-callbacks = false;
           run = [ "move-node-to-workspace 5" ];

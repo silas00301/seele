@@ -12,6 +12,9 @@ let
     let
       package = selfPackages.seele-shell;
       lockPackage = selfPackages.seele-lock;
+      # SIL-171 smallest slice: one open pull request on nerv. Entering focus
+      # stays explicit. This module is imported only by the nerv home profile.
+      focusPull = "https://github.com/silas00301/seele/pull/183";
       polkitPackage = selfPackages.seele-polkit;
       librepodsPackage = package.librepods;
       # The Shure MV7+, which gates its own capsule when its touch panel is
@@ -104,6 +107,21 @@ let
               "settings"
             ];
           };
+          # The resident seele-weather worker republishes every two minutes;
+          # the shell routes its Settings to the clock popup's weather card.
+          weather = {
+            enable = lib.mkDefault true;
+            name = "Weather";
+            deadline = 600000;
+            setup = "weather";
+            actions = [
+              "retry"
+              "settings"
+            ];
+          };
+        };
+        xdg.configFile."seele-shell/focus.json".text = builtins.toJSON {
+          url = focusPull;
         };
         xdg.configFile."seele-shell/health.json".text = builtins.toJSON (
           lib.mapAttrsToList (id: provider: (builtins.removeAttrs provider [ "enable" ]) // { inherit id; }) (
@@ -183,11 +201,13 @@ let
                 "SEELE_SHELL_OPENCODE=${lib.getExe config.programs.opencode.package}"
                 "SEELE_SHELL_CODEX=${lib.getExe pkgs.codex}"
                 "SEELE_SHELL_CLAUDE=${lib.getExe pkgs.claude-code}"
+                "SEELE_SHELL_CURSOR=${lib.getExe pkgs.cursor-cli}"
                 "SEELE_SHELL_GHOSTTY=${lib.getExe pkgs.ghostty}"
                 "SEELE_SHELL_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
                 "SEELE_LOCK=${lib.getExe lockPackage}"
                 "SEELE_SHELL_NH=${lib.getExe config.programs.nh.package}"
                 "SEELE_SHELL_REPO=${config.programs.nh.flake}"
+                "SEELE_FOCUS_PULL=${focusPull}"
               ];
               ExecStart = lib.getExe package;
               LimitCORE = 0;
@@ -316,6 +336,30 @@ let
               ];
             }
           ]) (lifecycle // { Notification = "input"; });
+        };
+
+        # Cursor merges this system layer with user/project hooks. Keep the
+        # file regular so its workspace-scoped symlink checks can also read it.
+        "cursor/hooks.json" = {
+          mode = "0644";
+          text = builtins.toJSON {
+            version = 1;
+            hooks =
+              lib.genAttrs
+                [
+                  "sessionStart"
+                  "beforeSubmitPrompt"
+                  "stop"
+                  "sessionEnd"
+                ]
+                (_: [
+                  {
+                    command = hook "cursor" "host-event";
+                    timeout = 5;
+                    failClosed = false;
+                  }
+                ]);
+          };
         };
 
         "codex/requirements.toml".text = ''
