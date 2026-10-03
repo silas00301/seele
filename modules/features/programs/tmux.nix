@@ -23,6 +23,8 @@ let
         clock24 = true;
         escapeTime = 0;
         baseIndex = 1;
+        # Keep the history that the Prefix+H viewer can actually inspect.
+        historyLimit = 10000;
         mouse = true;
         terminal = "tmux-256color";
         plugins = with pkgs; [

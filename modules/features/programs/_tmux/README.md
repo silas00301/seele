@@ -14,6 +14,11 @@ search, `n`/`N` to move between matches, `v`, `V`, or Ctrl+v to select, and `y`
 to copy and close. `yy` copies a whole line. `q` or Escape in normal mode closes
 without copying; Escape in visual mode cancels the selection.
 
+Managed and portable tmux retain up to 10,000 history rows per pane, matching
+the viewer’s capture window. The limit applies when a pane is created: after
+reloading the configuration, open a new pane or window to get the larger history.
+Existing panes keep their old limit, and discarded output cannot be recovered.
+
 Soft terminal wraps join back into logical lines; hard line breaks remain.
 Neovim wraps those logical lines to the popup width. Linewise copies include a
 final newline, characterwise and rectangular copies do not add one. Capture
