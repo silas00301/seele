@@ -27,6 +27,8 @@ let
       modules.bat
       modules.bottom
       modules.brave
+      modules.cursor-agent
+      modules.cursor-editor
       modules.command-notifications
       modules.determinate
       modules.direnv
@@ -46,6 +48,7 @@ let
       modules.ripgrep
       modules.sesh
       modules.starship
+      modules.tealdeer
       modules.television
       modules.tmux
       modules.yazi
