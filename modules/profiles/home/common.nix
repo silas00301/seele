@@ -29,6 +29,7 @@ let
       modules.brave
       modules.cursor-agent
       modules.cursor-editor
+      modules.command-notifications
       modules.determinate
       modules.direnv
       modules.eza
@@ -43,10 +44,12 @@ let
       modules.jq
       modules.jujutsu
       modules.nh
+      modules.nix-your-shell
       modules.nixvim
       modules.ripgrep
       modules.sesh
       modules.starship
+      modules.tealdeer
       modules.television
       modules.tmux
       modules.yazi
