@@ -56,6 +56,8 @@ inset, `panelMargin` and `panelSpacing` for the panel.
 **Control height** — `chipHeight` (28), `controlHeight` (34), `rowHeight` (40). A chip, a
 button and a list row each take one; `detailRowHeight` (52) is the row that leads with a
 mark and sets a caption under its title. A card or tile still sizes to what it holds.
+`knobSize` is the round control a connectivity row, a Control Center tile and a level lead
+with, and a tile without a knob keeps that column for its glyph so titles line up.
 
 **Media geometry** — `mediaPanelWidth` is the width that lets the shared media block
 carry art, text and transport without squeezing them. `trackTarget` is the taller pointer
@@ -159,9 +161,13 @@ alias — put it there when you add it, not after the second caller appears.
 | `RoundedSource` | An Image rounded on the shell's radius through `MultiEffect` masking. |
 | `AgentMark` | A harness or vendor drawn as its own vendored SVG. |
 
-The Control Center and media surfaces add `ControlTile`, `ConnectivityRow`,
+The Control Center and media surfaces add `ControlTile`, `UtilityTile`, `ConnectivityRow`,
 `ControlLevel`, `AudioLevelRow`, `ApplicationLevelRow`, `MediaBody`, `MediaButton` and
-`MediaTimeline`. A module
+`MediaTimeline`. `ControlTile` is a module with state, half the grid wide, a title over a
+detail line; `UtilityTile` is a quarter-wide launcher, a glyph over a short name, whose
+description lives in its tooltip and whose only state is a corner reading and the active
+tint. `ControlCenterGrid` lays them out with positioners, never counted offsets, and owns
+arrow-key movement across everything in it that takes focus. A module
 that lives in both the Control Center and its own panel draws the same body in both,
 **and frames it the same way**: the panel puts the block on a card exactly as the
 module does, so opening a module never unframes what was clicked.

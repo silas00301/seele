@@ -183,6 +183,7 @@ let
                 "SEELE_SHELL_OPENCODE=${lib.getExe config.programs.opencode.package}"
                 "SEELE_SHELL_CODEX=${lib.getExe pkgs.codex}"
                 "SEELE_SHELL_CLAUDE=${lib.getExe pkgs.claude-code}"
+                "SEELE_SHELL_CURSOR=${lib.getExe pkgs.cursor-cli}"
                 "SEELE_SHELL_GHOSTTY=${lib.getExe pkgs.ghostty}"
                 "SEELE_SHELL_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
                 "SEELE_LOCK=${lib.getExe lockPackage}"
@@ -316,6 +317,30 @@ let
               ];
             }
           ]) (lifecycle // { Notification = "input"; });
+        };
+
+        # Cursor merges this system layer with user/project hooks. Keep the
+        # file regular so its workspace-scoped symlink checks can also read it.
+        "cursor/hooks.json" = {
+          mode = "0644";
+          text = builtins.toJSON {
+            version = 1;
+            hooks =
+              lib.genAttrs
+                [
+                  "sessionStart"
+                  "beforeSubmitPrompt"
+                  "stop"
+                  "sessionEnd"
+                ]
+                (_: [
+                  {
+                    command = hook "cursor" "host-event";
+                    timeout = 5;
+                    failClosed = false;
+                  }
+                ]);
+          };
         };
 
         "codex/requirements.toml".text = ''

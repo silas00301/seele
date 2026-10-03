@@ -74,7 +74,13 @@ Pi/OpenCode status extensions share `projects/shell/status-hook.ts`; only their
 host event bindings remain TypeScript. The package bundles each adapter with an
 explicit native `seele-agent-hook` path. Rust owns bounded hook input, lifecycle
 validation, process identity and private atomic publication. Keep
-`tests/harness-status.sh` passing when changing these events. Privileged NixOS
+`tests/harness-status.sh` passing when changing these events. Cursor uses the
+same native hook through system-layer configuration rather than an extension;
+its event, identity, privacy and permission-wait boundaries are documented in
+`projects/tools/README.md`. Run `tests/cursor-agent.sh` for CLI/editor ownership,
+focus, cleanup and exact launch arguments, plus `tests/agent-state.sh` and
+`tests/shell-presentation.js` for provider collection and presentation.
+Privileged NixOS
 generation activation belongs to `repo-tools/src/generation.rs`; its fixtures
 must never activate the test host.
 
