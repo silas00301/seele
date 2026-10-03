@@ -28,8 +28,10 @@ let reading = false;
 async function syncTheme() {
   if (reading) return;
   reading = true;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
   try {
-    const response = await fetch("http://127.0.0.1:48725/palette", { cache: "no-store" });
+    const response = await fetch("http://127.0.0.1:48725/palette", { cache: "no-store", signal: controller.signal });
     if (!response.ok) return;
     const { id, palette } = await response.json();
     if (typeof id !== "string" || !palette) return;
@@ -47,6 +49,7 @@ async function syncTheme() {
     // The packaged Stylix palette remains the fallback when the user service
     // is not running, including before the next Home Manager activation.
   } finally {
+    clearTimeout(timeout);
     reading = false;
   }
 }

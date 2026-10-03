@@ -37,8 +37,8 @@ let
           updateRefs = true;
         };
         url = {
-          "git@github.com".insteadOf = "gh";
-          "git@github.com:silas00301".insteadOf = "me";
+          "git@github.com:".insteadOf = "gh:";
+          "git@github.com:silas00301/".insteadOf = "me:";
         };
         pull.rebase = true;
         merge.conflictStyle = "zdiff3";
@@ -46,7 +46,7 @@ let
         column.ui = "auto";
         help.autocorrect = "prompt";
         init.defaultBranch = "main";
-        aliases = {
+        alias = {
           co = "checkout";
         };
       };
