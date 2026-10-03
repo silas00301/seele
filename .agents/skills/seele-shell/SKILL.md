@@ -203,6 +203,36 @@ labels, the bar text and the failure messages; the shell store and
 React keeps a clock or parses a duration. Keep `tests/caffeinate.js` and
 `tests/vicinae-caffeinate.cjs` passing, and see `projects/caffeinate/README.md`.
 
+Presentation mode (SIL-55) is `root.presenting`. It is on when the user chose it
+through `seele-shellctl presentation on|off|toggle|status` or Vicinae's **Seele
+Presentation Mode**, and also while `systemData.screenRecording` reports a
+running PipeWire `Stream/Output/Video`, because a screen share is when bar text
+reaches other people.
+
+While it is on, toasts are held back but not dismissed: ordinary ones time out
+into the panel as usual, and permanent ones appear once the mode ends. The bar
+also drops personal text:
+- the active window's title, keeping only the application name;
+- the calendar event's title, which becomes "Event" while its time stays;
+- the media track text and artwork;
+- the Home Assistant readings;
+- the tooltips that repeat any of these.
+
+A `󰐯 Presenting` or `󰐯 Sharing` bar item says the mode is on, and a click ends a
+mode chosen by hand. The mode never writes Do Not Disturb or the focus timer, so
+ending it restores nothing but the keep-awake session.
+
+`projects/qml-core/src/presenting.rs` owns the state, the labels and that
+session's ownership. A chosen mode starts a `manual` Caffeinate session only when
+none is running, and records when. On the way out it stops the session only if a
+manual session's elapsed time still matches that start, within the watcher's
+20-second heartbeat. A session the user already had, or started since, is never
+replaced or ended. The choice and the session start survive QML reloads through
+`PersistentProperties`. `tests/presenting.js` runs the production
+`setPresenting()` against the native policy and pins each concealment. Spoken AI
+interruptions (the issue's Hermes) have no implementation to pause yet;
+`presentation status` is the state such a speaker should read.
+
 ## Keep the launcher extension a readout as well as a set of verbs
 
 Every live row in `projects/vicinae/` says what it is through a coloured tag and
