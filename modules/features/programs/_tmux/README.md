@@ -1,4 +1,34 @@
-# Pane scrollback viewer
+# tmux helpers
+
+## Move a running pane
+
+Mark a pane with **Ctrl+s, m**, navigate to the destination pane, then press
+**Ctrl+s, j** to bring it below the destination or **Ctrl+s, J** to bring it
+alongside on the right. The source may be in another window or session on the
+same tmux server. This moves the existing terminal and its running job; nothing
+is restarted. Native **Ctrl+s, !** breaks a pane back into its own window.
+
+The mark uses tmux's native border indicator. **Ctrl+s, M** clears it. tmux
+may clear a mark as its originating window disappears; mark the pane again
+before another move. An empty source window disappears, and taking the last
+window out of a session removes that session, following native tmux behavior.
+Choosing the marked pane itself reports tmux's ordinary error without moving it.
+Without a mark, both keys explain how to mark a source and leave every pane alone.
+The existing Ctrl+h/j/k/l editor/pane navigation is unaffected.
+
+The bindings are native tmux commands in `pane-move.conf`, shared by managed
+and portable tmux. Run their private-server fixture with an installed tmux:
+
+```sh
+python3 modules/features/programs/_tmux/test-pane-move.py
+```
+
+`checks.<system>.tmux-pane-move` packages the same test. It uses its own socket,
+temporary HOME and attached PTY, exercises actual keys for both layouts, missing
+marks, same-window/cross-session moves and self-joins, and checks pane process IDs
+stay unchanged. It never contacts the live server.
+
+## Pane scrollback viewer
 
 **Ctrl+s, r** reloads the configuration file that installed the binding, including
 a portable or custom XDG configuration. The path is captured during loading and

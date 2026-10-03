@@ -59,6 +59,8 @@ let
           bind-key y copy-mode
           bind-key -N 'Toggle broadcasting input to every pane in this window' S set-window-option synchronize-panes \; display-message "Pane broadcasting #{?synchronize-panes,on,off}"
 
+          ${builtins.readFile ./_tmux/pane-move.conf}
+
           # q shell-quotes each originating identity before run-shell expands it.
           bind-key -N 'Search and copy pane scrollback in Neovim' H run-shell '${scrollback} #{q:socket_path} #{q:pane_id} #{q:client_name}'
 
@@ -109,6 +111,22 @@ in
             cp ${./_tmux/test-reload.py} programs/_tmux/test-reload.py
             cp ${./tmux.nix} programs/tmux.nix
             python3 programs/_tmux/test-reload.py
+            touch "$out"
+          '';
+
+      checks.tmux-pane-move =
+        pkgs.runCommand "seele-tmux-pane-move-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+              pkgs.bash
+            ];
+          }
+          ''
+            cp ${./_tmux/pane-move.conf} pane-move.conf
+            cp ${./_tmux/test-pane-move.py} test-pane-move.py
+            python3 test-pane-move.py
             touch "$out"
           '';
 
