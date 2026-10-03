@@ -215,6 +215,29 @@ in
         end
         __seele_theme
       '';
+      # A foreground `nix build` that ends while this terminal is not the
+      # focused window. The helper decides; an SSH session and every other
+      # command stay silent. SIL-116's general long-command hook is separate.
+      programs.fish.functions.__seele_build_idle_postexec = {
+        description = "Notify when a foreground nix build finishes out of sight";
+        onEvent = "fish_postexec";
+        body = ''
+          set -l command_status $status
+          if set -q SSH_CONNECTION; or set -q SSH_TTY
+            return $command_status
+          end
+          if not string match -q -r '(^|[[:space:]/])(nix|nix-build)([[:space:]]|$)' -- "$argv[1]"
+            return $command_status
+          end
+          ${package}/bin/seele-build-idle notify \
+            --status "$command_status" \
+            --pid "$fish_pid" \
+            --hyprctl ${pkgs.hyprland}/bin/hyprctl \
+            --notify ${pkgs.libnotify}/bin/notify-send \
+            -- "$argv[1]"
+          return $command_status
+        '';
+      };
       programs.tmux.extraConfig = lib.mkAfter ''
         source-file -q ${lib.escapeShellArg "${state}/current/tmux.conf"}
         source-file -q ${lib.escapeShellArg tmuxTheme}

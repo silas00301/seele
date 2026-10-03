@@ -3,7 +3,8 @@ let
   module = ({
     programs.bash = {
       enable = true;
-      bashrcExtra = ''
+      # Home Manager guards initExtra behind its interactive-shell check.
+      initExtra = ''
         fish
       '';
     };

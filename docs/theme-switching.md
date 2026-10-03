@@ -52,6 +52,17 @@ the machine slept is caught up when it wakes. Choosing Light or Dark in the
 panel turns Auto off. The `seele-theme-auto` user service runs the schedule in
 the graphical session.
 
+A running `nix build` or `nix-build` holds that scheduled step. `seele-theme tick`
+reads the process list and, while one of those commands is running, leaves the
+mode and the last boundary untouched, so the publication happens on a later
+pass. A list that cannot be read holds too, because treating that as idle would
+repaint the desktop during the build. A theme or mode chosen by hand still
+publishes immediately. On nerv, Fish calls `seele-build-idle notify` after a
+foreground `nix build`; when that terminal's window is not focused, one ordinary
+notification says the build finished or failed. An SSH session stays quiet, and
+the command's other arguments are not part of the notification. SIL-116's
+general long-command hook is a separate path.
+
 The launcher applies the theme for the mode on screen. It shows the applied
 theme first, groups the rest by light and dark, and describes each palette's
 roles beside what a switch reaches. No surface publishes anything itself: each
@@ -78,7 +89,7 @@ single selection into its own mode's slot.
 | Neovim | Live through a file watcher, with a focus/startup fallback; Catppuccin presets use the official Catppuccin colorscheme and other presets use Stylix's Base16 palette |
 | Fish | At the next prompt |
 | tmux | Live for the default server, including Catppuccin's status modules and rounded windows; also loaded when reading its configuration |
-| Spicetify | Live through its packaged extension and a read-only loopback palette feed; restart Spotify once after the first rebuild to load the extension |
+| Spicetify | Live through its packaged extension and a read-only loopback palette feed; stalled reads abort after three seconds and retry on the next poll, keeping the last valid palette; restart Spotify once after the first rebuild to load the extension |
 | Vesktop | Restart Vesktop once after the first rebuild to unload its old fixed Mocha theme link; later CSS changes are live through Vencord QuickCSS's file watcher. Latte uses the official light stylesheet in either Discord appearance class; other Catppuccin presets import their official stylesheet, and other presets project legible text and surface colors into Discord's current variables |
 | GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
 | KDE color schemes | Live through `plasma-apply-colorscheme` |

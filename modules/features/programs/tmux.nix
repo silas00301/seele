@@ -23,6 +23,8 @@ let
         clock24 = true;
         escapeTime = 0;
         baseIndex = 1;
+        # Keep the history that the Prefix+H viewer can actually inspect.
+        historyLimit = 10000;
         mouse = true;
         terminal = "tmux-256color";
         plugins = with pkgs; [
@@ -35,6 +37,8 @@ let
           set-option -g status-right-length 80
           set-option -g focus-events on
 
+          ${builtins.readFile ./_tmux/failed-panes.conf}
+
           # Copy through the terminal so the same keys work locally and over SSH.
           set-option -s set-clipboard external
           set-option -as terminal-features ',xterm-ghostty:clipboard'
@@ -46,13 +50,18 @@ let
           set -g extended-keys on
           set -g extended-keys-format csi-u
 
-          bind-key r source-file ~/.config/tmux/tmux.conf \; display-message "~/.config/tmux/tmux.conf reloaded"
+          # Remember this file, including a portable wrapper's private XDG path.
+          set-option -gF @seele-config-file '#{current_file}'
+          bind-key r source-file -F '#{q:@seele-config-file}'
           # Continue in the active pane's project, even after it changed cwd.
           bind-key c new-window -c '#{pane_current_path}'
           bind-key < split-window -h -c '#{pane_current_path}'
           bind-key > split-window -c '#{pane_current_path}'
           bind-key q kill-pane
           bind-key y copy-mode
+          bind-key -N 'Toggle broadcasting input to every pane in this window' S set-window-option synchronize-panes \; display-message "Pane broadcasting #{?synchronize-panes,on,off}"
+
+          ${builtins.readFile ./_tmux/pane-move.conf}
 
           # q shell-quotes each originating identity before run-shell expands it.
           bind-key -N 'Search and copy pane scrollback in Neovim' H run-shell '${scrollback} #{q:socket_path} #{q:pane_id} #{q:client_name}'
@@ -77,7 +86,8 @@ let
         set -g @catppuccin_status_connect_separator "yes"
         set -g @catppuccin_status_background "default"
         set -g @catppuccin_directory_text "#{pane_current_path}"
-        set -g status-left ""
+        set -g status-left-length 20
+        set -g status-left "#[bold,reverse]#{?synchronize-panes, BROADCAST ,}#[default]"
         set -g status-right "#{E:@catppuccin_status_date_time}"
         set -ag status-right "#{E:@catppuccin_status_session}"
       '';
@@ -90,6 +100,52 @@ in
   perSystem =
     { pkgs, ... }:
     {
+      checks.tmux-config-reload =
+        pkgs.runCommand "seele-tmux-config-reload-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+            ];
+          }
+          ''
+            mkdir -p programs/_tmux
+            cp ${./_tmux/test-reload.py} programs/_tmux/test-reload.py
+            cp ${./tmux.nix} programs/tmux.nix
+            python3 programs/_tmux/test-reload.py
+            touch "$out"
+          '';
+
+      checks.tmux-pane-move =
+        pkgs.runCommand "seele-tmux-pane-move-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+              pkgs.bash
+            ];
+          }
+          ''
+            cp ${./_tmux/pane-move.conf} pane-move.conf
+            cp ${./_tmux/test-pane-move.py} test-pane-move.py
+            python3 test-pane-move.py
+            touch "$out"
+          '';
+
+      checks.tmux-failed-panes =
+        pkgs.runCommand "seele-tmux-failed-panes-check"
+          {
+            nativeBuildInputs = [
+              pkgs.python3
+              pkgs.tmux
+              pkgs.fish
+            ];
+          }
+          ''
+            python3 ${./_tmux/test-failed-panes.py} ${./_tmux/failed-panes.conf} tmux fish
+            touch "$out"
+          '';
+
       checks.tmux-scrollback =
         pkgs.runCommand "seele-tmux-scrollback-check"
           {
@@ -107,6 +163,7 @@ in
             export NVIM_BIN=${pkgs.neovim-unwrapped}/bin/nvim
             export TMUX_BIN=${pkgs.tmux}/bin/tmux
             python3 programs/_tmux/test-scrollback.py
+            python3 programs/_tmux/test-broadcast.py
             touch "$out"
           '';
     };
