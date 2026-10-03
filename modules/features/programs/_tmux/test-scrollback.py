@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory(prefix="scb-") as temporary:
         launcher = root / "viewer"
         launcher.write_text("#!" + shutil.which("bash") + "\n" + script)
         launcher.chmod(0o700)
-        binding = next(line.strip() for line in source.splitlines() if "bind-key -N" in line)
+        binding = next(line.strip() for line in source.splitlines() if " H run-shell '${scrollback}" in line)
         binding = binding.replace("${scrollback}", str(launcher))
         tmux("source-file", "-", input=(binding + "\n").encode())
         tmux("select-window", "-t", pane)

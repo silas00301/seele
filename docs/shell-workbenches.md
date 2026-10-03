@@ -12,7 +12,7 @@ flake input or system privilege is required.
 | Colour Lab | Control Center or `seele-shellctl color-lab` | Opaque sRGB parsing, unrounded WCAG thresholds, typography preview and tonal palettes |
 | Text workbench | Control Center or `seele-shellctl control text-workbench` | JSON formatting, URL and Base64 transforms, line cleanup and stable deduplication |
 | Resources | Control Center or `seele-shellctl control resources` | Live CPU, memory, per-device storage and searchable processes with bounded histories |
-| Network activity | Network panel or `seele-shellctl control network-activity` | Per-interface receive/send rates and session totals |
+| Network activity | Control Center, Network panel or `seele-shellctl control network-activity` | Per-interface receive/send rates and session totals |
 
 Calculator and text-workbench documents are destroyed on close. Paste and Copy
 are explicit. Text transforms reject malformed or oversized data without partial
@@ -37,7 +37,8 @@ Native Rust tests and strict Clippy use the pinned Rust 1.98.1 compiler. Focused
 production protocol fixtures, real
 Qt interaction tests, QML lint and inspected renders cover the new behavior.
 The combined Control Center is tested at desktop, short and compact output sizes,
-including non-overlapping tiles, scroll reachability, Escape and drag-safe input.
+including non-overlapping tiles, scroll reachability, arrow-key and Tab
+navigation, Escape and drag-safe input (`tests/control-center-layout.js`).
 The shell package includes these focused checks for the packaged environment.
 
 Local Qt tests for native QML policy use a test QObject bridge to the compiled

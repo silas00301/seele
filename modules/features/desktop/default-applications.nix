@@ -5,11 +5,12 @@ let
   # their own feature leaves.
   editor = "seele-editor.desktop";
   fileManager = "seele-files.desktop";
-  viewer = "imv.desktop";
+  viewer = "seele-images.desktop";
   player = "mpv.desktop";
   reader = "org.pwmt.zathura.desktop";
 
   editorTypes = [
+    "application/json"
     "application/toml"
     "application/x-shellscript"
     "application/x-yaml"
@@ -68,7 +69,13 @@ let
       # The terminal applications are opened by the configured terminal through
       # explicit store paths, because a desktop entry is executed by whatever
       # launched it and must not depend on that process's PATH.
-      inTerminal = command: "${pkgs.ghostty}/bin/ghostty -e ${command} %f";
+      inTerminal = command: "${pkgs.ghostty}/bin/ghostty -e ${command}";
+
+      imageViewer = pkgs.writeShellApplication {
+        name = "seele-images";
+        runtimeInputs = [ pkgs.imv ];
+        text = builtins.readFile ./_image-viewer/open.sh;
+      };
 
       handle = entry: types: lib.genAttrs types (_: entry);
 
@@ -90,11 +97,27 @@ let
       # desktop entry that opens in this desktop's terminal, so the entries the
       # associations name are declared here beside them.
       xdg.desktopEntries = {
+        seele-images = {
+          name = "Images";
+          genericName = "Image viewer";
+          comment = "View a picture and browse its folder in imv";
+          exec = "${imageViewer}/bin/seele-images %F";
+          icon = "imv";
+          terminal = false;
+          startupNotify = false;
+          categories = [
+            "Graphics"
+            "Viewer"
+          ];
+          mimeType = imageTypes;
+        };
+
         seele-editor = {
           name = "Neovim";
           genericName = "Text editor";
           comment = "Edit a file in the configured Neovim";
-          exec = inTerminal "${selfPackages.nixvim}/bin/nvim";
+          # One editor owns the whole selection; filenames follow the option boundary.
+          exec = inTerminal "${selfPackages.nixvim}/bin/nvim -- %F";
           icon = "nvim";
           terminal = false;
           startupNotify = false;
@@ -109,7 +132,7 @@ let
           name = "Files";
           genericName = "File manager";
           comment = "Browse a directory in Yazi";
-          exec = inTerminal "${config.programs.yazi.package}/bin/yazi";
+          exec = inTerminal "${config.programs.yazi.package}/bin/yazi %f";
           icon = "system-file-manager";
           terminal = false;
           startupNotify = false;
