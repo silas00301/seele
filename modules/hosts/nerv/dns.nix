@@ -1,5 +1,6 @@
 { ... }:
 let
+  quad9 = import ./_dns/quad9.nix;
   module = {
     # Without this leaf nerv resolves through whatever the router's DHCP lease
     # names, in plaintext, with no cache: the ISP sees every name this machine
@@ -21,20 +22,12 @@ let
         # resolved validates the server certificate against that name and sends
         # it as SNI. Without it, even strict DNS-over-TLS only checks the
         # certificate against the bare address.
-        DNS = [
-          "9.9.9.9#dns.quad9.net"
-          "149.112.112.112#dns.quad9.net"
-          "2620:fe::fe#dns.quad9.net"
-          "2620:fe::9#dns.quad9.net"
-        ];
+        DNS = quad9.dns;
 
         # Only consulted when no other server is known at all, which is exactly
         # the moment worth pinning: left unset, the fallback is systemd's
         # compiled-in list of Cloudflare and Google.
-        FallbackDNS = [
-          "9.9.9.9#dns.quad9.net"
-          "2620:fe::fe#dns.quad9.net"
-        ];
+        FallbackDNS = quad9.fallback;
 
         # Claiming the DNS root as a routing domain for these servers is what
         # actually keeps the lease's resolver out of the path. resolved sends a
@@ -46,7 +39,7 @@ let
         # hold the root while longer domains still win for their own names:
         # tailscaled's `~ts.net` for MagicDNS, and the lease's own search and
         # reverse zones for LAN hosts.
-        Domains = [ "~." ];
+        Domains = quad9.domains;
 
         # Strict rather than `opportunistic`. Opportunistic cannot authenticate
         # the server at all and downgrades to plaintext on a synthesized
