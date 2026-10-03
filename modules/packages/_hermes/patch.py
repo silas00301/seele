@@ -25,7 +25,7 @@ for source, target in [("desktop-theme.ts", "apps/desktop/electron/seele-theme.t
 insert("apps/desktop/electron/main.ts", "import fs from 'node:fs'", "import { setPrimaryWebContentsId } from './seele-lifecycle'\nimport './seele-theme'\nimport fs from 'node:fs'")
 insert("apps/desktop/electron/main.ts", "  const createdMainWindow = mainWindow", "  const createdMainWindow = mainWindow\n  setPrimaryWebContentsId(createdMainWindow.webContents.id)")
 insert("apps/desktop/electron/preload.ts", "contextBridge.exposeInMainWorld('hermesDesktop', {", "contextBridge.exposeInMainWorld('hermesDesktop', {\n  seeleTheme: () => ipcRenderer.invoke('seele:hermes-theme'),\n  seeleLifecycle: payload => ipcRenderer.send('seele:hermes-lifecycle', payload),")
-insert("apps/desktop/src/global.d.ts", "    hermesDesktop: {", "    hermesDesktop: {\n      seeleTheme?: () => Promise<Record<string, string> | null>\n      seeleLifecycle?: (payload: { state: string; session: string }) => void")
+insert("apps/desktop/src/global.d.ts", "    hermesDesktop: {", "    hermesDesktop: {\n      seeleTheme?: () => Promise<Record<string, string> | null>\n      seeleLifecycle?: (payload: { state: string; session: string; gateway: string }) => void")
 insert("apps/desktop/src/main.tsx", "import './store/active-work'", "import './store/active-work'\nimport './store/seele-lifecycle'\nimport './store/seele-theme'")
 # Managed credentials always use Electron's Secret Service backend. Never
 # accept basic_text or the upstream per-save plaintext escape hatch.
@@ -46,3 +46,28 @@ insert("apps/desktop/electron/hardening.ts", "        'Set HERMES_DESKTOP_REMOTE
 # the token field was not retyped. Encryption failure aborts the save and
 # leaves the existing record intact; memory-only connection tests stay usable.
 insert("apps/desktop/electron/hardening.ts", "  if (!incomingToken) {\n    return existingToken\n  }", "  if (!incomingToken) {\n    if (persistToken && existingToken?.encoding === 'plain' && existingToken.value) {\n      return encryptSecret(String(existingToken.value))\n    }\n    return existingToken\n  }")
+
+# A failed automatic cookie refresh must not turn every polling request into
+# another visible sign-in window. Keep silent attempts on upstream's bounded
+# hidden path, and share one attempt per gateway, session partition and mode.
+# Explicit sign-in has its own slot so a hidden retry cannot swallow that action.
+insert("apps/desktop/electron/main.ts",
+       "    const hiddenRecovery = background || !canShowInteractiveOauthLogin()",
+       "    const hiddenRecovery = silent || background || !canShowInteractiveOauthLogin()")
+insert("apps/desktop/electron/main.ts", "function openOauthLoginWindow(", """const seeleOauthLoginFlights = new Map<string, Promise<unknown>>()
+function openOauthLoginWindow(baseUrl, options: Parameters<typeof runOauthLoginWindow>[1] = {}) {
+  const hidden = options.silent || options.background || !canShowInteractiveOauthLogin()
+  const key = JSON.stringify([
+    resolveOauthPartitionForUrl(baseUrl, options),
+    normalizeRemoteBaseUrl(baseUrl),
+    Boolean(hidden)
+  ])
+  const existing = seeleOauthLoginFlights.get(key)
+  if (existing) return existing
+  const pending = runOauthLoginWindow(baseUrl, options)
+  seeleOauthLoginFlights.set(key, pending)
+  const release = () => { seeleOauthLoginFlights.delete(key) }
+  pending.then(release, release)
+  return pending
+}
+function runOauthLoginWindow(""")

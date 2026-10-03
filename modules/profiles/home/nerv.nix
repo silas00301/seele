@@ -1,7 +1,17 @@
 { config, ... }:
 {
-  flake.modules.homeManager.nerv.seele.hermes.enable = true;
+  flake.modules.homeManager.nerv.seele.hermes = {
+    enable = true;
+    peer = "kaworu";
+    allowRebuild = true;
+  };
   flake.modules.homeManager.nerv.imports = [
+    (
+      { config, ... }:
+      {
+        seele.hermes.flake = "${config.home.homeDirectory}/seele";
+      }
+    )
     config.flake.modules.homeManager.opencode
     config.flake.modules.homeManager.claude-code
     config.flake.modules.homeManager.proton-vpn

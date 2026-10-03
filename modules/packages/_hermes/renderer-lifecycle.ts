@@ -6,12 +6,13 @@ import { $voicePlayback } from '@/store/voice-playback'
 import { $wakeWord } from '@/store/wake-word'
 
 function publish() {
-  const remote = $connection.get()?.mode === 'remote'
+  const connection = $connection.get()
+  const remote = connection?.mode === 'remote'
   const state = !remote || $gatewayState.get() !== 'open' ? 'disconnected'
     : $voicePlayback.get().status === 'speaking' ? 'speaking'
     : $workingSessionIds.get().length > 0 ? 'thinking'
     : $wakeWord.get().listening ? 'listening' : 'idle'
-  window.hermesDesktop?.seeleLifecycle?.({ state, session: remote ? ($activeSessionId.get() || '') : '' })
+  window.hermesDesktop?.seeleLifecycle?.({ state, session: remote ? ($activeSessionId.get() || '') : '', gateway: remote ? connection.baseUrl : '' })
 }
 // A heartbeat also retires a killed client honestly in the resident service.
 setInterval(publish, 3000)

@@ -644,6 +644,10 @@ in
         jsonls.enable = true;
         gopls.enable = true;
         yamlls.enable = true;
+        expert = {
+          enable = true;
+          package = pkgs.beamPackages.expert;
+        };
         rust_analyzer = {
           enable = true;
           installRustc = false;

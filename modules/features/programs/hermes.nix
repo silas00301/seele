@@ -85,7 +85,6 @@
                   pkgs.tailscale
                 ]
               }:${config.home.profileDirectory}/bin:/run/current-system/sw/bin"
-              "SEELE_HERMES_GATEWAY=${cfg.gatewayUrl}"
               "SEELE_HERMES_PEER=${cfg.peer}"
               "SEELE_HERMES_PORT=${toString cfg.port}"
               "SEELE_HERMES_FLAKE=${cfg.flake}"

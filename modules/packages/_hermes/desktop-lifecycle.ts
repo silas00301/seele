@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { ipcMain } from 'electron'
 
-type Report = { state: string; session: string }
+type Report = { state: string; session: string; gateway: string }
 // The primary Desktop owns this readout. Secondary chats and browser popouts
 // have independent renderer stores and must not overwrite its active state.
 let primaryWebContentsId: number | null = null
@@ -37,9 +37,22 @@ ipcMain.on('seele:hermes-lifecycle', (event, value: unknown) => {
   // Preview guests and arbitrary web pages never acquire the publisher bridge.
   if (!frame || frame !== event.sender.mainFrame || !frame.url.startsWith('file:')) return
   const data = value as Record<string, unknown>
-  if (Object.keys(data).some(key => key !== 'state' && key !== 'session')) return
+  if (Object.keys(data).some(key => key !== 'state' && key !== 'session' && key !== 'gateway')) return
   if (typeof data.state !== 'string' || !['disconnected', 'idle', 'listening', 'thinking', 'speaking'].includes(data.state)) return
   if (typeof data.session !== 'string' || data.session.length > 1024) return
-  pending = { state: data.state, session: data.session ? createHash('sha256').update(data.session).digest('hex') : '' }
+  let gateway = ''
+  if (data.gateway !== undefined && data.gateway !== '') {
+    if (typeof data.gateway !== 'string' || data.gateway.length > 2048) return
+    try {
+      const url = new URL(data.gateway)
+      if (!['http:', 'https:'].includes(url.protocol)) return
+      url.username = ''
+      url.password = ''
+      url.search = ''
+      url.hash = ''
+      gateway = url.href
+    } catch { return }
+  }
+  pending = { gateway, state: data.state, session: data.session ? createHash('sha256').update(data.session).digest('hex') : '' }
   flush()
 })
