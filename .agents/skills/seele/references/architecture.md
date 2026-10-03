@@ -107,6 +107,12 @@ the scope and refuses buffers that are not files; grug-far names ripgrep by stor
 path so the portable editor works without one on `PATH`. The replace fixture in
 the same directory drives both mappings through real grug-far and ripgrep.
 
+Neovim's `<leader>cw` / `:TrimWhitespace[!]` explicitly cleans trailing spaces
+and tabs from a buffer or selected line range without saving it. Markdown hard
+breaks are preserved unless `!` is supplied. The in-process helper and real-editor
+fixture live in `modules/packages/_nixvim/`, documented in its README and exposed
+as `checks.<system>.nixvim-whitespace`.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:

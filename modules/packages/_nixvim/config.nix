@@ -226,6 +226,7 @@ in
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
     dofile("${./copy-reference.lua}").setup()
+    dofile("${./trim-whitespace.lua}").setup()
     dofile("${./replace.lua}").setup()
     dofile("${./spell.lua}").setup()
 
