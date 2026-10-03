@@ -760,8 +760,8 @@ native `seele-agent-hook`; the adapters never write state files themselves. Nati
 `projects/tools/src/launch.rs`. A detached lock must survive launcher completion
 and confirmation failure; run the synthetic launcher fixtures after changing
 subprocess ownership. Never exercise these tests against a real desktop.
-Do not expand these API exceptions into new runtime scripting. See the Pi and
-Proton adapter READMEs for their exact boundaries.
+Do not expand these API exceptions into new runtime scripting. See the Pi
+adapter README for its exact boundaries.
 
 Parent security configuration findings, upstream evidence and remaining native-host validation are recorded in [the configuration audit](docs/security-configuration-audit.md). Read it before changing authentication, Bluetooth pairing, input privileges, suspend locking or sensitive-service crash handling.
 
