@@ -22,6 +22,9 @@
               buildNpmPackage = attrs: npmLib.buildNpmPackage (attrs // {
                 version = "2026.9.24";
                 nativeBuildInputs = (attrs.nativeBuildInputs or [ ]) ++ [ pkgs.python3 ];
+                postCheck = (attrs.postCheck or "") + ''
+                  node ${./_hermes/bridge.test.cjs} "$PWD"
+                '';
                 postPatch = (attrs.postPatch or "") + ''
                   python3 ${./_hermes/patch.py} "$PWD" ${./_hermes} \
                     ${self'.packages.seele-shell}/share/seele-shell/shared/Theme.qml
