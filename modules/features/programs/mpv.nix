@@ -5,7 +5,7 @@
 }:
 let
   module = (
-    { pkgs, ... }:
+    { config, pkgs, ... }:
     {
       programs.mpv = {
         enable = true;
@@ -19,7 +19,14 @@ let
           # The desktop lets output gain reach 150%, so the player that feeds it
           # stops at the same ceiling instead of a lower one of its own.
           volume-max = 150;
-          screenshot-directory = "~/Pictures";
+          # Portable profiles do not activate XDG user directories; keep that
+          # fallback relative to the runtime home rather than the build sentinel.
+          # Home Manager encodes the value literally, including spaces and quotes.
+          screenshot-directory =
+            if config.xdg.userDirs.enable && config.xdg.userDirs.pictures != null then
+              config.xdg.userDirs.pictures
+            else
+              "~/Pictures";
           screenshot-format = "png";
           sub-auto = "fuzzy";
           alang = "jpn,ja,eng,en,deu,de";

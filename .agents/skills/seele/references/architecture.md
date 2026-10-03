@@ -375,6 +375,10 @@ The Linux `mpv` feature loads nixpkgs’ MPRIS script, including in portable mpv
 so local playback participates in desktop media keys and Seele Now Playing.
 It uses the existing session bus and needs no separate service.
 
+mpv screenshots follow the enabled Home Manager XDG Pictures directory. When
+user directories are disabled or Pictures is unset, including portable profiles,
+mpv resolves `~/Pictures` against the runtime home and creates it on first use.
+
 `modules/features/system/firmware-updates.nix` is the NixOS-wide hardware
 feature: the `linux` profile imports `flake.modules.nixos.firmware-updates`, so
 it follows any NixOS host rather than one machine. fwupd owns the metadata
