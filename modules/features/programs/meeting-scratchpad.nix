@@ -9,7 +9,7 @@ let
       # markdown file under the meeting state directory, and the calendar
       # worker passes that path. Ghostty's `-e` keeps this window from joining
       # another Ghostty, including the terminal scratchpad.
-      opener = pkgs.writeShellScript "seele-meeting-scratchpad" ''
+      opener = pkgs.writeShellScriptBin "seele-meeting-scratchpad" ''
         set -eu
         path=''${1:?}
         root="''${XDG_STATE_HOME:-$HOME/.local/state}/seele-meetings"

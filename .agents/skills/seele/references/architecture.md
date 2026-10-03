@@ -315,7 +315,7 @@ reset at login.
 It names one recurring event through `seele.meetingScratchpad.event.{id,title}`
 and, when either is set, writes `seele-shell/meeting-scratchpad.json` for the
 calendar worker. The note stays in the local state directory. The opener is a
-`writeShellScript` that runs Neovim inside a Ghostty of class
+`writeShellScriptBin` package that runs Neovim inside a Ghostty of class
 `org.seele.meeting-scratchpad`, and a `lib.mkAfter` window rule floats that
 class centered. `asuka` does not import it.
 
