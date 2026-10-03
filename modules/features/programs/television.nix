@@ -1,8 +1,16 @@
 { ... }:
 let
   module = (
-    { selfPackages, pkgs, ... }:
+    {
+      selfPackages,
+      pkgs,
+      lib,
+      ...
+    }:
     let
+      # Complex templates bypass Television's simple-brace autoquoting. Each
+      # selected line becomes one POSIX-quoted argument, including apostrophes.
+      fileArguments = lib.removeSuffix "\n" (builtins.readFile ./_television/file-arguments.txt);
       projectText =
         pkgs.runCommand "seele-project-text"
           {
@@ -26,6 +34,7 @@ let
         extraPackages = [
           pkgs.fd
           pkgs.bat
+          pkgs.bash
           pkgs.ripgrep
           projectText
         ];
@@ -83,7 +92,8 @@ let
               ];
             };
             preview = {
-              command = "bat -n --color=always '{}'";
+              command = "bat -n --color=always -- ${fileArguments}";
+              shell = "bash";
             };
             keybindings = {
               shortcut = "f1";
@@ -92,9 +102,10 @@ let
             };
             actions = {
               edit = {
-                description = "Opens the selected entries with the default editor (falls back to vim)";
-                command = "${selfPackages.nixvim}/bin/nvim '{}'";
+                description = "Open selected files in Neovim";
+                command = "${selfPackages.nixvim}/bin/nvim -- ${fileArguments}";
                 shell = "bash";
+                separator = "\n";
                 mode = "execute";
               };
               goto_parent_dir = {
@@ -114,8 +125,21 @@ in
 {
   flake.modules.homeManager."television" = module;
 
-  perSystem = { config, ... }: {
+  perSystem = { config, pkgs, ... }: {
     checks.television-text = config.packages.config-tools;
+    checks.television-file-arguments =
+      pkgs.runCommand "television-file-arguments"
+        {
+          nativeBuildInputs = [
+            pkgs.television
+            pkgs.bash
+            pkgs.python3
+          ];
+        }
+        ''
+          python3 ${./_television/test_file_arguments.py} tv ${./_television/file-arguments.txt}
+          touch "$out"
+        '';
   };
 
   seele.portable.tv = {
