@@ -142,7 +142,7 @@ alias — put it there when you add it, not after the second caller appears.
 | `GlyphButton` | A complete icon action with the shared material, centered glyph, keyboard activation, accessible name and tooltip. |
 | `HoverWash` | The neutral light that reports the pointer, laid over whatever the control already says. |
 | `ControlSwitch` | A persistent on/off state. Off is a well, not a grey pill. |
-| `MeterBar` | Every filled track in the shell — capacity, usage, battery, volume, a media timeline's position. Graded along its length, running in a well with its own hairline. Drawn thin: a track the pointer must hit is targeted by the strip around it, not by growing the meter. |
+| `MeterBar` | Every filled track in the shell — capacity, usage, battery, volume, a media timeline's position, a day's temperature span. Graded along its length, running in a well with its own hairline; `from` starts the fill partway along for a span. Drawn thin: a track the pointer must hit is targeted by the strip around it, not by growing the meter. |
 | `RefreshGlyph` | An in-place spinner for asynchronous work. |
 | `HoverTip` | A tooltip. Inside a panel it needs `inOverlay: true`. |
 | `FocusRing` | Where the keyboard is when a control has no focus indication of its own, laid over that control on its own corner. Tracks may instead state focus through their border. |
