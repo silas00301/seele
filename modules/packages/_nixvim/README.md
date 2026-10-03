@@ -27,10 +27,13 @@ and deleting either snapshot clean up its partner too. Only one comparison is
 open at a time; close and reopen it to take fresh snapshots, including external
 changes to the saved file. The comparison never saves a file or changes cwd.
 
-The headers show line-ending format and whether the final newline is present,
-since native line diffs do not highlight final-newline differences. Saved bytes
-are decoded using the original buffer's file encoding. The helper rejects
-unnamed/special buffers, binary text, non-regular or unreadable saved files, and
+The headers show saved decoding and intended output encodings, BOM state,
+line-ending format and final-newline state, since native line diffs hide these
+metadata-only changes. Unicode BOMs identify saved UTF-8/16 bytes independently
+of the buffer's intended output encoding; without a BOM, decoding uses the
+buffer's selected encoding (or Neovim's internal encoding when unset). UTF-32
+is explicitly unsupported because the native converter is unsafe on some Neovim
+builds. The helper rejects unnamed/special buffers, binary text, non-regular or unreadable saved files, and
 either side larger than 2 MiB or 20,000 lines. Scratch content has no swap or
 persistent undo, never runs modelines or file-reading/FileType hooks, and is
 wiped on close.
