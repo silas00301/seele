@@ -29,6 +29,14 @@ payloads, logs and arguments. Reuse the existing `gh` login and fixture/fake-gh
 tests rather than a real account. See `projects/github/README.md` for public API
 boundaries, account settings, native tests and the rendered Qt inbox fixture.
 
+`seele-shellctl pr-focus` is the explicit enter/exit for one configured pull
+request on `nerv`. `seele-github-status focus <url>` reads that request's check
+rollup and latest review comment, and the Control Center pin shows them only
+while focus is on. Exit clears the pin. Non-@ desktop notifications stay in the
+inbox without a toast until focus ends; @-mentions are not held. The command
+does not post to chat or email, and it does not enter focus from a push or an
+opened URL.
+
 ## Home Assistant
 
 `seele-shellctl control home-assistant` opens the always-visible house entry's
@@ -231,7 +239,10 @@ hands the keyboard to the panel, so only a second Escape closes it.
 The schedule is edge-triggered in the helper: a hand-chosen mode holds until the
 next boundary, and a boundary missed while the machine slept is caught up. The
 `seele-theme-auto` user service runs `seele-theme follow` in the graphical
-session with the configuration's own XDG paths. Sunrise and sunset use NOAA's
+session with the configuration's own XDG paths. While a `nix build` or
+`nix-build` process is running, that step waits instead of publishing; a
+foreground Fish `nix build` on nerv notifies once when its terminal window is
+unfocused. Sunrise and sunset use NOAA's
 solar calculator algorithm, and the place is the timezone's reference city from
 `zone1970.tab`, never asked for or stored; a zone without a city offers no Sun.
 
@@ -302,6 +313,12 @@ shell package. Neither touches the real state file or the network.
   volume and bounded playback-speed presets. Respect each selected player's
   capabilities; live streams never receive seeking writes. Volume writes stay
   within 0–100%, and speed presets use the player's positive minRate/maxRate range.
+- `seele-shellctl zoom <in|out|reset> [--fine]` steps Hyprland's own
+  `cursor:zoom_factor` and sends the result to `showZoom`, which draws it in
+  the level OSD strip and withdraws that strip at 1x. `zoom.rs` in the tools
+  crate owns the steps, the clamp, the label and the meter ratio; the shell
+  only draws. `tests/screen-zoom.sh` drives the raw helper against a fake
+  `hyprctl` and `tests/screen-zoom.js` runs the shell's callback.
 - Copying network details is an explicit action. Clipboard payloads go through
   process stdin and UI success follows successful process completion.
 - The Audio panel's microphone test runs `seele-mic-test` for exactly as long as
@@ -335,6 +352,18 @@ catcher available. Keep their namespaces in the blur rule in
 `modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant,
 Caffeinate, Ports, Quick Look, Themes and Transfers.
 Changing QML alone cannot add compositor blur.
+
+## Meeting scratchpad
+
+On `nerv` only, `seele.meetingScratchpad.event.id` and `.title` name one
+recurring meeting. Both empty leaves the feature dormant, and `asuka` does not
+import it. The calendar worker writes a private markdown note, with the title,
+attendees and empty who/what/when sections, under `$XDG_STATE_HOME/seele-meetings`
+and opens it from two minutes before the start until the meeting ends. The end
+leaves that file in place for a later local status draft. The guest list is
+requested for that one occurrence and is not cached with the agenda. The note
+stays out of the Obsidian vault, and nothing is sent onward. See
+`seele-shell/projects/integrations/CALENDAR.md`.
 
 ## Validation
 

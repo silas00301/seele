@@ -328,6 +328,14 @@ let
             { description = "Grow the focused window horizontally" }
           )
 
+          -- Use the compositor's history, including a workspace that became
+          -- empty, rather than guessing from the numbered workspace bindings.
+          hl.bind(
+            mod .. " + CTRL + TAB",
+            hl.dsp.focus({ workspace = "previous" }),
+            { description = "Return to the previous workspace" }
+          )
+
           hl.bind(
             mod .. " + TAB",
             hl.dsp.workspace.move({

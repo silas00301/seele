@@ -31,7 +31,10 @@ panel, which holds that choice, the schedule's source and times, and a Use
 current button that gives the preset on screen to either mode. Auto follows a
 schedule at fixed times or at sunrise and sunset; the `seele-theme-auto` user
 service runs the native helper's edge-triggered loop, so a mode chosen by hand
-holds until the next boundary. Sunrise and sunset are reckoned from the system
+holds until the next boundary. While a `nix build` or `nix-build` process is
+running, that scheduled step waits and applies on a later pass; a foreground
+Fish `nix build` notifies once when its terminal window is unfocused. Sunrise
+and sunset are reckoned from the system
 timezone's reference city in the tz database; no location is asked for or
 stored. The native `seele-theme` helper owns the slots, the mode, the schedule
 and publication, and every surface only runs it; the shell reads the applied
@@ -211,6 +214,18 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+Fish reports a command that ran for more than ten seconds and finished while
+its terminal window was not focused. The `command-notifications` Home Manager
+feature in the `common` profile loads the `done` plugin, which times commands,
+compares the focused window at start and end, and stays silent over SSH. On
+`nerv`, `command-notifications-seele` replaces the plugin's own notify-send call:
+the shell never lists a transient notification in its panel and withdraws it when
+its toast retires, which the plugin sets to three seconds, and the plugin raises
+failures as critical, which the shell keeps on screen until dismissed. The hook sends an ordinary notification whose Show action
+focuses the originating Ghostty window through `seele-control vicinae-focus`
+and, inside tmux, selects the command's pane without switching any client. The
+command line reaches the hook as arguments and is never evaluated.
+
 On `nerv`, the case's power key opens Seele Shell's Power panel instead of
 shutting the machine down, and a second press puts the panel away. The
 `power-key` Home Manager feature owns this. Its `seele-power-key` user service
@@ -222,6 +237,26 @@ failure falls back to the old behaviour rather than to a dead key. While the
 session is locked the key does nothing, because the lock screen carries its own
 Power grid. The firmware's hold-to-off override is untouched. See the Seele
 skill's architecture reference for the logind and polkit facts it rests on.
+
+On `nerv`, `Super + scroll` zooms the output under the pointer in and out,
+`Super + Plus` and `Super + Minus` step it, and `Super + 0` resets it. The
+German layout puts `=` on Shift + 0 and Hyprland matches the unshifted symbol,
+so the dedicated + key stands in for it. The `screen-zoom` Home Manager feature
+owns the binds, which also work while locked because the lock screen is
+magnified with everything else. Each runs `seele-shellctl zoom`, whose native
+helper reads Hyprland's `cursor:zoom_factor` back on every step rather than
+keeping a level of its own, and writes it through one `hl.config` call, since a
+Lua configuration refuses `hyprctl keyword`. Steps are quarter octaves for a
+scroll notch and half octaves for a key, clamped from 1x to 8x on one grid, so
+stepping down always reaches exactly 1. The shell's level OSD shows the factor
+and withdraws at 1x; Hyprland magnifies that layer with the rest of the output,
+so it is only legible while the view includes the top edge. Nothing resets the
+zoom at login: a new session and a configuration reload both start at
+Hyprland's default of 1.
+
+On `nerv`, `Super + Ctrl + Tab` returns to the previous workspace through
+Hyprland's native workspace history. `Super + Tab` and `Super + Shift + Tab`
+still move the current workspace to the next and previous monitor.
 
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
@@ -494,6 +529,16 @@ GitHub's web inbox because the public API lacks them; this is the approved SIL-4
 scope. See the Seele skill's `shell-integrations.md` and the shell's
 `projects/github/README.md` for limits, reconciliation and fixture validation.
 
+On `nerv`, `seele-shellctl pr-focus` enters or leaves focus on one configured
+pull request (`SEELE_FOCUS_PULL`, or `seele-shell/focus.json` when that variable
+is unset). While focus is on, the Control Center pins that pull request's check
+rollup and latest review comment; exit clears the pin. The same session defers
+desktop toasts that are not @-mentions and keeps those notifications in the
+inbox, then shows the held toasts when focus ends. @-mentions, including a
+GitHub "mentioned you" summary, still arrive immediately. Focus is not written
+beside notification text, and nothing is posted to chat or email. Entering when
+a branch is pushed or a pull request URL is opened stays out of this slice.
+
 Home Assistant's house icon stays visible before setup. Its panel groups named
 sensor readouts and expandable device controls into Favorites and room cards,
 with a searchable device picker and an output-bounded viewport. It stores the token
@@ -537,6 +582,8 @@ marks it stale and backs off quietly, with no notification and no bar item. The
 shell feature registers Weather in Integration Health; its Settings opens the
 popup unfolded. See `seele-shell/projects/integrations/WEATHER.md` for the
 protocol, presentation, cache bounds and the fake-API and QtTest checks.
+
+On `nerv`, one configured meeting opens a local scratchpad. `seele.meetingScratchpad.event.id` and `.title` name that recurring event; with both empty, nothing is configured. From two minutes before it starts until it ends, the calendar worker writes a private markdown note under `$XDG_STATE_HOME/seele-meetings` with the title, the attendees, and empty Who, What and When sections, and opens it in Neovim. The guest list is fetched for that occurrence only and is not stored in the calendar cache. When the meeting ends, the same file stays where a later status draft can read it, including edits made in the open note. The feature is not imported on `asuka`, the note is not written into the Obsidian vault, and nothing is sent by email or chat. See `modules/features/programs/meeting-scratchpad.nix` and the calendar guide's meeting-scratchpad section.
 
 On `nerv`, the Control Center's Ports tile opens a local TCP listener
 inspector. The resident `seele-ports` worker in the shell submodule's `tools`
@@ -609,14 +656,14 @@ this machine-policy contribution does not reach macOS.
 
 On Linux, `modules/features/desktop/default-applications.nix` is the single
 owner of file-type defaults. It associates images with imv, video and audio with
-mpv, PDFs and EPUBs with zathura, text with the configured Neovim, and a
-directory with Yazi, and it declares the two entries those terminal
+mpv, PDFs and EPUBs with zathura, text (including JSON) with the configured
+Neovim, and directories with Yazi. It declares the two entries those terminal
 applications lack: `seele-editor.desktop` and `seele-files.desktop` open the
 configured terminal through explicit store paths rather than the launching
 process's `PATH`. The Zen feature keeps only the web documents and URL schemes
-it owns and no longer claims `text/plain`, so the two features cannot define the
-same association twice. Each viewer keeps its own feature leaf, its own
-vi-shaped bindings, and a Linux-only portable application. The image entry,
+it owns and claims neither `text/plain` nor `application/json`, so the two
+features cannot define the same association twice. Each viewer keeps its own
+feature leaf, its own vi-shaped bindings, and a Linux-only portable application. The image entry,
 `seele-images.desktop`, opens one picture with its neighboring files in imv,
 starting at the selected picture; multiple selections stay limited to those
 files. Directory navigation remains nonrecursive.

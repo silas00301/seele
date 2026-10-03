@@ -91,12 +91,34 @@ nearest Jujutsu/Git ancestor marker without invoking VCS commands; register `r`
 retains the reference even when the existing clipboard provider is unavailable.
 See the adjacent README and real Neovim fixture for path and clipboard boundaries.
 
+Neovim spell checks prose filetypes (commit and Jujutsu descriptions, Markdown,
+plain text, mail) in `en_us` and `de_de`, and leaves source code alone.
+`modules/packages/_nixvim/spell.lua` sets that up and keeps `zg` words in a
+private `stdpath('data')/spell` file. `german-spell.nix` builds the German spell
+file with `:mkspell` from the frami source Vim's own runtime uses, so nothing is
+downloaded at run time, and `jjdescription-spell.scm` extends nvim-treesitter's
+query, which otherwise leaves a description's subject and body unchecked. See
+the adjacent README for the real-Neovim fixture.
+
 Neovim's `<leader>sr` and `<leader>sR` open grug-far on the current file and the
 working directory, seeded with the word under the cursor or, from Visual mode, a
 literal search for the selection. `modules/packages/_nixvim/replace.lua` builds
 the scope and refuses buffers that are not files; grug-far names ripgrep by store
 path so the portable editor works without one on `PATH`. The replace fixture in
 the same directory drives both mappings through real grug-far and ripgrep.
+
+Neovim's `<leader>cw` / `:TrimWhitespace[!]` explicitly cleans trailing spaces
+and tabs from a buffer or selected line range without saving it. Markdown hard
+breaks are preserved unless `!` is supplied. The in-process helper and real-editor
+fixture live in `modules/packages/_nixvim/`, documented in its README and exposed
+as `checks.<system>.nixvim-whitespace`.
+
+Neovim's event-driven external-file refresh lives in
+`modules/packages/_nixvim/refresh.lua`. The native timestamp/reload engine retains
+ownership of file changes and undo; the helper only selects eligible clean file
+buffers. `modules/packages/nixvim.nix` publishes its isolated real-editor fixture
+as `checks.<system>.nixvim-refresh`; the helper README covers event and opt-out
+boundaries.
 
 ## Deferred modules and active profiles
 
@@ -259,6 +281,38 @@ unreachable here: `+toggle-quick-terminal` landed in Ghostty 1.4.0 and nixpkgs
 pins 1.3.1, and a `global:` keybind needs global-shortcut support Hyprland
 0.55.4 lacks. Retire this feature for `toggle_quick_terminal` once both pins
 move.
+
+`modules/features/programs/screen-zoom.nix` publishes the `screen-zoom` Home
+Manager feature, imported only by the `nerv` profile, and appends five locked
+binds with `lib.mkAfter`: `SUPER + mouse_up` and `SUPER + mouse_down` run
+`seele-shellctl zoom in|out --fine`, the repeating `SUPER + plus` and
+`SUPER + minus` run `zoom in|out`, and `SUPER + 0` runs `zoom reset`. Against
+Hyprland 0.56.2, the version the pinned nixpkgs builds, binds match the
+keysym the configured `de` layout produces without modifiers, which is why
+`plus` stands in for `equal`. `cursor:zoom_factor` is a float from 1 to 10
+whose change animates through the `zoomFactor` animation node, inherited from
+`global`; only the monitor under the pointer is drawn magnified, and the whole
+frame is, layer surfaces and the lock screen included. `cursor:zoom_rigid`,
+`zoom_detached_camera` and `zoom_disable_aa` keep their defaults, so the view
+pans once the pointer nears its edge. The native helper is
+`projects/tools/src/zoom.rs` in the shell submodule: `hyprctl getoption
+cursor:zoom_factor -j` reads the level, `hyprctl eval 'hl.config({ cursor = {
+zoom_factor = … } })'` writes it, and a private advisory lock in
+`$XDG_RUNTIME_DIR` serializes the two so overlapping notches each count. The
+lock holds no level and no state file exists, so nothing can drift from what
+Hyprland draws. Hyprland passes one wheel bind per `binds:scroll_event_delay`,
+left at its 300 ms default. A Lua reload resets every option before re-running
+the configuration and a new session starts from defaults, so the zoom needs no
+reset at login.
+
+`modules/features/programs/meeting-scratchpad.nix` publishes the
+`meeting-scratchpad` Home Manager feature, imported only by the `nerv` profile.
+It names one recurring event through `seele.meetingScratchpad.event.{id,title}`
+and, when either is set, writes `seele-shell/meeting-scratchpad.json` for the
+calendar worker. The note stays in the local state directory. The opener is a
+`writeShellScript` that runs Neovim inside a Ghostty of class
+`org.seele.meeting-scratchpad`, and a `lib.mkAfter` window rule floats that
+class centered. `asuka` does not import it.
 
 Yazi’s `gd`, `go`, and `gp` open Downloads, Documents, and Pictures. The bindings
 use enabled Home Manager XDG user-directory settings, otherwise runtime-home
@@ -511,7 +565,7 @@ polkit needs one more thing before a token works there at all, and it is not in 
 
 Seele Polkit is the PolicyKit authentication agent, packaged by the `seele-shell` submodule flake and exposed through `modules/packages/seele-polkit.nix`, running as the `seele-polkit` user service in place of hyprpolkitagent. A polkit agent cannot drive PAM itself — polkit owns that conversation through its own setuid helper — so this one uses Quickshell's `Quickshell.Services.Polkit`, where `PolkitAgent` registers with the authority and exposes the live request as `flow`. The reason for replacing hyprpolkitagent is one line in its `CPolkitListener::showInfo`, which printed the message to stdout and never passed it to the UI; `showError` did reach the dialog, so failures were visible but pam_u2f's touch request was not, and `polkit-1`'s `u2f sufficient` looked inert even though the touch worked. Quickshell exposes the same text as `flow.supplementaryMessage`, paired with `supplementaryIsError`, so the cue is drawn next to the password field and the two routes through the stack are both visible. Guard every binding on `flow` being null, because it is null whenever nothing is outstanding. polkit hands over one sentence and no field naming the requester, so the dialog lifts the name out of the message: the clause before " is " is an action's own application name and is drawn in the accent, while polkit's generic "Authentication is required to ..." names nobody and stays plain. That needs `Text.StyledText`, so the message has to be markup-escaped before the span is wrapped around it.
 
-Escalation is pointed at that dialog wherever a caller allows it, and the coverage is deliberately partial. `nh` picks its own elevation program, and its `auto` order tries doas then sudo before run0, so `NH_ELEVATION_STRATEGY=run0` is set for Linux in `modules/features/programs/nh.nix` — as a bare name, so it resolves against the running system rather than pinning one build of systemd into a privilege path. Interactive typing on managed Linux is covered by a fish abbreviation expanding `sudo` to `run0`; Darwin and portable Fish retain `sudo`; an abbreviation and not an alias, because run0 is not argument-compatible with sudo and the rewrite has to be visible before it runs. Note that zsh's `initContent` is just `fish`, so fish is the only interactive shell worth configuring. `nerv` runs sudo-rs rather than sudo, from `modules/hosts/nerv/sudo.nix`; it keeps the `sudo` PAM service name and adds `sudo-i`, so the approval stack applies to both unchanged, and enabling it flips `security.sudo.enable` off by itself because the two cannot coexist. Everything that hardcodes `sudo` internally stays on the terminal prompt, and replacing the binary to change that would break `-u`, `-E`, `-n`, and NOPASSWD callers; the shell's YubiKey OSD is the answer for those instead, built to the same card width, glyph, colour, spacing, and screen position as the dialog — anchoring a layer surface to no edge centres it on the output, which is where the dialog centres its own card so a touch request looks the same wherever it comes from. It is the same card without the password field, since a terminal caller owns its own prompt and only the touch is missing.
+Escalation is pointed at that dialog wherever a caller allows it, and the coverage is deliberately partial. `nh` picks its own elevation program, and its `auto` order tries doas then sudo before run0, so `NH_ELEVATION_STRATEGY=run0` is set for Linux in `modules/features/programs/nh.nix` — as a bare name, so it resolves against the running system rather than pinning one build of systemd into a privilege path. Interactive typing on managed Linux is covered by a fish abbreviation expanding `sudo` to `run0`; Darwin and portable Fish retain `sudo`; an abbreviation and not an alias, because run0 is not argument-compatible with sudo and the rewrite has to be visible before it runs. Note that zsh's `initContent` is just `fish`, so fish is the only interactive shell worth configuring. Bash's `bashrcExtra` hands off to fish the same way, which is why the common profile carries the `nix-your-shell` feature: `nix develop` and `nix-shell` source `~/.bashrc` before they apply the environment, so without it the fish they open lacks the shell's packages and variables. The wrapper rewrites `nix develop`, `nix shell` and `nix-shell` to run fish as their command after the environment is in place and leaves every other subcommand, an explicit `--command`, and `nh` alone. Its zsh integration stays off because zsh only bridges to fish. A nested fish inherits `SEELE_SESSION_PICKER_OFFERED`, which the top-level fish exports before it offers `tv sesh` outside tmux, so entering a development shell does not raise the session picker a second time. `nerv` runs sudo-rs rather than sudo, from `modules/hosts/nerv/sudo.nix`; it keeps the `sudo` PAM service name and adds `sudo-i`, so the approval stack applies to both unchanged, and enabling it flips `security.sudo.enable` off by itself because the two cannot coexist. Everything that hardcodes `sudo` internally stays on the terminal prompt, and replacing the binary to change that would break `-u`, `-E`, `-n`, and NOPASSWD callers; the shell's YubiKey OSD is the answer for those instead, built to the same card width, glyph, colour, spacing, and screen position as the dialog — anchoring a layer surface to no edge centres it on the output, which is where the dialog centres its own card so a touch request looks the same wherever it comes from. It is the same card without the password field, since a terminal caller owns its own prompt and only the touch is missing.
 
 `sudo` cannot use that dialog and no amount of agent work changes it: it runs its own PAM conversation on the terminal and offers no hook for a graphical agent. The dialog path for privilege escalation is systemd's `run0`, which authorizes through polkit and therefore lands in this agent with both the key and the password available. It needs no configuration here — `security.polkit.adminIdentities` is `unix-group:wheel`, so the `auth_admin` actions `run0` triggers ask the user to authenticate *as themselves* rather than as root, which is what puts the request on the user's own `u2f_keys`. Do not read `auth_admin` as "authenticate as root" on this host. `sudo` stays installed and unaliased alongside it; aliasing would break `-E`, `-u`, and the non-interactive callers that shell out to it.
 
@@ -736,6 +790,11 @@ not change existing panes’ retention. Capture is limited to 10,000 history row
 soft wraps join, and only an explicit yank changes the terminal clipboard.
 `modules/features/programs/_tmux/README.md` documents the isolated editor and the
 private-server fixture packaged as `checks.<system>.tmux-scrollback`.
+Native prefix + `m` marks a running pane; prefix + `j` / `J` brings that pane
+below / beside the current one, including across windows and sessions. Both
+bindings require a mark rather than accepting an implicit source. The same README
+documents native mark/window lifetime and `checks.<system>.tmux-pane-move`, whose
+private-server fixture checks actual key events and preserved process identity.
 
 Two things the evaluation cannot know are the foreign machine's user and home, so the builder supplies a sentinel `home.homeDirectory` that nothing in the built output may depend on; Home Manager only uses it to derive the relative layout of `home-files`, which the wrapper re-roots at runtime.
 
