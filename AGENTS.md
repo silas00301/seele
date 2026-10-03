@@ -286,6 +286,13 @@ pins, reminders, and a running quiet period survive QML reloads in memory; notif
 text is never written to disk. See the `seele-shell` skill for the protocol
 and tests.
 
+On `nerv`, a focus timer that runs out plays one screen-edge wash in the
+timer's Done green. The wash maps on each output only while it plays, takes no
+keyboard focus, and passes pointer input through an empty layer mask. Pause
+and cancel do not play it. The existing completion notification stays. The cue
+does not read or write Do Not Disturb, so a quiet period synced to the timer
+still ends on the timer leaving `running`.
+
 On `nerv`, `modules/features/system/failure-analysis.nix` attaches an
 `OnFailure=` reporter to installed system services with a systemd generator.
 It reads only the failed invocation's journal, adds local `nix --offline log`
