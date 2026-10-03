@@ -11,10 +11,12 @@
     config.flake.modules.homeManager.codex-broker
     config.flake.modules.homeManager.maintenance
     config.flake.modules.homeManager.seele-shell
+    config.flake.modules.homeManager.command-notifications-seele
     config.flake.modules.homeManager.quicklook
     config.flake.modules.homeManager.theme-switching
     config.flake.modules.homeManager.seele-transfers
     config.flake.modules.homeManager.seele-caffeinate
+    config.flake.modules.homeManager.power-key
     config.flake.modules.homeManager.failure-analysis
     config.flake.modules.homeManager.t3code
     config.flake.modules.homeManager.podman

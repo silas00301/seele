@@ -64,12 +64,46 @@ local function read_saved(path, encoding, source_format)
   end)
   uv.fs_close(fd)
   if not ok then error(data) end
-  if encoding ~= '' and encoding ~= 'utf-8' then
-    local converted = vim.fn.iconv(data, encoding, 'utf-8')
-    if converted == '' and data ~= '' then error('Cannot decode saved file as ' .. encoding) end
+  encoding = encoding ~= '' and encoding or vim.o.encoding
+  local bom = false
+  -- Reject UTF-32 before its UTF-16 prefix: the native converter is not safe
+  -- for these inputs on every supported Neovim build.
+  if data:sub(1, 4) == '\0\0\254\255' or data:sub(1, 4) == '\255\254\0\0' then
+    error('UTF-32 saved files are not supported by SavedDiff')
+  end
+  -- A BOM describes saved bytes even after :set fileencoding changes the
+  -- intended output. Keep UTF-16 markers for the converter's endian detection.
+  for _, mark in ipairs({
+    { '\239\187\191', 'utf-8' },
+    { '\254\255', 'utf-16' }, { '\255\254', 'utf-16le' },
+  }) do
+    if data:sub(1, #mark[1]) == mark[1] then
+      bom, encoding = true, mark[2]
+      if encoding == 'utf-8' then data = data:sub(#mark[1] + 1) end
+      break
+    end
+  end
+  if encoding:match('^ucs%-4') or encoding:match('^utf%-32') then
+    error('UTF-32 saved files are not supported by SavedDiff')
+  end
+  if encoding ~= 'utf-8' then
+    -- Unlike vim.fn.iconv, this API accepts NUL bytes in UTF-16 text.
+    local decoder = encoding
+    local content_size = #data
+    if encoding == 'utf-16' or encoding == 'utf-16le' then
+      if #data % 2 ~= 0 then error('Saved file has an incomplete UTF-16 code unit') end
+      content_size = #data - (bom and 2 or 0)
+      -- Neovim normalizes utf-16be to generic utf-16. Supply an explicit BOM
+      -- even for unmarked text so the decoder cannot assume native endian.
+      if not bom then data = (encoding == 'utf-16' and '\254\255' or '\255\254') .. data end
+      decoder = 'utf-16'
+    end
+    local converted = vim.iconv(data, decoder, 'utf-8')
+    if not converted or (converted == '' and content_size ~= 0) then
+      error('Cannot decode saved file as ' .. encoding)
+    end
     data = converted
   end
-  data = data:gsub('^\239\187\191', '')
   if data:find('\0', 1, true) then error('Binary saved files cannot be compared') end
   local without_crlf = data:gsub('\r\n', '')
   local format = data:find('\r\n', 1, true) and not without_crlf:find('\n', 1, true) and 'dos' or 'unix'
@@ -82,10 +116,10 @@ local function read_saved(path, encoding, source_format)
     error('Saved file exceeds the 20000 line comparison limit')
   end
   if eol then data = data:sub(1, -2) end
-  return vim.split(data, '\n', { plain = true }), eol, format
+  return vim.split(data, '\n', { plain = true }), eol, format, encoding, bom
 end
 
-local function scratch(lines, title, eol, format)
+local function scratch(lines, title, eol, format, encoding, bom)
   local buf = api.nvim_create_buf(false, true)
   session.buffers[#session.buffers + 1] = buf
   vim.bo[buf].bufhidden = 'wipe'
@@ -96,6 +130,8 @@ local function scratch(lines, title, eol, format)
   api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].endofline = eol
   vim.bo[buf].fileformat = format
+  vim.bo[buf].fileencoding = encoding
+  vim.bo[buf].bomb = bom
   vim.bo[buf].modified = false
   vim.bo[buf].modifiable = false
   vim.bo[buf].readonly = true
@@ -121,12 +157,14 @@ local function compare()
   if api.nvim_buf_get_offset(source, current_lines) > limit then
     error('Current buffer exceeds the 2 MiB comparison limit')
   end
-  local lines, eol, format = read_saved(path, vim.bo[source].fileencoding, vim.bo[source].fileformat)
+  local lines, eol, format, encoding, bom = read_saved(path, vim.bo[source].fileencoding, vim.bo[source].fileformat)
   local current = api.nvim_buf_get_lines(source, 0, current_lines, false)
   session = { origin = api.nvim_get_current_win(), winbar = vim.wo.winbar, windows = {}, buffers = {} }
   quiet(function()
-    local saved = scratch(lines, 'Saved on disk', eol, format)
-    local edited = scratch(current, 'Current buffer snapshot', vim.bo[source].endofline, vim.bo[source].fileformat)
+    local saved = scratch(lines, 'Saved on disk', eol, format, encoding, bom)
+    local edited = scratch(current, 'Current buffer snapshot', vim.bo[source].endofline,
+      vim.bo[source].fileformat, vim.bo[source].fileencoding ~= '' and vim.bo[source].fileencoding
+        or vim.o.encoding, vim.bo[source].bomb)
     -- New tab isolates native diff options/folding from every existing window.
     vim.cmd('keepalt tab split')
     session.windows[1] = api.nvim_get_current_win()
@@ -138,7 +176,9 @@ local function compare()
       api.nvim_win_call(win, function()
         local buf = api.nvim_win_get_buf(win)
         vim.wo.winbar = (i == 1 and 'Saved on disk' or 'Current buffer snapshot')
-          .. ' [' .. vim.bo[buf].fileformat .. ', '
+          .. ' [' .. (i == 1 and 'decoded as ' or 'write as ') .. vim.bo[buf].fileencoding
+          .. ', ' .. (vim.bo[buf].bomb and 'BOM' or 'no BOM')
+          .. ', ' .. vim.bo[buf].fileformat .. ', '
           .. (vim.bo[buf].endofline and 'final newline' or 'no final newline') .. ']  q: close'
         vim.cmd('diffthis')
       end)

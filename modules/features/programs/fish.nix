@@ -1,12 +1,22 @@
 { ... }:
 let
   homeModule =
-    { config, lib, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     {
       programs.fish = {
         enable = true;
         functions = {
-          gitignore = "curl -sL https://www.toptal.com/developers/gitignore/api/$argv";
+          gitignore = {
+            description = "Print gitignore templates without changing any files";
+            body = builtins.replaceStrings [ "@curl@" ] [ "${pkgs.curl}/bin/curl" ] (
+              builtins.readFile ./_fish/gitignore.fish
+            );
+          };
           mkcd = {
             description = "Create and enter one directory";
             body = ''
@@ -61,7 +71,11 @@ let
             source $script
           end
 
-          if not set -q TMUX
+          # Offer the session picker once per terminal. A shell nested inside
+          # this one -- `nix develop` keeps Fish through nix-your-shell -- inherits
+          # the marker and opens straight into the environment it was asked for.
+          if not set -q TMUX; and not set -q SEELE_SESSION_PICKER_OFFERED
+            set -gx SEELE_SESSION_PICKER_OFFERED 1
             tv sesh
           end
         '';
@@ -121,6 +135,18 @@ in
   perSystem =
     { pkgs, ... }:
     {
+      checks.fish-gitignore =
+        pkgs.runCommand "fish-gitignore"
+          {
+            nativeBuildInputs = [
+              pkgs.fish
+              pkgs.python3
+            ];
+          }
+          ''
+            python3 ${./_fish/test_gitignore.py} ${./_fish/gitignore.fish} fish
+            touch "$out"
+          '';
       checks.fish-edit =
         pkgs.runCommand "fish-edit"
           {
@@ -162,6 +188,7 @@ in
       "atuin"
       "bat"
       "bottom"
+      "command-notifications"
       "direnv"
       "eza"
       "fd"
@@ -174,6 +201,7 @@ in
       "jq"
       "jujutsu"
       "lazygit"
+      "nix-your-shell"
       "nixvim"
       "ripgrep"
       "sesh"
