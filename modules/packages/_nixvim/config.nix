@@ -18,6 +18,7 @@ in
       flavour = catppuccin.flavor;
       transparent_background = false;
       integrations = {
+        grug_far = true;
         harpoon = true;
         noice = true;
         notify = true;
@@ -62,6 +63,12 @@ in
   ];
 
   keymaps = [
+    {
+      mode = "n";
+      key = "<leader>cf";
+      action = "<cmd>FormatToggle<CR>";
+      options.desc = "Toggle automatic formatting";
+    }
     {
       mode = "n";
       key = "<leader>cs";
@@ -218,6 +225,7 @@ in
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
     dofile("${./copy-reference.lua}").setup()
+    dofile("${./replace.lua}").setup()
     dofile("${./spell.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")
@@ -246,6 +254,8 @@ in
         end
       end, { desc = "Open GitHub dashboard" })
     end
+
+    dofile("${./line-origin.lua}").setup()
   '';
 
   plugins = {
@@ -277,6 +287,22 @@ in
             "diff"
           ];
           lualine_x = [
+            {
+              __unkeyed-1.__raw = ''
+                function()
+                  local formatter = require("lsp-format")
+                  if formatter.disabled then
+                    return "format off"
+                  end
+                  for _, filetype in ipairs(vim.split(vim.bo.filetype, ".", { plain = true })) do
+                    if formatter.disabled_filetypes[filetype] then
+                      return "format off"
+                    end
+                  end
+                  return ""
+                end
+              '';
+            }
             {
               __unkeyed-1.__raw = ''
                 require("noice").api.statusline.mode.get
@@ -314,6 +340,13 @@ in
     };
 
     rainbow-delimiters.enable = true;
+
+    grug-far = {
+      enable = true;
+      # Name ripgrep by store path so the portable editor replaces on a
+      # machine that has none on PATH.
+      settings.engines.ripgrep.path = lib.getExe pkgs.ripgrep;
+    };
 
     hunk.enable = true;
 
@@ -609,7 +642,7 @@ in
         notify.enabled = true;
         lsp.override = {
           "cmp.entry.get_documentation" = true;
-          "vim.lsp.util_convert_input_to_markdown_lines" = true;
+          "vim.lsp.util.convert_input_to_markdown_lines" = true;
           "vim.lsp.util.stylize_markdown" = true;
         };
         popupmenu = {
@@ -671,6 +704,8 @@ in
       enable = true;
       autoEnableSources = true;
       settings = {
+        preselect = "cmp.PreselectMode.None";
+        completion.completeopt = "menu,menuone,noselect";
         sources = [
           { name = "nvim_lsp"; }
           { name = "path"; }
@@ -686,7 +721,6 @@ in
         window = {
           completion = {
             scrollbar = false;
-            completeopt = "menu,menuone,preview,noselect";
             winhighlight = "Normal:Pmenu,FloatBorder:Pmenu,Search:None";
             col_offset = -3;
             side_padding = 0;
@@ -715,22 +749,10 @@ in
         };
         mapping = {
           "<CR>" = ''
-            cmp.mapping({
-              i = function(fallback)
-                if cmp.visible() then
-                  cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false })
-                else
-                  fallback()
-                end
-              end,
-              s = cmp.mapping.confirm({ 
-                select = true 
-              }),
-              c = cmp.mapping.confirm({ 
-                behavior = cmp.ConfirmBehavior.Replace, 
-                select = false
-              })
-            })
+            cmp.mapping(
+              cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false }),
+              { "i", "s", "c" }
+            )
           '';
           "<Tab>" = ''
             cmp.mapping(

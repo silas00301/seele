@@ -1,5 +1,19 @@
 # Neovim helpers
 
+## Automatic formatting
+
+Press **Space c f** to toggle automatic formatting for the editor session. The
+statusline shows **format off** while the active buffer is affected; otherwise
+it stays quiet. Toggling does not change text. `:FormatDisable FILETYPE` and
+`:FormatEnable FILETYPE` keep the plugin’s native per-filetype controls, and
+`:FormatEnable!` resets all disabled states. These settings are session-local.
+
+Validate the mapping and status with the real lsp-format plugin:
+
+```sh
+NVIM=/path/to/nvim LSP_FORMAT_DIR=/path/to/lsp-format.nvim python3 modules/packages/_nixvim/test-format-control.py
+```
+
 ## Compare unsaved text with the saved file
 
 Press **Space c s** (`<leader>cs`) or run `:SavedDiff`. A dedicated tab shows the
@@ -13,10 +27,13 @@ and deleting either snapshot clean up its partner too. Only one comparison is
 open at a time; close and reopen it to take fresh snapshots, including external
 changes to the saved file. The comparison never saves a file or changes cwd.
 
-The headers show line-ending format and whether the final newline is present,
-since native line diffs do not highlight final-newline differences. Saved bytes
-are decoded using the original buffer's file encoding. The helper rejects
-unnamed/special buffers, binary text, non-regular or unreadable saved files, and
+The headers show saved decoding and intended output encodings, BOM state,
+line-ending format and final-newline state, since native line diffs hide these
+metadata-only changes. Unicode BOMs identify saved UTF-8/16 bytes independently
+of the buffer's intended output encoding; without a BOM, decoding uses the
+buffer's selected encoding (or Neovim's internal encoding when unset). UTF-32
+is explicitly unsupported because the native converter is unsafe on some Neovim
+builds. The helper rejects unnamed/special buffers, binary text, non-regular or unreadable saved files, and
 either side larger than 2 MiB or 20,000 lines. Scratch content has no swap or
 persistent undo, never runs modelines or file-reading/FileType hooks, and is
 wiped on close.
@@ -32,6 +49,79 @@ preservation, diff isolation, repeated invocation and window/buffer cleanup,
 read-only snapshots, external changes, line endings, modeline-looking text,
 unusual filenames, FIFO and error paths. Run as an ordinary user so the
 unreadable-file fixture can exercise permission denial.
+
+## Show where a line came from
+
+Press **Space b** (`<leader>b`) or run `:LineOrigin` to see which change last
+touched the cursor line: its short id, author, relative and absolute date and
+full description, in a small popup below the line. In Visual mode, or with an Ex
+range such as `:12,18LineOrigin`, the popup holds one section per distinct
+change, in the order the lines appear, each naming its lines. The popup takes
+the keyboard; the footer lists its actions, which apply to the section under the
+cursor:
+
+- **y** copies the id to the unnamed register and the clipboard provider: the
+  full Jujutsu change id, which survives rewrites, or the Git commit hash.
+- **Enter** or **d** opens the change's diff (`jj show --git` or `git show`) in a
+  read-only scratch tab, at this file's part of it; **q** closes it.
+- **p** steps to the version of that line before the change: it annotates the
+  change's parent and shows what the line replaced, or the line it was inserted
+  after. Press it again to keep walking back.
+- **q** or **Escape** closes the popup and returns to the source window.
+
+Short ids are drawn as Jujutsu draws them, unique prefix first and the rest
+dimmed. Highlights link to standard groups (`Special`, `Identifier`, `Comment`,
+`Title`, `DiagnosticHint`, `DiagnosticWarn`, `FloatBorder`) and are restored on
+every `ColorScheme`, so they follow the theme switcher's presets.
+
+In a Jujutsu repository, colocated or not, the helper runs `jj file annotate`;
+in a plain Git repository it runs `git blame --porcelain`. The nearest `.jj` or
+`.git` marker above the file decides, preferring Jujutsu at a colocated root,
+and a colocated repository falls back to Git when `jj` is not installed. Both
+commands come from the user's `PATH`, so they match the repository's own tools.
+Outside a repository, for a file that was never saved, or one the VCS does not
+track, the helper says so instead of opening a popup.
+
+Annotating never records anything. jj runs with `--ignore-working-copy`: without
+it, any jj command snapshots the working copy, which writes a new working-copy
+commit and operation, can start tracking new files, and in a colocated repository
+also imports Git's `HEAD` and refs. A read-only question should not create history,
+and should not race another jj process that is rewriting the repository.
+Instead the helper reads the saved file and maps it onto jj's last recorded
+working copy with `vim.diff`: a saved line jj has not recorded yet is attributed
+to the working-copy change, as jj itself will do at its next snapshot, and the
+section says so. Git annotates the saved bytes directly through
+`--contents -`, with optional locks off so it never refreshes the index. Lines
+edited in the buffer since the last save are mapped the same way and shown as
+**Not saved yet**, never attributed to a change; Git's saved but uncommitted
+lines read **Not committed yet**. A buffer that is unmodified but differs from
+the disk is refused, since its text is older than the save rather than newer.
+
+Every command is an argv list run with `vim.system`, never through a shell or a
+blocking `system()`. Each one has `--no-pager` and forces colour off (`--color
+never`, `-c color.ui=never`); Git also disables signature display and external
+diff drivers and leaves non-ASCII paths unquoted, and jj's diff skips signature verification. Output is
+bounded (8 MiB for annotations, 1 MiB for metadata, 4 MiB for a diff, which is
+truncated with a note) and each command times out after 15 seconds. A result is
+discarded when the buffer changed while it ran or a newer request or popup action
+has started. Files and buffers over 2 MiB or 20,000 lines are refused, and a
+range spanning more than 50 changes shows the first 50. Metadata text is shown
+as text with control characters removed.
+
+Run the real-repository fixture with Neovim, `jj` and `git` on `PATH` (or
+`NVIM=/path/to/nvim`):
+
+```sh
+python3 modules/packages/_nixvim/test-line-origin.py
+```
+
+It builds throwaway colocated and native Jujutsu repositories and a Git
+repository with fixed authors and dates and a hostile pager/colour/signature
+configuration. It drives the real normal and visual mappings and checks exact
+popup text, range grouping, unsaved and unrecorded lines, parent stepping, copy
+and diff actions, stale-result handling, highlight restoration, refusals and the
+exact argv of every command. It then verifies that the jj operation log, both
+`.git` directories and the saved file are unchanged.
 
 ## Copy source reference
 
@@ -71,6 +161,28 @@ It uses temporary directories and a private clipboard callback, exercises normal
 and visual mappings, range semantics, project boundaries and hostile filenames,
 checks provider failure/fallback, and verifies unchanged repository data and editor
 state. A real desktop/terminal clipboard still needs validation in that session.
+
+## Search and replace
+
+`<leader>sr` opens grug-far on the current file and `<leader>sR` on the working
+directory, following the lowercase-buffer, uppercase-workspace split of the
+`sd`/`sD` and `ss`/`sS` searches. Normal mode seeds the search with the word under
+the cursor; Visual mode seeds a `--fixed-strings` search with the selection, and a
+multi-line selection adds `--multiline`. Every match is previewed before grug-far's
+own replace action writes anything. Unnamed and special buffers, and filenames
+containing control characters, are refused with a warning instead of widening the
+scope to the whole directory. Spaces in the file scope are escaped the way
+grug-far's paths input expects.
+
+Run the real fixture with Neovim, ripgrep and a grug-far.nvim checkout:
+
+```sh
+GRUG_FAR=/path/to/grug-far.nvim python3 modules/packages/_nixvim/test-replace.py
+```
+
+It replaces in a temporary project and checks the result on disk: the file scope
+leaves another file's match untouched, the directory scope reaches both, a
+charwise selection becomes a literal search, and non-file buffers open nothing.
 
 ## Persistent undo
 
@@ -116,3 +228,17 @@ It isolates every XDG directory and walks each buffer with `]s`/`]S`, so syntax
 and Treesitter decide the result exactly as they do on screen. It covers both
 languages and their regions, prose versus code, the description query, and a
 `zg` word that a later session accepts.
+
+## Completion confirmation
+
+Completion suggestions start unselected. Tab and Shift-Tab select a candidate;
+Enter accepts only that explicit selection. With an unselected or closed popup,
+Enter keeps its normal action instead of swallowing a newline or accepting the
+first suggestion. The same confirmation policy covers Insert, Select and command
+modes.
+
+Run the isolated real-plugin fixture with Neovim and nvim-cmp available:
+
+```sh
+NVIM=/path/to/nvim CMP_DIR=/path/to/nvim-cmp python3 modules/packages/_nixvim/test-completion.py
+```
