@@ -156,6 +156,7 @@ mouse-button remap as equivalent: browser links must retain their action.
 
 ## Development experience
 
+- Show a compact exit code after a failed shell command, with per-stage pipeline statuses when the shell supplies them. Successful prompts stay quiet, and transient history keeps its existing compact mark.
 - Favor two-space indentation where the language or formatter permits it, relative line numbers, smart-case search, and smart indentation.
 - Provide rich language intelligence: LSP, inlay hints, Treesitter, formatting, snippets, diagnostics, and contextual documentation.
 - Keep editor diagnostics and symbols in the existing Telescope search layer: lowercase `sd`/`ss` after the leader search the buffer/document, uppercase `sD`/`sS` search the workspace. Search and replace follows the same split with `sr`/`sR`, and shows every match before anything is written. Give shortcuts readable which-key descriptions.
