@@ -72,6 +72,28 @@ and visual mappings, range semantics, project boundaries and hostile filenames,
 checks provider failure/fallback, and verifies unchanged repository data and editor
 state. A real desktop/terminal clipboard still needs validation in that session.
 
+## Search and replace
+
+`<leader>sr` opens grug-far on the current file and `<leader>sR` on the working
+directory, following the lowercase-buffer, uppercase-workspace split of the
+`sd`/`sD` and `ss`/`sS` searches. Normal mode seeds the search with the word under
+the cursor; Visual mode seeds a `--fixed-strings` search with the selection, and a
+multi-line selection adds `--multiline`. Every match is previewed before grug-far's
+own replace action writes anything. Unnamed and special buffers, and filenames
+containing control characters, are refused with a warning instead of widening the
+scope to the whole directory. Spaces in the file scope are escaped the way
+grug-far's paths input expects.
+
+Run the real fixture with Neovim, ripgrep and a grug-far.nvim checkout:
+
+```sh
+GRUG_FAR=/path/to/grug-far.nvim python3 modules/packages/_nixvim/test-replace.py
+```
+
+It replaces in a temporary project and checks the result on disk: the file scope
+leaves another file's match untouched, the directory scope reaches both, a
+charwise selection becomes a literal search, and non-file buffers open nothing.
+
 ## Persistent undo
 
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.

@@ -17,6 +17,7 @@ in
       flavour = catppuccin.flavor;
       transparent_background = false;
       integrations = {
+        grug_far = true;
         harpoon = true;
         noice = true;
         notify = true;
@@ -209,6 +210,7 @@ in
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
     dofile("${./copy-reference.lua}").setup()
+    dofile("${./replace.lua}").setup()
 
     local gh_dash = vim.fn.exepath("gh-dash")
     if gh_dash ~= "" then
@@ -304,6 +306,13 @@ in
     };
 
     rainbow-delimiters.enable = true;
+
+    grug-far = {
+      enable = true;
+      # Name ripgrep by store path so the portable editor replaces on a
+      # machine that has none on PATH.
+      settings.engines.ripgrep.path = lib.getExe pkgs.ripgrep;
+    };
 
     hunk.enable = true;
 

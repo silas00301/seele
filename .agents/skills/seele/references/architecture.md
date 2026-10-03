@@ -77,6 +77,13 @@ nearest Jujutsu/Git ancestor marker without invoking VCS commands; register `r`
 retains the reference even when the existing clipboard provider is unavailable.
 See the adjacent README and real Neovim fixture for path and clipboard boundaries.
 
+Neovim's `<leader>sr` and `<leader>sR` open grug-far on the current file and the
+working directory, seeded with the word under the cursor or, from Visual mode, a
+literal search for the selection. `modules/packages/_nixvim/replace.lua` builds
+the scope and refuses buffers that are not files; grug-far names ripgrep by store
+path so the portable editor works without one on `PATH`. The replace fixture in
+the same directory drives both mappings through real grug-far and ripgrep.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:
