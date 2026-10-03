@@ -211,6 +211,18 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+On `nerv`, the case's power key opens Seele Shell's Power panel instead of
+shutting the machine down, and a second press puts the panel away. The
+`power-key` Home Manager feature owns this. Its `seele-power-key` user service
+holds a logind `handle-power-key` block inhibitor for as long as the graphical
+session runs, and its `XF86PowerOff` binding runs the same toggle as
+`Super + Escape`. logind.conf is left alone on purpose. The greeter, a bare TTY,
+and a session whose unit polkit refused keep logind's clean poweroff, so a
+failure falls back to the old behaviour rather than to a dead key. While the
+session is locked the key does nothing, because the lock screen carries its own
+Power grid. The firmware's hold-to-off override is untouched. See the Seele
+skill's architecture reference for the logind and polkit facts it rests on.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
@@ -410,6 +422,8 @@ On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control
 Center module, conditional progress bar item, and provider-neutral contract.
+The panel's layershell namespace is `seele-shell-transfers`, and it belongs in
+the Hyprland blur rule.
 The service selects only currently available targets owned by the logged-in
 Tailscale user. It retains seven days of metadata, never file contents; clearing
 history never deletes files. `asuka` has no transfer service. See the submodule's
@@ -508,8 +522,11 @@ suggestions and Next fit weigh those hours and, once Google Calendar is set up,
 the selected calendars' busy time. The planner reads that calendar and never
 writes it; Open in Google Calendar hands a prefilled draft to Google's editor.
 Colour Lab accepts opaque sRGB colours and can explicitly use the
-last screen-picked colour. The Control Center groups utility tiles in two columns
-and scrolls within the focused output; Vicinae exposes each workbench directly.
+last screen-picked colour. The Control Center sets its utilities -- System
+Health, Transfers, Resources, Network activity, Ports and the three workbenches
+-- four to a row as glyph tiles under the module tiles, fits the focused output
+and scrolls only on an output too short for it; Vicinae exposes each workbench
+directly. Every Control Center module is reachable from the keyboard.
 
 Resources and Network activity are local, read-only shell panels. Their native
 workers sample only while the owning panel is open and retain bounded histories
@@ -533,6 +550,14 @@ an existing backup directory cannot redirect the operation. All launch declarati
 validate before configuration publication. See
 `seele-shell/projects/config-tools/README.md` before changing these boundaries.
 
+On Linux, the Brave feature contributes an owned managed policy file at
+`/etc/brave/policies/managed/seele.json`, imported by the NixOS `linux` profile.
+It disables product analytics and anonymous usage pings through
+`BraveP3AEnabled` and `BraveStatsPingEnabled`. Both policies apply after Brave
+restarts; `brave://policy` reports their effective state. The Home Manager
+feature still owns the browser package, extensions and Qt integration, and
+this machine-policy contribution does not reach macOS.
+
 On Linux, `modules/features/desktop/default-applications.nix` is the single
 owner of file-type defaults. It associates images with imv, video and audio with
 mpv, PDFs and EPUBs with zathura, text with the configured Neovim, and a
@@ -542,9 +567,17 @@ configured terminal through explicit store paths rather than the launching
 process's `PATH`. The Zen feature keeps only the web documents and URL schemes
 it owns and no longer claims `text/plain`, so the two features cannot define the
 same association twice. Each viewer keeps its own feature leaf, its own
-vi-shaped bindings, and a Linux-only portable application.
+vi-shaped bindings, and a Linux-only portable application. The image entry,
+`seele-images.desktop`, opens one picture with its neighboring files in imv,
+starting at the selected picture; multiple selections stay limited to those
+files. Directory navigation remains nonrecursive.
 
 Theme ownership is split deliberately. Catppuccin themes supported application ports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, fonts, and active targets without a Catppuccin module. Qt's qt5ct and qt6ct settings reuse the Catppuccin Papirus icon theme. `stylix.autoEnable` stays off, and each platform profile lists its active Stylix targets explicitly so dormant applications do not add configuration or packages. Seele QML clients receive the selected palette through generated `theme.json`; `seele-shell/projects/shared/Palette.js` is their single unmanaged fallback and shared assignment path. The pointer belongs to Stylix as well: `modules/features/themes/cursor.nix` derives the `catppuccin-cursors` output and theme name from the shared flavor and accent and sets `stylix.cursor`, which is not a target and therefore applies while `stylix.autoEnable` is off, reaching GTK, Qt/KDE, and X11 through the targets already listed. Its Home Manager module additionally gives Hyprland the theme in the compositor's own environment, and its NixOS module installs the theme system-wide, points the `default` cursor theme at it, and exports `XCURSOR_THEME`/`XCURSOR_SIZE`, because the greeter runs before any user profile exists. One declared size covers every surface. macOS draws its own pointer and stays untouched.
+
+On `asuka`, the Homebrew feature sets `HOMEBREW_NO_ANALYTICS=1` both in the
+system shell environment and in nix-darwin's `homebrew.onActivation.extraEnv`.
+The latter covers privileged `brew bundle` calls, which do not inherit the
+user's shell environment.
 
 ## Native runtime ownership
 
@@ -587,8 +620,8 @@ start no subprocesses, retain no policy state and make no security decisions.
 Spicetify's accent adapter requires browser localStorage. Upstream applications
 such as Proton VPN retain their own runtimes. Python/Node fixture tools remain
 build/test dependencies of native services, with no first-party Python workers.
-Pi/OpenCode lifecycle adapters call the shared native `seele-agent-hook`; they
-never write state files themselves. Native lock/greeter/Notes launchers live in
+Pi/OpenCode lifecycle adapters and Cursor's system-layer hooks call the shared
+native `seele-agent-hook`; the adapters never write state files themselves. Native lock/greeter/Notes launchers live in
 `projects/tools/src/launch.rs`. A detached lock must survive launcher completion
 and confirmation failure; run the synthetic launcher fixtures after changing
 subprocess ownership. Never exercise these tests against a real desktop.
@@ -622,14 +655,16 @@ After every repository change, review `AGENTS.md` and `.agents/skills/seele/` ag
 ## Dependency update CI
 
 Dependabot schedules weekly Nix flake updates. `.github/workflows/dependabot-nix.yml`
-checks out submodules and validates the native Linux closure for same-repository
-Dependabot PRs. Failed builds may invoke Copilot when `COPILOT_GITHUB_TOKEN` is
-configured; that credential is an external setup requirement, never a repository
-file. Repairs may change ordinary `.nix` sources only, with staged changes,
-lock changes and submodule changes rejected. Jujutsu owns the local repair;
-GitHub's `createCommitOnBranch` API publishes a signed commit with an expected-head
-guard. Never put a personal signing key on the runner. Darwin needs separate
-native validation.
+runs from `main` through `pull_request_target`. It builds `nerv` only for a
+same-repository Dependabot pull request whose base is `main` and whose diff is
+`flake.lock` alone, using main's Nix sources plus that lock. The build job is
+`contents: read` and clears GitHub tokens before Nix. When that build fails,
+Copilot may edit ordinary `*.nix` files in a later read-only job; Git metadata
+is restored before Nix runs again, still with tokens cleared. `contents: write`
+belongs only to the publish job, which sends those files with
+`createCommitOnBranch` and does not run Nix or Copilot. `COPILOT_GITHUB_TOKEN`
+is an external setup requirement, never a repository file. Darwin needs
+separate native validation.
 
 ## Validation
 
@@ -665,7 +700,7 @@ nix build .#nixosConfigurations.nerv.config.system.build.toplevel --no-link --no
 nix build .#darwinConfigurations.asuka.system --no-link --no-write-lock-file                     # Darwin
 ```
 
-Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary.
+Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary. `nix flake show` and `nix flake check` evaluate `darwinConfigurations.asuka`, so on Linux they stop on that Catppuccin palette mismatch. The Linux host check that completes is the `nixosConfigurations.nerv` derivation above.
 
 Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
 
@@ -687,3 +722,7 @@ and explicit repair confirmation are enforced by the service as well as the UI.
 AI analysis is explicit and goes through the shared Codex broker, with repair IDs
 restricted to the finding's registered actions. It never executes a proposal.
 See `seele-shell/projects/maintenance/README.md` for source policy and validation.
+
+## Cursor Cloud specific instructions
+
+Cloud agents run on x86_64 Linux without systemd. The environment installs Determinate Nix and starts `nix-daemon` before work begins, and `install` checks out the `seele-shell` submodule. Use the Validation commands. On this machine, the Linux host check is the `nerv` derivation eval. `nix flake show` and `nix flake check` stop on the Darwin palette boundary above. Do not activate either host.

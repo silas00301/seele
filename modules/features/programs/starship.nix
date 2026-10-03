@@ -101,6 +101,18 @@ let
             Void = " ";
             Windows = "󰍲 ";
           };
+          # Keep successful prompts quiet while naming command failures.
+          # Fish supplies each pipeline stage, including a failure before a
+          # successful final command; other shells may supply only the exit.
+          status = {
+            disabled = false;
+            symbol = "✘";
+            format = "[$symbol$status]($style) ";
+            pipestatus = true;
+            pipestatus_format = "[✘$pipestatus]($style) ";
+            pipestatus_segment_format = "$status";
+          };
+
           git_state.disabled = true;
           git_commit.disabled = true;
           git_metrics.disabled = true;

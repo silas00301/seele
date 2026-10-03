@@ -15,6 +15,7 @@
     config.flake.modules.homeManager.theme-switching
     config.flake.modules.homeManager.seele-transfers
     config.flake.modules.homeManager.seele-caffeinate
+    config.flake.modules.homeManager.power-key
     config.flake.modules.homeManager.failure-analysis
     config.flake.modules.homeManager.t3code
     config.flake.modules.homeManager.podman
