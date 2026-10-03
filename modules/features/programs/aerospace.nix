@@ -20,6 +20,11 @@ let
           ctrl-alt-k = "focus up";
           ctrl-alt-l = "focus right";
 
+          # Keep window state beside the Ctrl+Alt directional controls. This is
+          # AeroSpace fullscreen within the workspace, not a macOS Space.
+          ctrl-alt-f = "fullscreen";
+          ctrl-alt-space = "layout floating tiling";
+
           # Window Moving
           ctrl-alt-shift-h = "move left";
           ctrl-alt-shift-j = "move down";
