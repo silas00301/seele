@@ -163,6 +163,105 @@ vim.cmd.SavedDiff()
 local latin = api.nvim_win_get_buf(api.nvim_tabpage_list_wins(0)[1])
 eq(api.nvim_buf_get_lines(latin, 0, -1, false), {'caf\195\169'})
 vim.cmd.SavedDiffClose(); vim.bo.fileencoding = 'utf-8'; vim.bo.modified = false
+-- Metadata-only changes remain visible without touching the source or file.
+-- BOMs select the saved decoder even when the intended output has changed.
+local metadata = {
+  {'\239\187\191hi\n', 'utf-8', true, 'utf-8', false},
+  {'hi\n', 'utf-8', false, 'utf-8', true},
+  {'\239\187\191hi\n', 'utf-8', true, 'utf-8', true},
+  {'\239\187\191hi\n', 'utf-8', true, 'ucs-4', true},
+  {'hi\n', 'utf-8', false, '', false},
+  {'\255\254h\0i\0\n\0', 'utf-16le', true, 'utf-8', false},
+  {'\254\255\0h\0i\0\n', 'utf-16', true, 'utf-16', true},
+  {'h\0i\0\n\0', 'utf-16le', false, 'utf-16le', false},
+  {'\0h\0i\0\n', 'utf-16', false, 'utf-16', false},
+}
+for index, case in ipairs(metadata) do
+  local filename = root .. '/metadata-' .. index
+  write(filename, case[1])
+  vim.cmd('enew!'); api.nvim_buf_set_name(0, filename)
+  api.nvim_buf_set_lines(0, 0, -1, false, {'hi'})
+  vim.bo.fileencoding, vim.bo.bomb = case[4], case[5]
+  local sourcebuf, sourcewin = api.nvim_get_current_buf(), api.nvim_get_current_win()
+  local tick, modified = vim.b.changedtick, vim.bo.modified
+  vim.cmd.SavedDiff()
+  eq(count(), 2)
+  local pair = api.nvim_tabpage_list_wins(0)
+  for side, win in ipairs(pair) do
+    local buf = api.nvim_win_get_buf(win)
+    eq(api.nvim_buf_get_lines(buf, 0, -1, false), {'hi'}, 'metadata case ' .. index .. ', side ' .. side)
+    local expected_encoding = side == 1 and case[2] or (case[4] ~= '' and case[4] or 'utf-8')
+    local expected_bom = case[5]
+    if side == 1 then expected_bom = case[3] end
+    eq(vim.bo[buf].bomb, expected_bom)
+    eq(vim.bo[buf].fileencoding, expected_encoding)
+    local heading = vim.wo[win].winbar
+    assert(heading:find((side == 1 and 'decoded as ' or 'write as ') .. expected_encoding, 1, true))
+    assert(heading:find(', ' .. (expected_bom and 'BOM' or 'no BOM') .. ',', 1, true))
+  end
+  vim.cmd.SavedDiffClose()
+  eq(api.nvim_get_current_win(), sourcewin)
+  eq(api.nvim_get_current_buf(), sourcebuf)
+  eq(vim.b.changedtick, tick); eq(vim.bo.modified, modified)
+  eq(vim.bo.fileencoding, case[4]); eq(vim.bo.bomb, case[5])
+  eq(api.nvim_buf_get_lines(sourcebuf, 0, -1, false), {'hi'})
+  eq(read(filename), case[1])
+end
+-- Exercise non-ASCII and surrogate pairs through both byte orders.
+for index, bytes in ipairs({
+  '\254\255\000\099\000\097\000\102\000\233\000\032\115\043\000\032\216\061\222\000\000\010',
+  '\255\254\099\000\097\000\102\000\233\000\032\000\043\115\032\000\061\216\000\222\010\000',
+}) do
+  local filename = root .. '/unicode-utf16-' .. index
+  write(filename, bytes); vim.cmd('enew!'); api.nvim_buf_set_name(0, filename)
+  vim.bo.fileencoding = 'utf-8'
+  api.nvim_buf_set_lines(0, 0, -1, false, {'café 猫 😀'})
+  vim.cmd.SavedDiff(); eq(count(), 2)
+  for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+    eq(api.nvim_buf_get_lines(api.nvim_win_get_buf(win), 0, -1, false), {'café 猫 😀'})
+  end
+  vim.cmd.SavedDiffClose(); eq(read(filename), bytes)
+end
+-- An empty UTF-16 document can contain just its marker or no bytes at all.
+for index, case in ipairs({
+  {'\254\255', 'utf-16', true}, {'\255\254', 'utf-16le', true},
+  {'', 'utf-16', false}, {'', 'utf-16le', false},
+}) do
+  local filename = root .. '/empty-utf16-' .. index
+  write(filename, case[1]); vim.cmd('enew!'); api.nvim_buf_set_name(0, filename)
+  vim.bo.fileencoding = case[2]
+  vim.cmd.SavedDiff(); eq(count(), 2)
+  local savedbuf = api.nvim_win_get_buf(api.nvim_tabpage_list_wins(0)[1])
+  eq(api.nvim_buf_get_lines(savedbuf, 0, -1, false), {''})
+  eq(vim.bo[savedbuf].bomb, case[3]); eq(vim.bo[savedbuf].fileencoding, case[2])
+  vim.cmd.SavedDiffClose(); eq(read(filename), case[1])
+end
+-- One marker is metadata; a second U+FEFF is actual text, never stripped.
+for index, bytes in ipairs({
+  '\239\187\191\239\187\191hi\n',
+  '\255\254\255\254h\0i\0\n\0',
+  '\254\255\254\255\0h\0i\0\n',
+}) do
+  local filename = root .. '/double-bom-' .. index
+  write(filename, bytes)
+  vim.cmd('enew!'); api.nvim_buf_set_name(0, filename); vim.bo.fileencoding = 'utf-8'
+  vim.cmd.SavedDiff(); eq(count(), 2)
+  local savedbuf = api.nvim_win_get_buf(api.nvim_tabpage_list_wins(0)[1])
+  eq(api.nvim_buf_get_lines(savedbuf, 0, -1, false), {'\239\187\191hi'})
+  vim.cmd.SavedDiffClose(); eq(read(filename), bytes)
+end
+-- Unsupported UTF-32 and partial UTF-16 fail before entering the converter.
+for index, bytes in ipairs({'\0\0\254\255\0\0\0h', '\255\254\0\0h\0\0\0'}) do
+  local filename = root .. '/unsupported-' .. index
+  write(filename, bytes)
+  vim.cmd('enew!'); api.nvim_buf_set_name(0, filename); vim.bo.fileencoding = 'utf-8'
+  failed('UTF%-32 saved files are not supported')
+  eq(read(filename), bytes)
+end
+local partial = root .. '/partial-utf16'
+write(partial, '\255\254h'); vim.cmd('enew!'); api.nvim_buf_set_name(0, partial)
+failed('incomplete UTF%-16 code unit')
+vim.cmd('enew!'); write(path, 'restored\n'); edit(path)
 -- A replaced pane survives cleanup, and closing the original tab is harmless.
 vim.cmd.SavedDiff()
 vim.cmd('enew')
