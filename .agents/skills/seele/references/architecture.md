@@ -258,7 +258,7 @@ use enabled Home Manager XDG user-directory settings, otherwise runtime-home
 fallbacks, including standalone portable evaluations. `gD` still invokes diff.
 
 `modules/features/desktop/default-applications.nix` is the Linux profile's only
-owner of `xdg.mimeApps` defaults. Images resolve to `imv.desktop`, video and
+owner of `xdg.mimeApps` defaults. Images resolve to `seele-images.desktop`, video and
 audio to `mpv.desktop`, PDFs and EPUBs to `org.pwmt.zathura.desktop`, text to
 `seele-editor.desktop`, and `inode/directory` to `seele-files.desktop`. The last
 two are declared in the same leaf, because Neovim and Yazi are terminal
@@ -271,8 +271,13 @@ same option and was narrowed to the web documents and URL schemes it handles: an
 attribute defined by both features is a merge conflict, not a fallback, so
 `text/plain` now belongs to the editor alone. `imv.nix`, `mpv.nix`, and
 `zathura.nix` carry the viewers themselves with vi-shaped bindings, and each
-publishes a Linux-only `seele.portable` entry. The Hyprland feature floats imv,
-which is why the pre-existing `mpv` rule finally has a player to apply to.
+publishes a Linux-only `seele.portable` entry. The image entry's thin exec adapter
+opens one regular file at its own position in imv's nonrecursive directory
+navigation; multiple file arguments remain an exact selection. It prefixes
+relative paths and terminates options without interpreting filenames. The
+adapter and its argument-boundary fixture live in
+`modules/features/desktop/_image-viewer/`. The Hyprland feature floats both
+imv and mpv.
 
 The Linux `mpv` feature loads nixpkgs’ MPRIS script, including in portable mpv,
 so local playback participates in desktop media keys and Seele Now Playing.

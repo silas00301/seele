@@ -5,7 +5,7 @@ let
   # their own feature leaves.
   editor = "seele-editor.desktop";
   fileManager = "seele-files.desktop";
-  viewer = "imv.desktop";
+  viewer = "seele-images.desktop";
   player = "mpv.desktop";
   reader = "org.pwmt.zathura.desktop";
 
@@ -70,6 +70,12 @@ let
       # launched it and must not depend on that process's PATH.
       inTerminal = command: "${pkgs.ghostty}/bin/ghostty -e ${command}";
 
+      imageViewer = pkgs.writeShellApplication {
+        name = "seele-images";
+        runtimeInputs = [ pkgs.imv ];
+        text = builtins.readFile ./_image-viewer/open.sh;
+      };
+
       handle = entry: types: lib.genAttrs types (_: entry);
 
       associations =
@@ -90,6 +96,21 @@ let
       # desktop entry that opens in this desktop's terminal, so the entries the
       # associations name are declared here beside them.
       xdg.desktopEntries = {
+        seele-images = {
+          name = "Images";
+          genericName = "Image viewer";
+          comment = "View a picture and browse its folder in imv";
+          exec = "${imageViewer}/bin/seele-images %F";
+          icon = "imv";
+          terminal = false;
+          startupNotify = false;
+          categories = [
+            "Graphics"
+            "Viewer"
+          ];
+          mimeType = imageTypes;
+        };
+
         seele-editor = {
           name = "Neovim";
           genericName = "Text editor";
