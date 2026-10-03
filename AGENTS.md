@@ -31,7 +31,10 @@ panel, which holds that choice, the schedule's source and times, and a Use
 current button that gives the preset on screen to either mode. Auto follows a
 schedule at fixed times or at sunrise and sunset; the `seele-theme-auto` user
 service runs the native helper's edge-triggered loop, so a mode chosen by hand
-holds until the next boundary. Sunrise and sunset are reckoned from the system
+holds until the next boundary. While a `nix build` or `nix-build` process is
+running, that scheduled step waits and applies on a later pass; a foreground
+Fish `nix build` notifies once when its terminal window is unfocused. Sunrise
+and sunset are reckoned from the system
 timezone's reference city in the tz database; no location is asked for or
 stored. The native `seele-theme` helper owns the slots, the mode, the schedule
 and publication, and every surface only runs it; the shell reads the applied

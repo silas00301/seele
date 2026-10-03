@@ -231,7 +231,10 @@ hands the keyboard to the panel, so only a second Escape closes it.
 The schedule is edge-triggered in the helper: a hand-chosen mode holds until the
 next boundary, and a boundary missed while the machine slept is caught up. The
 `seele-theme-auto` user service runs `seele-theme follow` in the graphical
-session with the configuration's own XDG paths. Sunrise and sunset use NOAA's
+session with the configuration's own XDG paths. While a `nix build` or
+`nix-build` process is running, that step waits instead of publishing; a
+foreground Fish `nix build` on nerv notifies once when its terminal window is
+unfocused. Sunrise and sunset use NOAA's
 solar calculator algorithm, and the place is the timezone's reference city from
 `zone1970.tab`, never asked for or stored; a zone without a city offers no Sun.
 
