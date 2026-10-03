@@ -319,7 +319,8 @@ The quick AI prompt is another shell IPC workflow. Its parent-owned
 focused output without reading context or starting Codex. That surface stays
 mapped, so the panel takes exclusive keyboard focus while it is active rather
 than waiting for a map the compositor would hand on-demand focus to, and it
-holds that focus until it is dismissed by hand. Typed `@window` and
+holds that focus until it is dismissed by hand. Typing `@` opens a completion
+list and inserts the chosen mention without reading a source. Typed `@window` and
 `@dir` controls expose narrow metadata. Explicit mentions resolve together only
 on Send; `@screen` hides the panel before capturing its pinned output. A failed
 source prevents submission. Model-requested context retains one-time approval

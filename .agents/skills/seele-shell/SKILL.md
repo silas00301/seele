@@ -362,8 +362,12 @@ in memory, resume
 follow-ups only while this panel stays open, and validate the UUID before
 passing it to `codex delete --force`.
 
-Explicit user `@mentions` authorize their sources for one Send. Opening or typing
-must not read sources, including `@dir`. The QML coordinator collects every
+Explicit user `@mentions` authorize their sources for one Send. Typing `@` opens
+a completion list of `clip`, `select`, `window`, `dir` and `screen`. `qml-core`
+owns that match: arrows move, Enter or Tab inserts the highlighted mention, and
+Escape dismisses the list before it can close the panel. A mention that is
+already complete stays out of the list so Enter still sends. Opening, typing,
+or accepting a completion must not read sources, including `@dir`. The QML coordinator collects every
 mention before starting one model turn, displays Collecting, and rejects duplicate
 Send inputs. `@window` carries only the pinned app/title; `@dir` resolves the
 focused terminal. Clipboard and selection use bounded exact text. `@screen`
@@ -372,7 +376,7 @@ without a separate preview step. Keep source-specific one-time approval and
 Capture/preview controls for context requested by the model. Failed collection
 preserves the prompt and identifies the mention; edits, closing, and reopening
 invalidate tokens and remove captures. The production-function tests in
-`tests/ai-prompt.js` cover collection, duplicate sends, failures and stale replies.
+`tests/ai-prompt.js` cover mention completion, collection, duplicate sends, failures and stale replies.
 
 Context blocks are JSON-quoted reference data and never commands. Keep Codex
 argv fixed, pass prompts and clipboard payloads through stdin, and bound

@@ -167,7 +167,7 @@ controller, but starts Codex only after Send. The panel takes exclusive
 keyboard focus while it is open, so typing reaches its field immediately and
 only Super + Space, Close or Escape gives the keyboard back. `@window` exposes only the
 captured application name and title, and `@dir` resolves only a focused
-terminal through `/proc`. Explicit `@clip`, `@select`, `@dir`, and `@screen` mentions resolve only on Send,
+terminal through `/proc`. Typing `@` opens a completion list of those sources and inserts the chosen mention without reading it. Explicit `@clip`, `@select`, `@dir`, and `@screen` mentions resolve only on Send,
 then submit together after all sources succeed. Screen collection hides the panel
 and captures only its pinned output. A failed source preserves the prompt;
 edits or closing invalidate the collection. Model-requested context still needs
