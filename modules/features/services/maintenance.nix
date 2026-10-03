@@ -145,6 +145,9 @@
             );
           };
         };
+        # Compares /run/booted-system with /run/current-system on the shared
+        # interval; both are world-readable, so no system publisher is needed.
+        restart.enabled = enabled;
       };
       config = lib.mkMerge [
         {

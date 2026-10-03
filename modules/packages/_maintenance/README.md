@@ -52,10 +52,20 @@ supply those logs to AI.
   `nix flake metadata --no-write-lock-file`. Deliberately pinned original revisions
   remain pinned; unsupported references/follows produce a check error and retain
   existing findings. The helper never edits lock files or updates configuration.
+- `restart`: `/run/booted-system` against `/run/current-system`, on the shared
+  interval, so after a boot and within a minute of any activation. While they
+  differ in a part only a boot applies (kernel, module tree, initrd, kernel
+  parameters, firmware, the systemd build logind keeps, the bus binary, declared
+  switch inhibitors) one `eventually` finding names each change, such as
+  "Linux 6.12.8 → 6.12.10". It never notifies, resolves after a reboot into the
+  current generation or a rollback to the booted one, and offers only
+  `open-power`, which opens the shell's Power panel. Both links are
+  world-readable, so the user service reads them itself; no root publisher exists.
 
 Backups/certificates default to no items because no such systems are configured
 in this flake. Flake/input probes use the existing host Nix executable; the package
-does not install another Nix. No check activates a system or repairs automatically.
+does not install another Nix. No check activates a system, restarts it or repairs
+automatically.
 
 The runtime is the Rust `seele-maintenance` crate in
 `seele-shell/projects/maintenance/`, exported by the submodule's `maintenance`
