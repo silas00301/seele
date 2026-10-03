@@ -61,6 +61,20 @@ Python compatibility patch stays inside its upstream authentication package.
 These exceptions preserve upstream API and UI contracts; Python/Node fixtures
 are not installed as dependencies of native services.
 
+Neovim's `<leader>b` / `:LineOrigin` (with Visual or Ex ranges) opens a popup
+naming the change that last touched each line: short id, author, relative and
+absolute date and full description, one section per distinct change. `y` copies
+the id, Enter or `d` opens the change's diff read-only, `p` steps to the line's
+version before that change, and `q`/Escape closes. It uses `jj file annotate`
+with `--ignore-working-copy` in Jujutsu repositories and `git blame --porcelain
+--contents -` in plain Git ones, mapping the buffer onto the saved file and the
+saved file onto jj's last recorded working copy so unsaved and unrecorded lines
+are named rather than misattributed. Commands are bounded asynchronous argv
+lists from `PATH`. `<leader>b` is deliberately not `<leader>gb`, because
+`<leader>g` opens LazyGit directly, and a key below it would make that mapping
+wait for `timeoutlen`. The module `modules/packages/_nixvim/line-origin.lua`, its
+README section and `test-line-origin.py` fixture hold the limits and validation.
+
 Neovim’s attached LSP clients expose `<leader>cr` for symbol rename and
 `<leader>ca` for code actions in normal and visual modes. Both keep the native
 prompt/selection workflow and are described in which-key.
@@ -77,6 +91,28 @@ nearest Jujutsu/Git ancestor marker without invoking VCS commands; register `r`
 retains the reference even when the existing clipboard provider is unavailable.
 See the adjacent README and real Neovim fixture for path and clipboard boundaries.
 
+Neovim spell checks prose filetypes (commit and Jujutsu descriptions, Markdown,
+plain text, mail) in `en_us` and `de_de`, and leaves source code alone.
+`modules/packages/_nixvim/spell.lua` sets that up and keeps `zg` words in a
+private `stdpath('data')/spell` file. `german-spell.nix` builds the German spell
+file with `:mkspell` from the frami source Vim's own runtime uses, so nothing is
+downloaded at run time, and `jjdescription-spell.scm` extends nvim-treesitter's
+query, which otherwise leaves a description's subject and body unchecked. See
+the adjacent README for the real-Neovim fixture.
+
+Neovim's `<leader>sr` and `<leader>sR` open grug-far on the current file and the
+working directory, seeded with the word under the cursor or, from Visual mode, a
+literal search for the selection. `modules/packages/_nixvim/replace.lua` builds
+the scope and refuses buffers that are not files; grug-far names ripgrep by store
+path so the portable editor works without one on `PATH`. The replace fixture in
+the same directory drives both mappings through real grug-far and ripgrep.
+
+Neovim's `<leader>cw` / `:TrimWhitespace[!]` explicitly cleans trailing spaces
+and tabs from a buffer or selected line range without saving it. Markdown hard
+breaks are preserved unless `!` is supplied. The in-process helper and real-editor
+fixture live in `modules/packages/_nixvim/`, documented in its README and exposed
+as `checks.<system>.nixvim-whitespace`.
+
 ## Deferred modules and active profiles
 
 Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, where class is `homeManager`, `nixos`, or `darwin`. Home Manager profile leaves import named features in activation order. Host and system leaves contribute to these active aggregate profiles:
@@ -89,7 +125,18 @@ Feature leaves publish deferred modules through `flake.modules.<class>.<name>`, 
 | `nerv` | host `nerv` only |
 | `asuka` | host `asuka` only |
 
+On macOS, AeroSpace uses Ctrl + Alt + Tab to move the focused window to the
+next monitor and Ctrl + Alt + Shift + Tab to move it to the previous monitor.
+Both wrap and follow the moved window; Alt + Shift + Tab moves the workspace.
+
 Named modules are available through the flake's `modules` output but remain dormant until a profile or host imports them. Home Manager profiles import user features; system and host aggregates import NixOS and Darwin features such as shells, themes, Homebrew applications, and host-only integrations. This replaces the old behavior where an unlisted file under `home/shared/programs/` was dormant.
+
+On `asuka`, the Darwin profile imports `aerospace`. Its Ctrl+Alt window-control
+layer includes `F` for AeroSpace fullscreen and `Space` for floating/tiling.
+Pressing either shortcut again reverses it. Fullscreen stays inside the current
+AeroSpace workspace; macOS native fullscreen remains the application's action.
+These direct native commands need no helper process. Validate their keyboard
+behavior and return to tiling on macOS after evaluating the Darwin host.
 
 `modules/features/` contains program, service, theme, and shared system concerns. `modules/profiles/home/` contains profile-wide Home Manager settings that do not belong to one feature. Raw Nix expressions cannot live directly in the recursive tree; place them below a path containing `/_`.
 
@@ -191,6 +238,22 @@ directory macOS neither shows nor empties. There is no `seele.portable.trash`
 entry — a trash is machine state, not configuration worth carrying to a borrowed
 machine.
 
+`modules/features/programs/tealdeer.nix` publishes the `tealdeer` Home Manager
+feature, imported by the `common` profile, so `tldr` exists on both hosts.
+Home Manager's `programs.tealdeer` enables its `services.tldr-update` by default:
+a weekly `Persistent` systemd user timer on `nerv` and a launchd agent on `asuka`,
+each running `tldr --update`. `settings.updates.auto_update` is on as well, which
+in tealdeer 1.9 downloads a missing cache on the first lookup and otherwise
+refreshes in-command once the cache is older than `auto_update_interval_hours`.
+That refresh fails the whole lookup when it cannot reach the network instead of
+falling back to the stale pages, so the interval is 90 days rather than Home
+Manager's 30: the timer owns freshness, and the in-command refresh is only a
+backstop for a timer that has not succeeded in a season. The Linux service gains `Restart=on-failure` every 15 minutes: the
+Maintenance `systemd` source reports failed user units, and a weekly refresh that
+ran while offline should retry rather than become a System Health finding. There
+is no portable entry, because the program's worth is its downloaded cache rather
+than configuration.
+
 The shell submodule's `projects/shell/SystemState.qml` owns status fields and publishes changes per field. Full snapshots and optimistic patches go through its `apply()` method: Rust's `system.patch` schema validates allowed fields/types, and the Qt adapter retains unchanged engine object references so unrelated updates leave list models and delegates alone. `tests/system-state.sh` checks change-signal counts, delegate reuse, and unchanged rendered pixels. Agent CPU sampling reuses the process name in `/proc/<pid>/stat` instead of opening each process's `comm` separately; command-line fallback discovery stays in place.
 
 `modules/features/programs/hypr.nix` owns the active Hyprland configuration and wraps the native screenshot helper from `projects/desktop-tools/`. It sets `configType = "lua"`, and that choice reaches every caller rather than only the config file: Hyprland evaluates `hyprctl dispatch` as Lua, so a dispatch is one `hl.dsp` call — `hl.dsp.exit()`, `hl.dsp.focus({ workspace = "9" })`, `hl.dsp.window.close({ window = "address:0x…" })` — and the legacy `hyprctl dispatch <name> <args>` form resolves to an undefined global. hyprctl still exits zero on that error, so a stale call fails in silence; `hyprctl repl` evaluates a candidate without dispatching it. The screenshot helper combines Hyprland's monitor and visible-window geometry with Slurp so one picker handles window, monitor, and freeform region capture. Hyprpicker holds a frozen frame until Grim captures it. Each completed capture gets a collision-safe timestamped path under `Pictures/Screenshots` and is copied after optional Satty annotation. The upload variant uses a native consent dialog before sending the saved image to 0x0.st with a secret URL and 24-hour expiry; declining or a failed upload copies the image locally. Its native package runs `projects/desktop-tools/tests/screenshot.py` against the raw Rust executable.
@@ -212,24 +275,89 @@ pins 1.3.1, and a `global:` keybind needs global-shortcut support Hyprland
 0.55.4 lacks. Retire this feature for `toggle_quick_terminal` once both pins
 move.
 
+`modules/features/programs/screen-zoom.nix` publishes the `screen-zoom` Home
+Manager feature, imported only by the `nerv` profile, and appends five locked
+binds with `lib.mkAfter`: `SUPER + mouse_up` and `SUPER + mouse_down` run
+`seele-shellctl zoom in|out --fine`, the repeating `SUPER + plus` and
+`SUPER + minus` run `zoom in|out`, and `SUPER + 0` runs `zoom reset`. Against
+Hyprland 0.56.2, the version the pinned nixpkgs builds, binds match the
+keysym the configured `de` layout produces without modifiers, which is why
+`plus` stands in for `equal`. `cursor:zoom_factor` is a float from 1 to 10
+whose change animates through the `zoomFactor` animation node, inherited from
+`global`; only the monitor under the pointer is drawn magnified, and the whole
+frame is, layer surfaces and the lock screen included. `cursor:zoom_rigid`,
+`zoom_detached_camera` and `zoom_disable_aa` keep their defaults, so the view
+pans once the pointer nears its edge. The native helper is
+`projects/tools/src/zoom.rs` in the shell submodule: `hyprctl getoption
+cursor:zoom_factor -j` reads the level, `hyprctl eval 'hl.config({ cursor = {
+zoom_factor = … } })'` writes it, and a private advisory lock in
+`$XDG_RUNTIME_DIR` serializes the two so overlapping notches each count. The
+lock holds no level and no state file exists, so nothing can drift from what
+Hyprland draws. Hyprland passes one wheel bind per `binds:scroll_event_delay`,
+left at its 300 ms default. A Lua reload resets every option before re-running
+the configuration and a new session starts from defaults, so the zoom needs no
+reset at login.
+
 Yazi’s `gd`, `go`, and `gp` open Downloads, Documents, and Pictures. The bindings
 use enabled Home Manager XDG user-directory settings, otherwise runtime-home
 fallbacks, including standalone portable evaluations. `gD` still invokes diff.
 
+Archives are Yazi's own business plus one plugin, all inside the `yazi` leaf, so
+both hosts and `seele.portable.yazi` behave alike. The leaf overrides the
+nixpkgs wrapper's `_7zz` argument with `pkgs._7zz-rar`: the free build lists a
+RAR but writes each compressed member empty, and the unRAR licence only forbids
+recreating the RAR compressor, which `allowUnfree` already admits. An assertion
+holds that 7-Zip at 25.01 or later, whose CVE-2025-55188 fix is what keeps link
+entries inside the target. Yazi's built-in archive previewer and `extract`
+plugin take that `7zz` from the wrapper's PATH. `E` runs
+`ya pub extract --list %s` by store path, the same path Yazi's archive opener
+takes: each hovered or selected archive unpacks through a hidden temporary
+directory into a new sibling folder named after it (or, when it holds one
+entry, that entry), with numbered names instead of overwriting, nested tarballs
+unwrapped, and a password prompt repeated until it is right or dismissed;
+several archives at once refuse protected ones and name them. 7-Zip refuses
+`..`, absolute and link-escaping entries. `C` runs the packaged `pack` plugin
+from `_yazi/pack.lua`, with 7-Zip substituted by store path: it packs the
+selection, or the hovered entry, relative to the entries' closest common folder
+into the folder on screen, defaulting to the single entry's or that folder's
+name plus `.zip`. The typed extension picks `.zip`, `.7z`, `.tar` or a
+gzip/xz/bzip2 tarball; a path, an unknown extension or an existing name
+re-prompts, and the finished archive replaces only a placeholder `fs.unique`
+created, so nothing is ever overwritten. Names stay literal (`-spd`, `--`) and
+links are stored as links (`-snl`). Neither key collides with Yazi's `[mgr]`
+defaults, where `C` and `E` only appear as chord seconds (`cC`, `,E`). Run
+`YAZI_BIN=… YA_BIN=… SEVENZIP_BIN=… python3 modules/features/programs/_yazi/test-archives.py`
+with the pinned Yazi and the `_7zz-rar` 7-Zip after changing the plugin, either
+key or the 7-Zip choice: it drives real Yazi in a private tmux server and
+temporary HOME through packing, refusals, previews, crafted traversal, absolute
+and link archives, a RAR5 member and password prompts. With the free 7-Zip it
+fails on the RAR member.
+
 `modules/features/desktop/default-applications.nix` is the Linux profile's only
-owner of `xdg.mimeApps` defaults. Images resolve to `imv.desktop`, video and
+owner of `xdg.mimeApps` defaults. Images resolve to `seele-images.desktop`, video and
 audio to `mpv.desktop`, PDFs and EPUBs to `org.pwmt.zathura.desktop`, text to
 `seele-editor.desktop`, and `inode/directory` to `seele-files.desktop`. The last
 two are declared in the same leaf, because Neovim and Yazi are terminal
 applications with no entry that opens this desktop's terminal; both `Exec` lines
 name Ghostty and the target binary by store path, since a desktop entry inherits
-the `PATH` of whatever launched it. The Zen feature holds the other half of the
+the `PATH` of whatever launched it. The editor uses `%F` after `--` to open a
+multi-file selection in one Neovim; Files retains one directory per launch.
+The Zen feature holds the other half of the
 same option and was narrowed to the web documents and URL schemes it handles: an
 attribute defined by both features is a merge conflict, not a fallback, so
 `text/plain` now belongs to the editor alone. `imv.nix`, `mpv.nix`, and
 `zathura.nix` carry the viewers themselves with vi-shaped bindings, and each
-publishes a Linux-only `seele.portable` entry. The Hyprland feature floats imv,
-which is why the pre-existing `mpv` rule finally has a player to apply to.
+publishes a Linux-only `seele.portable` entry. The image entry's thin exec adapter
+opens one regular file at its own position in imv's nonrecursive directory
+navigation; multiple file arguments remain an exact selection. It prefixes
+relative paths and terminates options without interpreting filenames. The
+adapter and its argument-boundary fixture live in
+`modules/features/desktop/_image-viewer/`. The Hyprland feature floats both
+imv and mpv.
+
+The Linux `mpv` feature loads nixpkgs’ MPRIS script, including in portable mpv,
+so local playback participates in desktop media keys and Seele Now Playing.
+It uses the existing session bus and needs no separate service.
 
 `modules/features/system/firmware-updates.nix` is the NixOS-wide hardware
 feature: the `linux` profile imports `flake.modules.nixos.firmware-updates`, so
@@ -421,7 +549,7 @@ polkit needs one more thing before a token works there at all, and it is not in 
 
 Seele Polkit is the PolicyKit authentication agent, packaged by the `seele-shell` submodule flake and exposed through `modules/packages/seele-polkit.nix`, running as the `seele-polkit` user service in place of hyprpolkitagent. A polkit agent cannot drive PAM itself — polkit owns that conversation through its own setuid helper — so this one uses Quickshell's `Quickshell.Services.Polkit`, where `PolkitAgent` registers with the authority and exposes the live request as `flow`. The reason for replacing hyprpolkitagent is one line in its `CPolkitListener::showInfo`, which printed the message to stdout and never passed it to the UI; `showError` did reach the dialog, so failures were visible but pam_u2f's touch request was not, and `polkit-1`'s `u2f sufficient` looked inert even though the touch worked. Quickshell exposes the same text as `flow.supplementaryMessage`, paired with `supplementaryIsError`, so the cue is drawn next to the password field and the two routes through the stack are both visible. Guard every binding on `flow` being null, because it is null whenever nothing is outstanding. polkit hands over one sentence and no field naming the requester, so the dialog lifts the name out of the message: the clause before " is " is an action's own application name and is drawn in the accent, while polkit's generic "Authentication is required to ..." names nobody and stays plain. That needs `Text.StyledText`, so the message has to be markup-escaped before the span is wrapped around it.
 
-Escalation is pointed at that dialog wherever a caller allows it, and the coverage is deliberately partial. `nh` picks its own elevation program, and its `auto` order tries doas then sudo before run0, so `NH_ELEVATION_STRATEGY=run0` is set for Linux in `modules/features/programs/nh.nix` — as a bare name, so it resolves against the running system rather than pinning one build of systemd into a privilege path. Interactive typing on managed Linux is covered by a fish abbreviation expanding `sudo` to `run0`; Darwin and portable Fish retain `sudo`; an abbreviation and not an alias, because run0 is not argument-compatible with sudo and the rewrite has to be visible before it runs. Note that zsh's `initContent` is just `fish`, so fish is the only interactive shell worth configuring. `nerv` runs sudo-rs rather than sudo, from `modules/hosts/nerv/sudo.nix`; it keeps the `sudo` PAM service name and adds `sudo-i`, so the approval stack applies to both unchanged, and enabling it flips `security.sudo.enable` off by itself because the two cannot coexist. Everything that hardcodes `sudo` internally stays on the terminal prompt, and replacing the binary to change that would break `-u`, `-E`, `-n`, and NOPASSWD callers; the shell's YubiKey OSD is the answer for those instead, built to the same card width, glyph, colour, spacing, and screen position as the dialog — anchoring a layer surface to no edge centres it on the output, which is where the dialog centres its own card so a touch request looks the same wherever it comes from. It is the same card without the password field, since a terminal caller owns its own prompt and only the touch is missing.
+Escalation is pointed at that dialog wherever a caller allows it, and the coverage is deliberately partial. `nh` picks its own elevation program, and its `auto` order tries doas then sudo before run0, so `NH_ELEVATION_STRATEGY=run0` is set for Linux in `modules/features/programs/nh.nix` — as a bare name, so it resolves against the running system rather than pinning one build of systemd into a privilege path. Interactive typing on managed Linux is covered by a fish abbreviation expanding `sudo` to `run0`; Darwin and portable Fish retain `sudo`; an abbreviation and not an alias, because run0 is not argument-compatible with sudo and the rewrite has to be visible before it runs. Note that zsh's `initContent` is just `fish`, so fish is the only interactive shell worth configuring. Bash's `bashrcExtra` hands off to fish the same way, which is why the common profile carries the `nix-your-shell` feature: `nix develop` and `nix-shell` source `~/.bashrc` before they apply the environment, so without it the fish they open lacks the shell's packages and variables. The wrapper rewrites `nix develop`, `nix shell` and `nix-shell` to run fish as their command after the environment is in place and leaves every other subcommand, an explicit `--command`, and `nh` alone. Its zsh integration stays off because zsh only bridges to fish. A nested fish inherits `SEELE_SESSION_PICKER_OFFERED`, which the top-level fish exports before it offers `tv sesh` outside tmux, so entering a development shell does not raise the session picker a second time. `nerv` runs sudo-rs rather than sudo, from `modules/hosts/nerv/sudo.nix`; it keeps the `sudo` PAM service name and adds `sudo-i`, so the approval stack applies to both unchanged, and enabling it flips `security.sudo.enable` off by itself because the two cannot coexist. Everything that hardcodes `sudo` internally stays on the terminal prompt, and replacing the binary to change that would break `-u`, `-E`, `-n`, and NOPASSWD callers; the shell's YubiKey OSD is the answer for those instead, built to the same card width, glyph, colour, spacing, and screen position as the dialog — anchoring a layer surface to no edge centres it on the output, which is where the dialog centres its own card so a touch request looks the same wherever it comes from. It is the same card without the password field, since a terminal caller owns its own prompt and only the touch is missing.
 
 `sudo` cannot use that dialog and no amount of agent work changes it: it runs its own PAM conversation on the terminal and offers no hook for a graphical agent. The dialog path for privilege escalation is systemd's `run0`, which authorizes through polkit and therefore lands in this agent with both the key and the password available. It needs no configuration here — `security.polkit.adminIdentities` is `unix-group:wheel`, so the `auth_admin` actions `run0` triggers ask the user to authenticate *as themselves* rather than as root, which is what puts the request on the user's own `u2f_keys`. Do not read `auth_admin` as "authenticate as root" on this host. `sudo` stays installed and unaliased alongside it; aliasing would break `-E`, `-u`, and the non-interactive callers that shell out to it.
 
@@ -448,6 +576,19 @@ The global `security.pam.u2f.enable` stays off — it would attach the module to
 3. Home Manager `common`, `darwin`, and `asuka` profiles plus external input modules
 
 Machine system settings live in `modules/hosts/asuka/system.nix`. JankyBorders is a nix-darwin service so Stylix can supply its active and inactive colors. The same constructor exports `darwinPackages`.
+
+`asuka` approves `sudo` with Touch ID through `security.pam.services.sudo_local` in `modules/features/system/darwin.nix`, which nix-darwin renders into `/etc/pam.d/sudo_local` and Apple's own `/etc/pam.d/sudo` includes first on macOS 14 and later (nix-darwin's activation script adds the include on older releases). `touchIdAuth` alone fails silently inside tmux, which is where terminals there run, since Fish outside tmux opens the `tv sesh` picker: the tmux server has left the GUI login's bootstrap namespace, and that namespace is where `pam_tid` reaches Touch ID. `reattach` therefore adds `pam_reattach` as `optional` ahead of `pam_tid` at `sufficient`. [nix-darwin's `pam.nix` at the locked `4cff07de`](https://github.com/LnL7/nix-darwin/blob/4cff07de74b50e64bdd68cd4e722ab5b6b35ee48/modules/security/pam.nix) always emits the lines in the order `pam_reattach`, `pam_tid`, `pam_watchid`, so the generated file is:
+
+```
+auth       optional       /nix/store/<hash>-pam_reattach-1.3/lib/pam/pam_reattach.so
+auth       sufficient     pam_tid.so
+```
+
+The module is `pkgs.pam-reattach` from this flake's nixpkgs, which nix-darwin follows; [at `f45c6f04`](https://github.com/NixOS/nixpkgs/blob/f45c6f04c2f013f004bf94e284e95d72898d9393/pkgs/by-name/pa/pam-reattach/package.nix) it builds `fabianishere/pam_reattach` v1.3, whose [CMake](https://github.com/fabianishere/pam_reattach/blob/v1.3/CMakeLists.txt) installs it to `lib/pam`. [Its README](https://github.com/fabianishere/pam_reattach/blob/v1.3/README.md) asks for a full path whenever the module lives outside `/usr/lib/pam` and `/usr/local/lib/pam`, and the `sudo_local` symlink into the system closure keeps that store path alive. [The module](https://github.com/fabianishere/pam_reattach/blob/v1.3/src/pam.c) only asks launchd for the user's Aqua bootstrap port and swaps it into the calling process; it reads no credentials and returns `PAM_SERVICE_ERR` when no GUI session exists, which `optional` ignores, so a failure costs Touch ID and never the password.
+
+The flake enables no Remote Login, which stays local macOS state. If it is on, plain SSH still falls back to the password: `pam_tid` declines a remote login even after the reattach, which the maintainer reproduced with the lid open and closed in [pam_reattach#9](https://github.com/fabianishere/pam_reattach/pull/9). The same thread records the remaining edge: inside a tmux pane reached over SSH, `pam_tid` cannot see the remote origin through tmux's own pseudo-terminal, so the Touch ID sheet appears on the Mac's display and `sudo` waits for it. Cancelling the sheet, or a closed lid, where `pam_tid` fails at once, leads to the password prompt. That costs a wait, not a weaker approval, since only the enrolled finger on the machine satisfies the sheet. Do not reach for `pam_reattach`'s `ignore_ssh` to close it: nix-darwin's option passes no arguments, so it would mean replacing the generated `text`; it reads `SSH_*` from the environment, which a pane created locally keeps none of after a remote attach; and v1.3 bounds its loop by `sizeof` of the three-entry pointer array, reading past the array when none of the variables is set.
+
+`watchIdAuth` stays off. The taste splits hardware-token surfaces into entering a session and approving an action, and `sudo` is an approval surface where a touch may replace the password because it proves presence at the machine. `pam_tid` provides that and refuses remote logins. [pam-watchid at the pinned `bb9c6ea6`](https://github.com/mostpinkest/pam-watchid/blob/bb9c6ea62207dd9d41a08ca59c7a1f5d6fa07189/Sources/pam-watchid/pam_watchid.swift) has no remote-session check and evaluates `deviceOwnerAuthenticationWithBiometricsOrCompanion` on macOS 15 for any caller; nix-darwin places it after `pam_tid`, so an SSH `sudo` that `pam_tid` declined would then be offered to the watch, and a wrist anywhere in Bluetooth range would approve it. It would also load an unreleased third-party Swift module into `sudo` for a closed-lid convenience nothing asked for. After a `nh darwin switch`, verify on the Mac that `/etc/pam.d/sudo_local` matches the lines above, that `sudo -k; sudo true` in a local tmux pane raises the Touch ID sheet, and, if Remote Login is ever enabled, the plain SSH and SSH-attached tmux behaviour.
 
 ## Arguments and package sets
 
@@ -491,7 +632,14 @@ view is a clean Neovim `nofile` buffer in a centered Ghostty transient service.
 The shared Codex broker receives a redacted copy over its private socket with
 its common no-tools policy. `seele-rebuild` wraps the configured
 `nh os switch`; both Fish's `rebuild` abbreviation and `seele-os-session` reach
-that wrapper. `seele-failure-test.service` stays dormant for end-to-end checks.
+that wrapper. Fish's `rb` reaches `seele-rb` from the same package (SIL-25). It
+takes `nvd` by store path and the caller's own `jj` and `nix`, and runs `jj log -r @`
+to record the working copy, `nix flake check --no-build --no-write-lock-file`,
+`nh os build --diff never --out-link <private runtime dir>` and `nvd diff`. It
+then passes the built `/nix/store` path to `nh os switch`, which nh 4.4 treats
+as a store installable and does not evaluate again. `--dry-run` stops after the
+diff, `--switch` skips the question, and without a terminal nothing activates.
+`seele-failure-test.service` stays dormant for end-to-end checks.
 
 The Audio panel's Multiple outputs switch and Vicinae's Play Here Too action
 share `seele-control audio-outputs <JSON node names>`. The shell's
@@ -602,6 +750,15 @@ stopping PipeWire from starting at all.
 
 Bluetooth follows the same hardware gate in both places: without a BlueZ adapter, neither its Control Center row nor its menu bar entry is shown. The hidden tray group opens only when its arrow is clicked, so moving the pointer across the arrow cannot reflow the bar. The network panel links to Allestörungen through the desktop's default URL handler.
 
+Television's file channel uses a shared complex argument template for preview
+and edit. Each entry receives POSIX single quoting (with embedded apostrophes
+closed and reopened) and both commands explicitly use Bash and `--`. Edit joins
+selections with newlines before quoting them individually, bypassing Television's
+simple-placeholder autoquoting. The existing `fd` source remains line-delimited;
+filenames containing newlines are not represented by that source. The real-picker
+PTY fixture is `checks.<system>.television-file-arguments` and can run directly as
+`python3 modules/features/programs/_television/test_file_arguments.py tv modules/features/programs/_television/file-arguments.txt`.
+
 ## Portable applications
 
 `modules/flake/portable.nix` is the second route from a feature to a public output, and it exists so `nix run github:silas00301/seele#<command>` reaches a configured application on a machine this flake does not manage. Each program leaf that is worth running that way contributes `seele.portable.<command>` beside its `flake.modules.homeManager` definition, named after the command rather than the feature — `btm` rather than `bottom`, `jj` rather than `jujutsu` — because the attribute is what gets typed. An entry carries the Home Manager features to evaluate, the binary to wrap, the systems to publish for, and any extra environment.
@@ -612,18 +769,46 @@ tmux prefix + `c`, `<`, and `>` open a window or split in the active pane’s cu
 directory. The directory is quoted as one argument, including paths with spaces.
 Prefix + `H` opens the originating pane's retained scrollback in a temporary,
 read-only Neovim popup. The tmux feature pins an unconfigured editor itself,
-including in portable tmux. Capture is limited to 10,000 history rows and 8 MiB,
+including in portable tmux. New panes retain 10,000 history rows; reloading does
+not change existing panes’ retention. Capture is limited to 10,000 history rows and 8 MiB,
 soft wraps join, and only an explicit yank changes the terminal clipboard.
 `modules/features/programs/_tmux/README.md` documents the isolated editor and the
 private-server fixture packaged as `checks.<system>.tmux-scrollback`.
+Native prefix + `m` marks a running pane; prefix + `j` / `J` brings that pane
+below / beside the current one, including across windows and sessions. Both
+bindings require a mark rather than accepting an implicit source. The same README
+documents native mark/window lifetime and `checks.<system>.tmux-pane-move`, whose
+private-server fixture checks actual key events and preserved process identity.
 
 Two things the evaluation cannot know are the foreign machine's user and home, so the builder supplies a sentinel `home.homeDirectory` that nothing in the built output may depend on; Home Manager only uses it to derive the relative layout of `home-files`, which the wrapper re-roots at runtime.
 
+Before serializing the launcher environment, the portable builder re-roots
+absolute values equal to or beneath the evaluated XDG config directory. Thus
+`RIPGREP_CONFIG_PATH` and `STARSHIP_CONFIG` follow the writable configuration
+farm instead of the synthetic build-time home. It embeds the farm's runtime
+expression directly, since those names sort before `XDG_CONFIG_HOME` is
+assigned. Similar prefixes, embedded command text, and data/state paths stay
+untouched. `checks.<system>.portable-environment` checks these boundaries.
+
 The wrapper does not point applications at the store tree directly, because the applications that read a generated config also write beside it — fish's universal variables, gh's credentials, caches keyed by config path — and the store is read-only. It instead materializes `home-files/.config` as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<command>` and exports that as `XDG_CONFIG_HOME`: managed files stay store symlinks that follow this flake, directories are real and writable, and anything the application creates itself survives the next run. A generation manifest records the links Seele owns. Refreshes hold a per-application file lock, remove only links whose targets still match that manifest, and preserve application-owned files and symlinks. Generated directories are writable real directories, including when the source uses directory symlinks. `checks.<system>.portable-config` covers preservation and concurrent launches. `SEELE_PORTABLE_HOME` moves the farm. A leaf whose features write nothing below `.config` gets no farm and no `XDG_CONFIG_HOME` override at all, so a wrapper cannot hide config the foreign machine already has for no reason.
+
+Portable `jj` includes the `nixvim` feature because its `DiffEditor` command is
+provided by the configured editor's hunk plugin. A destination machine's bare
+Neovim cannot supply that command; the standalone profile also sets `EDITOR` to
+the same configured package.
 
 `PATH` carries the evaluation's own `home.path`, which is what makes an entry's module list the whole answer: whatever those features install is what the wrapped program finds. A compiled wrapper pins a versioned JSON manifest for native `seele-launch`. The launcher materializes the config, prefixes PATH, exports session variables in name order and execs the application without an intermediate shell or child. Variables support bounded data substitutions and unset/empty defaults; command substitution and other executable shell syntax fail closed. Glow uses the same launcher for its runtime XDG fallback. See `seele-shell/projects/config-tools/README.md` for the exact supported forms and exec/argument tests.
 
+The GitHub Dashboard diff action feeds its unified diff into a pinned `bat`
+command and pinned `less` pager. Portable `gh-dash` includes `bat` for the same
+theme configuration; it does not rely on a host `batdiff` helper or pager.
+
 The mechanism has two known limits. It re-roots `XDG_CONFIG_HOME` only, so a Home Manager module that writes outside `.config` — nushell's Darwin path under `~/Library` is the example — is unconfigured in its wrapper on that platform. And features that only make sense as part of a running system, the compositor, the greeter, the shell, and the browsers with heavy profile state, have no portable entry.
+
+Bash hands interactive sessions to Fish through Home Manager's `initExtra`.
+The handoff must stay after Home Manager's interactive guard: `bashrcExtra`
+also runs for noninteractive startup, where a Fish process can consume a
+remote command's standard input. Scripted Bash remains Bash.
 
 ## Validation boundaries
 
@@ -668,7 +853,9 @@ integration identities, freshness deadlines, setup destinations and typed recove
 actions. The owning integration enables its registration; installed executables
 and running processes never create rows. Source callbacks publish current
 sanitized metadata through `IntegrationHealthStore` or the `health` IPC target.
-The store derives stale state and holds no history. Validate its contract with
+The store derives stale state and holds no history. Calendar and Weather register
+from the shell feature; Weather's `setup` is `weather`, which the shell routes to
+the clock popup rather than to a panel of its own. Validate its contract with
 `node seele-shell/tests/health.js seele-shell/projects/shell/health.js` and the
 existing GitHub/Home Assistant source suites, then build the shell and host.
 
@@ -678,8 +865,17 @@ The System Health Maintenance tab reads the private `seele-maintenance` user
 socket. `seele-shell/projects/maintenance/` owns the typed lifecycle, seven-day
 metadata history, source adapters and explicit Codex analysis. Each registered
 source publishes complete snapshots; a failed probe retains prior findings.
-`seele.maintenance` declares per-host disk, backup-age, certificate, flake-check
-and critical-input policy. No source probes live in QML. Each finding is a card
+`seele.maintenance` declares per-host disk, backup-age, certificate, flake-check,
+critical-input and restart-required policy. No source probes live in QML.
+The `restart` source reads `/run/booted-system` and `/run/current-system`
+directly from the user service, since both are world-readable, so it has no
+NixOS half, activation hook or root-to-user channel; its polling interval is
+what makes it see every activation path, including rollbacks. Keep its part set
+to what `switch-to-configuration` cannot replace: kernel, module tree, initrd,
+kernel parameters, firmware, the systemd build logind keeps, the bus binary and
+declared switch inhibitors. PID 1 itself is re-executed by the switch and is
+deliberately not reported. Its one action, `open-power`, runs the fixed
+`seele-shellctl power`, an idempotent open of the Power panel. Each finding is a card
 that leads with one graded urgency mark — red now, yellow soon, quiet for what
 can wait, its own mark for something merely worth knowing, a check once resolved
 — and folds open from its own head rather than from a button beside it. Check
@@ -707,26 +903,68 @@ listeners honour the inhibitor, and the blur rule lists the
 explicit Lock and Suspend are unaffected. The shell submodule's
 `projects/caffeinate/README.md` owns the protocol, task identity and fixtures.
 
+## Power key
+
+`modules/features/desktop/power-key.nix` publishes the `power-key` Home Manager
+feature, imported by the `nerv` profile. Its `seele-power-key` user service runs
+`systemd-inhibit --what=handle-power-key --mode=block` around `sleep infinity`,
+both by store path, and is bound to `graphical-session.target` like Caffeinate;
+it appends one `XF86PowerOff` Lua bind running `seele-shellctl controls`, the
+same Power panel toggle as `Super + Escape`. Nothing touches logind.conf, so
+`HandlePowerKey=` keeps its `poweroff` default wherever the inhibitor is not
+held: the greeter's own Hyprland instance, a TTY login while no graphical
+session runs, and a session whose unit failed. The facts this rests on, from systemd 261.2 and polkit 127:
+
+- `logind-button.c` opens the input device without `EVIOCGRAB`, so Hyprland
+  still receives the key, and both the short and the long press go through
+  `INHIBIT_HANDLE_POWER_KEY`.
+- `manager_is_inhibited` skips inhibitors from inactive sessions, but a process
+  in no session counts as active on every seat. A user service is in no
+  session, so the lock holds for as long as the unit runs, including while the
+  session is locked or switched away.
+- The `org.freedesktop.login1.inhibit-handle-power-key` polkit action is
+  `allow_any=no`. polkit resolves a process outside a session to its owner's
+  display session, so the uwsm-launched session qualifies. A process with no
+  display session is refused, which this sandbox's user manager reproduces.
+- A refusal is final for the session, so `StartLimitBurst = 3` over sixty
+  seconds stops the unit instead of restarting it every two seconds forever.
+
+The bind is not `locked`, so the key does nothing while Seele Lock holds the
+session. Pressing it without a working unit powers off cleanly, as before this
+feature, and also opens the panel on the way. The fallback Plasma session
+starts the unit too, and PowerDevil draws its own dialog there. Validate
+activation with `systemd-inhibit --list`, which should name `Seele Shell` with
+`handle-power-key` and `block`.
+
 ## Personal transfers
 
 `modules/features/programs/seele-transfers.nix` publishes the nerv-only Home
 Manager service and file-manager send entries. It uses the shell package's
 `seele-transfers` binary and passes `xdg.userDirs.download`; the existing
-nerv Tailscale operator configuration supplies daemon access. Source-only
-shell updates still require a published gitlink refresh. No new flake input,
+nerv Tailscale operator configuration supplies daemon access. The blur rule in
+`modules/features/programs/hypr.nix` lists the `seele-shell-transfers`
+namespace. Source-only shell updates still require a published gitlink refresh.
+No new flake input,
 root receiver, private content inbox or mobile client is involved. The shell
 submodule's `projects/transfers/README.md` owns the provider contract and focused
 Python/JavaScript validation, including the Linux Taildrop API limitations.
 
 ## Dependency update automation
 
-`.github/dependabot.yml` schedules weekly Nix updates. The Dependabot-only workflow
-checks out submodules, evaluates and builds `nerv`, and can ask Copilot to repair a
-failed update. `COPILOT_GITHUB_TOKEN` must be configured separately. Repairs are
-limited to ordinary `.nix` files; lock, submodule, staged and unrelated changes
-fail validation. Jujutsu tracks the local change, then GitHub publishes a signed
-commit through `createCommitOnBranch`, refusing a branch whose head changed during
-the build. This does not replace native Darwin validation or activate either host.
+`.github/dependabot.yml` schedules weekly Nix updates. `.github/workflows/dependabot-nix.yml`
+runs from `main` and builds `nerv` only for a same-repository Dependabot pull
+request whose base is `main` and whose diff is `flake.lock` alone. The build
+checks out main and overlays that lock. A failed build can ask Copilot, in a
+read-only job, to edit ordinary `.nix` files; Nix runs only after Git metadata
+is restored and with tokens cleared. The publish job is the only
+`contents: write` job. It does not run Nix or Copilot. `COPILOT_GITHUB_TOKEN`
+is configured outside the repository. This does not replace native Darwin
+validation or activate either host.
+
+Fish `gitignore TEMPLATE [TEMPLATE ...]` prints ignore templates to standard output
+without editing files. Space- or comma-separated names form one request; invalid
+names fail before networking, and HTTP errors fail without printing their body.
+The function pins curl in its closure, including portable Fish.
 
 Fish `mkcd DIRECTORY` accepts exactly one nonempty literal path, creates its parents,
 and enters it only after mkdir succeeds. Relative paths resolve against the current
@@ -763,3 +1001,7 @@ feeds Spicetify's packaged extension. The Linux `theme-presets` check validates
 the generated assets through the runtime. See
 [the theme switching guide](../../../../docs/theme-switching.md) before changing
 palette ownership or adding another runtime theme consumer.
+
+Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
+GitHub SSH and `me:repository` selects the personal namespace. Bare relative
+paths starting with `gh` or `me` remain local paths.

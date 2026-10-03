@@ -94,7 +94,8 @@ Stop. See `projects/caffeinate/README.md` for the protocol and fixtures.
 The Transfers panel filters retained history by filename/device, direction and
 outcome using `qml-core` policy. Active jobs remain visible, and explicit
 notification focus clears filters before revealing its target. The service
-continues to own canonical groups and file indices. See the submodule's
+continues to own canonical groups and file indices. Its layer surface is
+`seele-shell-transfers`, which the Hyprland blur rule lists. See the submodule's
 `projects/transfers/README.md` for behavior and the native-backed store and
 production Qt panel fixtures.
 
@@ -243,6 +244,36 @@ text depends on the projection's legibility floor in `seele-theme`, so keep
 `subtext` and `overlay` derived there rather than read from Base16 slots
 directly. See [the theme switching guide](../../../../docs/theme-switching.md).
 
+## Weather
+
+The clock popup carries one weather line under its header, from the resident
+`seele-weather` worker in `seele-shell/projects/integrations/src/weather/`.
+Selecting it, or Enter or Space on it, unfolds the card in place over the month
+and agenda: a facts row, `NEXT HOURS`, `THIS WEEK` and the place row with the
+Open-Meteo attribution. Escape steps back out of the place search, then folds the
+card; Today and the settings gear fold it too. The popup grows by the folded
+line's height, so the agenda keeps its room.
+
+- The worker owns the place, Open-Meteo requests, the private cache, units,
+  conditions, local times and every label; `WeatherStore.qml` assigns sections
+  and `WeatherCard.qml` only draws. Keep weather policy in Rust, never in QML.
+- The default place is the system timezone's reference city through
+  `seele_runtime::timezone`, the same lookup the theme switcher uses. Do not add
+  a location service, a coordinate option or a place to the flake. A searched
+  place is chosen by its result id and stays in the worker's state file.
+- Units come from glibc's `LC_MEASUREMENT` data, metric by default; `nerv` sets
+  `LC_MEASUREMENT=de_DE.UTF-8` beside `LANG=en_US.UTF-8`, so it is metric.
+- A failed fetch keeps the last forecast, marks it stale and retries quietly.
+  Weather never notifies and has no bar item.
+- `modules/features/programs/seele-shell.nix` registers `weather` with
+  Integration Health, `setup = "weather"`; the shell routes that destination to
+  the clock popup with the card unfolded, on the search when there is no place.
+
+Validate with `cargo test -p seele-integrations weather`, which drives the fetch
+path and worker loop against a local fake Open-Meteo, and
+`tests/weather-card.sh` with `tests/tst_weathercard.qml`, both wired into the
+shell package. Neither touches the real state file or the network.
+
 ## Local controls
 
 - Right-click the clock or use `seele-shellctl control focus` for focus/break
@@ -271,6 +302,12 @@ directly. See [the theme switching guide](../../../../docs/theme-switching.md).
   volume and bounded playback-speed presets. Respect each selected player's
   capabilities; live streams never receive seeking writes. Volume writes stay
   within 0–100%, and speed presets use the player's positive minRate/maxRate range.
+- `seele-shellctl zoom <in|out|reset> [--fine]` steps Hyprland's own
+  `cursor:zoom_factor` and sends the result to `showZoom`, which draws it in
+  the level OSD strip and withdraws that strip at 1x. `zoom.rs` in the tools
+  crate owns the steps, the clamp, the label and the meter ratio; the shell
+  only draws. `tests/screen-zoom.sh` drives the raw helper against a fake
+  `hyprctl` and `tests/screen-zoom.js` runs the shell's callback.
 - Copying network details is an explicit action. Clipboard payloads go through
   process stdin and UI success follows successful process completion.
 - The Audio panel's microphone test runs `seele-mic-test` for exactly as long as
@@ -302,7 +339,7 @@ no network requests. The same README owns its stdin/privacy and host-action test
 Ordinary panels use `WlrKeyboardFocus.OnDemand`, leaving the bar and click-away
 catcher available. Keep their namespaces in the blur rule in
 `modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant,
-Caffeinate, Ports, Quick Look and Themes.
+Caffeinate, Ports, Quick Look, Themes and Transfers.
 Changing QML alone cannot add compositor blur.
 
 ## Validation
