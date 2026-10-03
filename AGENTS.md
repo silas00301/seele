@@ -621,14 +621,14 @@ this machine-policy contribution does not reach macOS.
 
 On Linux, `modules/features/desktop/default-applications.nix` is the single
 owner of file-type defaults. It associates images with imv, video and audio with
-mpv, PDFs and EPUBs with zathura, text with the configured Neovim, and a
-directory with Yazi, and it declares the two entries those terminal
+mpv, PDFs and EPUBs with zathura, text (including JSON) with the configured
+Neovim, and directories with Yazi. It declares the two entries those terminal
 applications lack: `seele-editor.desktop` and `seele-files.desktop` open the
 configured terminal through explicit store paths rather than the launching
 process's `PATH`. The Zen feature keeps only the web documents and URL schemes
-it owns and no longer claims `text/plain`, so the two features cannot define the
-same association twice. Each viewer keeps its own feature leaf, its own
-vi-shaped bindings, and a Linux-only portable application. The image entry,
+it owns and claims neither `text/plain` nor `application/json`, so the two
+features cannot define the same association twice. Each viewer keeps its own
+feature leaf, its own vi-shaped bindings, and a Linux-only portable application. The image entry,
 `seele-images.desktop`, opens one picture with its neighboring files in imv,
 starting at the selected picture; multiple selections stay limited to those
 files. Directory navigation remains nonrecursive.
