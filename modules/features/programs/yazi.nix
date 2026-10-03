@@ -52,7 +52,9 @@ let
                 --replace-fail 'ya.preview_widgets' 'ya.preview_widget'
             '';
           });
-          diff = yaziPlugins.diff;
+          diff = yaziPlugins.diff.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [ ./_yazi/diff-status.patch ];
+          });
           chmod = yaziPlugins.chmod;
           lazygit = yaziPlugins.lazygit;
         };
