@@ -31,7 +31,10 @@ panel, which holds that choice, the schedule's source and times, and a Use
 current button that gives the preset on screen to either mode. Auto follows a
 schedule at fixed times or at sunrise and sunset; the `seele-theme-auto` user
 service runs the native helper's edge-triggered loop, so a mode chosen by hand
-holds until the next boundary. Sunrise and sunset are reckoned from the system
+holds until the next boundary. While a `nix build` or `nix-build` process is
+running, that scheduled step waits and applies on a later pass; a foreground
+Fish `nix build` notifies once when its terminal window is unfocused. Sunrise
+and sunset are reckoned from the system
 timezone's reference city in the tz database; no location is asked for or
 stored. The native `seele-theme` helper owns the slots, the mode, the schedule
 and publication, and every surface only runs it; the shell reads the applied
@@ -211,10 +214,56 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+Fish reports a command that ran for more than ten seconds and finished while
+its terminal window was not focused. The `command-notifications` Home Manager
+feature in the `common` profile loads the `done` plugin, which times commands,
+compares the focused window at start and end, and stays silent over SSH. On
+`nerv`, `command-notifications-seele` replaces the plugin's own notify-send call:
+the shell never lists a transient notification in its panel and withdraws it when
+its toast retires, which the plugin sets to three seconds, and the plugin raises
+failures as critical, which the shell keeps on screen until dismissed. The hook sends an ordinary notification whose Show action
+focuses the originating Ghostty window through `seele-control vicinae-focus`
+and, inside tmux, selects the command's pane without switching any client. The
+command line reaches the hook as arguments and is never evaluated.
+
+On `nerv`, the case's power key opens Seele Shell's Power panel instead of
+shutting the machine down, and a second press puts the panel away. The
+`power-key` Home Manager feature owns this. Its `seele-power-key` user service
+holds a logind `handle-power-key` block inhibitor for as long as the graphical
+session runs, and its `XF86PowerOff` binding runs the same toggle as
+`Super + Escape`. logind.conf is left alone on purpose. The greeter, a bare TTY,
+and a session whose unit polkit refused keep logind's clean poweroff, so a
+failure falls back to the old behaviour rather than to a dead key. While the
+session is locked the key does nothing, because the lock screen carries its own
+Power grid. The firmware's hold-to-off override is untouched. See the Seele
+skill's architecture reference for the logind and polkit facts it rests on.
+
+On `nerv`, `Super + scroll` zooms the output under the pointer in and out,
+`Super + Plus` and `Super + Minus` step it, and `Super + 0` resets it. The
+German layout puts `=` on Shift + 0 and Hyprland matches the unshifted symbol,
+so the dedicated + key stands in for it. The `screen-zoom` Home Manager feature
+owns the binds, which also work while locked because the lock screen is
+magnified with everything else. Each runs `seele-shellctl zoom`, whose native
+helper reads Hyprland's `cursor:zoom_factor` back on every step rather than
+keeping a level of its own, and writes it through one `hl.config` call, since a
+Lua configuration refuses `hyprctl keyword`. Steps are quarter octaves for a
+scroll notch and half octaves for a key, clamped from 1x to 8x on one grid, so
+stepping down always reaches exactly 1. The shell's level OSD shows the factor
+and withdraws at 1x; Hyprland magnifies that layer with the rest of the output,
+so it is only legible while the view includes the top edge. Nothing resets the
+zoom at login: a new session and a configuration reload both start at
+Hyprland's default of 1.
+
+On `nerv`, `Super + Ctrl + Tab` returns to the previous workspace through
+Hyprland's native workspace history. `Super + Tab` and `Super + Shift + Tab`
+still move the current workspace to the next and previous monitor.
+
 Seele Shell owns `org.freedesktop.Notifications` through Quickshell's native
 notification server; mako stays disabled. The shell handles actions, resident
 and transient lifetimes, a 30-second default toast timeout, permanent/pinned
-toasts, app stacks, local images, progress, and verification-code copying. A
+toasts, app stacks, local images, progress, verification-code copying, and
+per-notification reminders that return a waiting notification as a toast at a
+chosen time, held back by Do Not Disturb. A
 local notification image leads its card as the rounded sender identity, while
 the sending application's icon moves to a lower-right badge instead of the
 image being repeated in the body. Toasts declare no keyboard interactivity,
@@ -223,10 +272,17 @@ opened notification panel takes keyboard focus. Do Not Disturb is one control in
 header: its mark reports silence, the time beside it counts a running period
 down, and it drops a menu of every way to set that silence -- 15 minutes, 1
 hour, 4 hours, no end, and the way out -- so no row below the title is spent
-on it. Notification state and DND
+on it. Two further rows appear only while they apply. While the focus timer is
+running, the menu can sync silence with it: focus on turns shell Do Not Disturb
+on, and focus off puts back the silence from before that sync. While a timed
+calendar event is underway, the menu offers holding silence until that event
+ends and highlights the row; choosing it arms the hold, and the meeting's end
+puts the previous silence back. Opening the menu never arms either hold. A
+later manual choice replaces both and does not start or stop the focus timer.
+The shell is imported on `nerv` only, so `asuka` does not carry the menu. Notification state and DND
 belong to a resident Rust policy object owned by Qt; the QML store holds native
 notification objects and delivers callbacks. The hardware feed is independent. History,
-pins, and a running quiet period survive QML reloads in memory; notification
+pins, reminders, and a running quiet period survive QML reloads in memory; notification
 text is never written to disk. See the `seele-shell` skill for the protocol
 and tests.
 
@@ -242,6 +298,12 @@ Only the AI action passes a redacted report to a shared no-tools Codex broker ov
 its private socket. The `rebuild` Fish abbreviation and Seele OS session use
 `seele-rebuild`, which forwards progress bytes unchanged and retains a bounded
 failure tail for the same consent path. `systemctl start seele-failure-test` deliberately exercises it.
+The `rb` Fish abbreviation runs `seele-rb`, the reviewed workflow: it records
+the Jujutsu working copy, runs the flake checks, builds with `nh os build`, shows
+`nvd diff` against `/run/current-system`, and then activates only that built
+store path. `rb --dry-run` never activates, `rb --switch` activates without
+asking, and plain `rb` asks on a terminal. A failed step activates nothing and
+enters the same consent path.
 
 On `nerv`, `modules/hosts/nerv/memory-pressure.nix` decides who dies when
 memory runs out. NixOS starts systemd-oomd by default but places no cgroup
@@ -272,6 +334,22 @@ rather than every day. Nothing installs anything:
 through fwupd's own EFI binary, which this host's custom Secure Boot keys do not
 sign. `systemctl start seele-firmware-test` sends the same message without a
 vendor publishing one.
+
+A rebuild that only takes effect after a restart says so in System Health on
+`nerv`. The maintenance service's `restart` source compares
+`/run/booted-system` with `/run/current-system` once the session starts and on
+its shared 60-second interval, so it follows every way of activating without a
+hook in any of them. It looks only at what `switch-to-configuration` cannot
+replace in place: the kernel, its module tree, the initrd, kernel parameters and
+firmware, which only a boot loads; the systemd build that `systemd-logind` keeps,
+because NixOS re-executes PID 1 but never restarts logind; the system bus binary,
+which NixOS only reloads; and the switch inhibitors modules declare. One
+`eventually` finding names each change, such as "Linux 6.12.8 → 6.12.10", never
+notifies, and resolves after a reboot into the current generation or a rollback
+to the booted one. Its Open Power action runs `seele-shellctl power`, and nothing
+restarts on its own. Both links are world-readable, so unlike the firmware and
+disk-health reporters it needs no root publisher. See
+`seele-shell/projects/maintenance/README.md` for the reasoning behind each part.
 
 Seele Notes is a separate desktop app from the shell submodule's `notes`
 package, exposed as `packages.<system>.seele-notes` and installed on Linux by
@@ -342,6 +420,15 @@ path, and the module loads with `nofail`, so a plugin that will not load costs
 the virtual source rather than the audio server. It adds no WirePlumber rules
 and leaves the Bluetooth receiver's `bluez5.media-source-role` rules untouched.
 
+On `nerv`, the shell's resident status monitor warns when a device's battery
+runs low. Every battery list it publishes — system supplies, OpenLogi devices and
+connected Bluetooth peripherals — passes a native policy that raises one ordinary
+notification at 15% and one critical notification at 5% for a discharging
+device, and re-arms only once that device is seen charging or back at 25%. What
+has been said is kept in the private runtime directory, so a shell reload does
+not repeat it and a reboot starts fresh. See the submodule's
+`projects/tools/README.md`.
+
 On `nerv`, the Camera panel carries every attached Litra Glow, each with its
 own settings. The shell's resident status monitor owns the lights, not the
 panel: OpenLogi's light commands cannot read a light back, so the monitor keeps
@@ -401,6 +488,8 @@ On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control
 Center module, conditional progress bar item, and provider-neutral contract.
+The panel's layershell namespace is `seele-shell-transfers`, and it belongs in
+the Hyprland blur rule.
 The service selects only currently available targets owned by the logged-in
 Tailscale user. It retains seven days of metadata, never file contents; clearing
 history never deletes files. `asuka` has no transfer service. See the submodule's
@@ -440,6 +529,16 @@ GitHub's web inbox because the public API lacks them; this is the approved SIL-4
 scope. See the Seele skill's `shell-integrations.md` and the shell's
 `projects/github/README.md` for limits, reconciliation and fixture validation.
 
+On `nerv`, `seele-shellctl pr-focus` enters or leaves focus on one configured
+pull request (`SEELE_FOCUS_PULL`, or `seele-shell/focus.json` when that variable
+is unset). While focus is on, the Control Center pins that pull request's check
+rollup and latest review comment; exit clears the pin. The same session defers
+desktop toasts that are not @-mentions and keeps those notifications in the
+inbox, then shows the held toasts when focus ends. @-mentions, including a
+GitHub "mentioned you" summary, still arrive immediately. Focus is not written
+beside notification text, and nothing is posted to chat or email. Entering when
+a branch is pushed or a pull request URL is opened stays out of this slice.
+
 Home Assistant's house icon stays visible before setup. Its panel groups named
 sensor readouts and expandable device controls into Favorites and room cards,
 with a searchable device picker and an output-bounded viewport. It stores the token
@@ -465,6 +564,26 @@ Clock planner reads the same cache as busy time. See
 `seele-shell/projects/integrations/CALENDAR.md` for OAuth client setup, the
 worker protocol, sync windows, cache limits and the fake-API and QtTest checks.
 Use the `seele-credentials` skill for future integration credentials.
+
+Local weather is one line under the same popup's header, unfolding in place into
+the next eight hours, the week on one shared temperature scale and a place
+search. The resident native `seele-weather` worker in the integrations crate
+owns Open-Meteo forecasts and geocoding (no key, no account), a private
+`$XDG_STATE_HOME/seele-weather/state.json`, units from the locale's own
+measurement data (metric by default), WMO conditions and glyphs, place-local
+times and every label, and publishes changed-only sections that QML only draws.
+The default place is the system timezone's reference city in the tz database,
+shared with the theme switcher through `seele_runtime::timezone`; no location is
+asked for or stored, and Open-Meteo receives that city's rounded coordinates.
+A place picked from the search, by result id only, lives in the worker's state
+file until Use timezone city clears it, never in the flake. Refreshes run every
+half hour with jitter and after a resume. A failed fetch keeps the last forecast,
+marks it stale and backs off quietly, with no notification and no bar item. The
+shell feature registers Weather in Integration Health; its Settings opens the
+popup unfolded. See `seele-shell/projects/integrations/WEATHER.md` for the
+protocol, presentation, cache bounds and the fake-API and QtTest checks.
+
+On `nerv`, one configured meeting opens a local scratchpad. `seele.meetingScratchpad.event.id` and `.title` name that recurring event; with both empty, nothing is configured. From two minutes before it starts until it ends, the calendar worker writes a private markdown note under `$XDG_STATE_HOME/seele-meetings` with the title, the attendees, and empty Who, What and When sections, and opens it in Neovim. The guest list is fetched for that occurrence only and is not stored in the calendar cache. When the meeting ends, the same file stays where a later status draft can read it, including edits made in the open note. The feature is not imported on `asuka`, the note is not written into the Obsidian vault, and nothing is sent by email or chat. See `modules/features/programs/meeting-scratchpad.nix` and the calendar guide's meeting-scratchpad section.
 
 On `nerv`, the Control Center's Ports tile opens a local TCP listener
 inspector. The resident `seele-ports` worker in the shell submodule's `tools`
@@ -499,8 +618,11 @@ suggestions and Next fit weigh those hours and, once Google Calendar is set up,
 the selected calendars' busy time. The planner reads that calendar and never
 writes it; Open in Google Calendar hands a prefilled draft to Google's editor.
 Colour Lab accepts opaque sRGB colours and can explicitly use the
-last screen-picked colour. The Control Center groups utility tiles in two columns
-and scrolls within the focused output; Vicinae exposes each workbench directly.
+last screen-picked colour. The Control Center sets its utilities -- System
+Health, Transfers, Resources, Network activity, Ports and the three workbenches
+-- four to a row as glyph tiles under the module tiles, fits the focused output
+and scrolls only on an output too short for it; Vicinae exposes each workbench
+directly. Every Control Center module is reachable from the keyboard.
 
 Resources and Network activity are local, read-only shell panels. Their native
 workers sample only while the owning panel is open and retain bounded histories
@@ -524,18 +646,34 @@ an existing backup directory cannot redirect the operation. All launch declarati
 validate before configuration publication. See
 `seele-shell/projects/config-tools/README.md` before changing these boundaries.
 
+On Linux, the Brave feature contributes an owned managed policy file at
+`/etc/brave/policies/managed/seele.json`, imported by the NixOS `linux` profile.
+It disables product analytics and anonymous usage pings through
+`BraveP3AEnabled` and `BraveStatsPingEnabled`. Both policies apply after Brave
+restarts; `brave://policy` reports their effective state. The Home Manager
+feature still owns the browser package, extensions and Qt integration, and
+this machine-policy contribution does not reach macOS.
+
 On Linux, `modules/features/desktop/default-applications.nix` is the single
 owner of file-type defaults. It associates images with imv, video and audio with
-mpv, PDFs and EPUBs with zathura, text with the configured Neovim, and a
-directory with Yazi, and it declares the two entries those terminal
+mpv, PDFs and EPUBs with zathura, text (including JSON) with the configured
+Neovim, and directories with Yazi. It declares the two entries those terminal
 applications lack: `seele-editor.desktop` and `seele-files.desktop` open the
 configured terminal through explicit store paths rather than the launching
 process's `PATH`. The Zen feature keeps only the web documents and URL schemes
-it owns and no longer claims `text/plain`, so the two features cannot define the
-same association twice. Each viewer keeps its own feature leaf, its own
-vi-shaped bindings, and a Linux-only portable application.
+it owns and claims neither `text/plain` nor `application/json`, so the two
+features cannot define the same association twice. Each viewer keeps its own
+feature leaf, its own vi-shaped bindings, and a Linux-only portable application. The image entry,
+`seele-images.desktop`, opens one picture with its neighboring files in imv,
+starting at the selected picture; multiple selections stay limited to those
+files. Directory navigation remains nonrecursive.
 
 Theme ownership is split deliberately. Catppuccin themes supported application ports and supplies the Papirus icon theme. Stylix owns Qt and GTK widget themes, fonts, and active targets without a Catppuccin module. Qt's qt5ct and qt6ct settings reuse the Catppuccin Papirus icon theme. `stylix.autoEnable` stays off, and each platform profile lists its active Stylix targets explicitly so dormant applications do not add configuration or packages. Seele QML clients receive the selected palette through generated `theme.json`; `seele-shell/projects/shared/Palette.js` is their single unmanaged fallback and shared assignment path. The pointer belongs to Stylix as well: `modules/features/themes/cursor.nix` derives the `catppuccin-cursors` output and theme name from the shared flavor and accent and sets `stylix.cursor`, which is not a target and therefore applies while `stylix.autoEnable` is off, reaching GTK, Qt/KDE, and X11 through the targets already listed. Its Home Manager module additionally gives Hyprland the theme in the compositor's own environment, and its NixOS module installs the theme system-wide, points the `default` cursor theme at it, and exports `XCURSOR_THEME`/`XCURSOR_SIZE`, because the greeter runs before any user profile exists. One declared size covers every surface. macOS draws its own pointer and stays untouched.
+
+On `asuka`, the Homebrew feature sets `HOMEBREW_NO_ANALYTICS=1` both in the
+system shell environment and in nix-darwin's `homebrew.onActivation.extraEnv`.
+The latter covers privileged `brew bundle` calls, which do not inherit the
+user's shell environment.
 
 ## Native runtime ownership
 
@@ -613,14 +751,16 @@ After every repository change, review `AGENTS.md` and `.agents/skills/seele/` ag
 ## Dependency update CI
 
 Dependabot schedules weekly Nix flake updates. `.github/workflows/dependabot-nix.yml`
-checks out submodules and validates the native Linux closure for same-repository
-Dependabot PRs. Failed builds may invoke Copilot when `COPILOT_GITHUB_TOKEN` is
-configured; that credential is an external setup requirement, never a repository
-file. Repairs may change ordinary `.nix` sources only, with staged changes,
-lock changes and submodule changes rejected. Jujutsu owns the local repair;
-GitHub's `createCommitOnBranch` API publishes a signed commit with an expected-head
-guard. Never put a personal signing key on the runner. Darwin needs separate
-native validation.
+runs from `main` through `pull_request_target`. It builds `nerv` only for a
+same-repository Dependabot pull request whose base is `main` and whose diff is
+`flake.lock` alone, using main's Nix sources plus that lock. The build job is
+`contents: read` and clears GitHub tokens before Nix. When that build fails,
+Copilot may edit ordinary `*.nix` files in a later read-only job; Git metadata
+is restored before Nix runs again, still with tokens cleared. `contents: write`
+belongs only to the publish job, which sends those files with
+`createCommitOnBranch` and does not run Nix or Copilot. `COPILOT_GITHUB_TOKEN`
+is an external setup requirement, never a repository file. Darwin needs
+separate native validation.
 
 ## Validation
 
@@ -658,7 +798,7 @@ nix build .#darwinConfigurations.asuka.system --no-link --no-write-lock-file    
 
 Validate `asuka` on Darwin and `nerv` on Linux. Complete Darwin evaluation on Linux can try to realize Darwin-only Catppuccin assets and fail with a platform mismatch; report that boundary. `nix flake show` and `nix flake check` evaluate `darwinConfigurations.asuka`, so on Linux they stop on that Catppuccin palette mismatch. The Linux host check that completes is the `nixosConfigurations.nerv` derivation above.
 
-Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, or `darwin-rebuild` only when the user explicitly requests activation.
+Activation changes the live machine. Run `nh os switch`, `nh darwin switch`, `nixos-rebuild`, `darwin-rebuild`, `rb` or `rb --switch` only when the user explicitly requests activation. `rb --dry-run` builds and diffs without activating.
 
 Known baseline warnings include the nixvim/nixpkgs `follows` warning and upstream option/deprecation warnings. Compare with the baseline before attributing warnings to a change.
 
