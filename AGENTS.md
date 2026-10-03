@@ -286,6 +286,13 @@ pins, reminders, and a running quiet period survive QML reloads in memory; notif
 text is never written to disk. See the `seele-shell` skill for the protocol
 and tests.
 
+On `nerv`, a focus timer that runs out plays one screen-edge wash in the
+timer's Done green. The wash maps on each output only while it plays, takes no
+keyboard focus, and passes pointer input through an empty layer mask. Pause
+and cancel do not play it. The existing completion notification stays. The cue
+does not read or write Do Not Disturb, so a quiet period synced to the timer
+still ends on the timer leaving `running`.
+
 On `nerv`, `modules/features/system/failure-analysis.nix` attaches an
 `OnFailure=` reporter to installed system services with a systemd generator.
 It reads only the failed invocation's journal, adds local `nix --offline log`
@@ -615,6 +622,21 @@ afterwards is reported as remaining. The panel keeps nothing on disk and
 collects no logs. The panel's layershell namespace belongs in the Hyprland blur
 rule. See the Seele skill's `shell-integrations.md` and the submodule's
 `projects/tools/README.md`.
+
+On `nerv`, the Control Center's Fix me tile compares three live facts with the
+flake and can put the drifted ones back. Quad9 DNS-over-TLS, rootless Podman
+and the remote-shell boot policy are the allowlist; `modules/hosts/nerv/drift.nix`
+publishes them as `/etc/seele/drift.json`, and the Quad9 server list is the same
+value `dns.nix` installs. `seele-drift diff` only reads `resolvectl` and
+`systemctl show`. Restore runs only the checks the panel still has selected, and
+only those that are still drifted: it restarts `systemd-resolved` and reverts
+links that took `~.`, stops and disables a rootful Podman or Docker socket and
+starts the user socket, and enables Tailscale while disabling OpenSSH at boot
+without stopping a session that is already open. The privileged half is
+`seele-restore-drift`, reached through `run0`, and it accepts one of those three
+ids rather than a command. The panel shows each check's current line and the
+line the flake would restore. A later quiet morning audit is not part of this
+slice.
 
 The shell's local workbenches are Calculator, Colour Lab, Text workbench and the
 World Clock's Plan meeting mode. Calculator and text documents, including undo

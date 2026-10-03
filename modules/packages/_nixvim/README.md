@@ -264,6 +264,48 @@ Lowercase `/` and `?` searches match either case. An uppercase letter in the
 pattern makes the search case-sensitive. Explicit `\C` and `\c` pattern flags
 still force sensitive and insensitive matching respectively.
 
+## Copy diagnostics
+
+`<leader>cd` copies diagnostics overlapping the current line; `<leader>cD` copies
+all diagnostics in the current buffer. `:CopyDiagnostics` uses the current line,
+`:2,8CopyDiagnostics` uses an inclusive line range, and `:CopyDiagnostics!` uses
+the whole buffer (ignoring an explicit range). Multiline diagnostics are included
+when their range overlaps those lines; an exclusive end at column zero does not
+include that final line. These actions use diagnostics already held by Neovim
+from all namespaces; they do not contact a language server to refresh them.
+
+Each entry has a project-relative `path:line:column`, severity, optional source
+and code, and an indented message. Outside a marked project, paths are absolute,
+using the same read-only discovery and path restrictions as CopyReference.
+Entries sort by location, severity, then rendered text. No extra source text is
+read or appended, though a diagnostic's own message may quote source text.
+Multiline messages retain their line breaks and tabs; CRLF becomes LF, and other
+ASCII controls are represented as `\xHH` so terminal escape sequences remain
+literal. Source and code fields render all controls this way to keep one header.
+
+The explicit result replaces characterwise register `r` (`"rp`) and is sent to
+the existing `+` clipboard provider with the same fallback feedback as source
+references. Clipboard-provider acceptance does not confirm an asynchronous
+terminal clipboard write. An empty result, invalid path, more than 500 matching
+diagnostics, or output exceeding 256 KiB leaves both destinations unchanged.
+A clipboard failure still leaves the complete result in register `r`. Other
+registers are preserved except an unnamed register already pointing at `r` or `+`.
+Nothing is copied automatically or written to a file by this helper.
+
+Run the real Neovim fixture with synthetic diagnostics and private clipboard
+callbacks (no plugins or live language server required):
+
+```sh
+python3 modules/packages/_nixvim/test-copy-diagnostics.py
+python3 modules/packages/_nixvim/test-copy-reference.py
+```
+
+The diagnostics fixture covers overlapping and exclusive ranges, commands and
+mappings, multiple namespaces, ordering, multiline/controlled text, count/byte
+limits, invalid buffers and filenames, provider success/failure/absence, and
+preservation of editor state, source files and repository metadata. A real desktop
+clipboard still needs validation in its session.
+
 ## Persistent undo
 
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.

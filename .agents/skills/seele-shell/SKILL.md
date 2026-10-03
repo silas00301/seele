@@ -578,6 +578,20 @@ gone. Silence survives a QML reload through the in-memory snapshot, never a
 restart; resuming never replays arrivals. Preserve bounded app identities and
 legacy snapshot compatibility in the native and JavaScript fixtures.
 
+## Mark a finished focus timer on the screen edge
+
+On `nerv`, `FocusTimer.completed` is the exit. It already fires once, when a
+running timer reaches `done`. Play `FocusExitCue` from that signal and nowhere
+else: pause and cancel are choices the user just made, and a lighter cue while
+the timer is running stays out of this slice. The cue is one green wash — the
+timer's Done colour — along the bezel of every output, held and then faded by
+the theme's glance durations. Map the layer only while it plays, with
+`WlrKeyboardFocus.None` and an empty `mask`, and leave `seele-shell-focus-exit`
+out of the Hyprland blur rule. Keep the existing completion notification. Do
+not read or write Do Not Disturb from the cue, so a focus-synced quiet period
+can leave `running` on its own path. `tests/focus-exit-cue.sh` grabs the rim at
+full strength and after it dismisses.
+
 ## Keep the microphone test inside the panel that owns it
 
 `seele-mic-test` is started by `MicTestStore.qml` with `running: store.panelOpen`

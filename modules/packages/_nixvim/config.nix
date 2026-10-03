@@ -242,7 +242,9 @@ in
     ${builtins.readFile ./theme.lua}
     dofile("${./saved-diff.lua}")
     dofile("${./refresh.lua}")
-    dofile("${./copy-reference.lua}").setup()
+    local source_reference = dofile("${./copy-reference.lua}")
+    source_reference.setup()
+    dofile("${./copy-diagnostics.lua}").setup(source_reference.reference)
     dofile("${./trim-whitespace.lua}").setup()
     dofile("${./replace.lua}").setup()
     dofile("${./spell.lua}").setup()

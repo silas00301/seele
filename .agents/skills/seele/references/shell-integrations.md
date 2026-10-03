@@ -152,6 +152,24 @@ listener still bound afterwards is reported as remaining, never as removed. No
 logs are collected or shown. See the submodule's `projects/tools/README.md` for
 the protocol, the bounds and the synthetic `/proc` validation.
 
+## Fix me
+
+The Control Center's Fix me tile on `nerv` compares three live facts with the
+flake and can put the drifted ones back. Quad9 DNS-over-TLS, rootless Podman
+and the remote-shell boot policy are the allowlist.
+`modules/hosts/nerv/drift.nix` publishes them as `/etc/seele/drift.json`, and
+the Quad9 server list is the same value `dns.nix` installs. `seele-drift diff`
+only reads `resolvectl` and `systemctl show`. Restore runs only the checks the
+panel still has selected, and only those that are still drifted: it restarts
+`systemd-resolved` and reverts links that took `~.`, stops and disables a
+rootful Podman or Docker socket and starts the user socket, and enables
+Tailscale while disabling OpenSSH at boot without stopping a session that is
+already open. The privileged half is `seele-restore-drift`, reached through
+`run0`, and it accepts one of those three ids rather than a command. The panel
+shows each check's current line and the line the flake would restore. A later
+quiet morning audit is not part of this slice. See the submodule's
+`projects/tools/README.md`.
+
 ## Quick Look
 
 Space previews the file a surface has highlighted, without starting the
