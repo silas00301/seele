@@ -47,7 +47,8 @@ let
                   Name = "Startpage";
                   URLTemplate = "https://startpage.com/sp/search?query={searchTerms}";
                   IconURL = "https://startpage.com/sp/cdn/favicons/favicon-gradient.ico";
-                  SuggestURLTemplate = "https://www.startpage.com/osuggestions?q=%s";
+                  # Search-engine policy uses OpenSearch placeholders, not bookmark %s.
+                  SuggestURLTemplate = "https://www.startpage.com/osuggestions?q={searchTerms}";
                 }
               ];
             };

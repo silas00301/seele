@@ -20,6 +20,11 @@ let
           ctrl-alt-k = "focus up";
           ctrl-alt-l = "focus right";
 
+          # Keep window state beside the Ctrl+Alt directional controls. This is
+          # AeroSpace fullscreen within the workspace, not a macOS Space.
+          ctrl-alt-f = "fullscreen";
+          ctrl-alt-space = "layout floating tiling";
+
           # Window Moving
           ctrl-alt-shift-h = "move left";
           ctrl-alt-shift-j = "move down";
@@ -98,6 +103,10 @@ let
 
           alt-tab = "workspace-back-and-forth";
           alt-shift-tab = "move-workspace-to-monitor --wrap-around next";
+
+          # Transfer just the focused window, following it to the other display.
+          ctrl-alt-tab = "move-node-to-monitor --focus-follows-window --wrap-around next";
+          ctrl-alt-shift-tab = "move-node-to-monitor --focus-follows-window --wrap-around prev";
 
           ctrl-shift-1 = "layout tiles horizontal vertical";
           ctrl-shift-2 = "layout accordion horizontal vertical";

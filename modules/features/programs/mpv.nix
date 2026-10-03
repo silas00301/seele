@@ -5,10 +5,12 @@
 }:
 let
   module = (
-    { ... }:
+    { pkgs, ... }:
     {
       programs.mpv = {
         enable = true;
+        # Publish playback to the desktop media keys and Seele Now Playing.
+        scripts = [ pkgs.mpvScripts.mpris ];
 
         config = {
           hwdec = "auto-safe";

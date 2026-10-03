@@ -1,10 +1,23 @@
 # Pane scrollback viewer
 
+**Ctrl+s, r** reloads the configuration file that installed the binding, including
+a portable or custom XDG configuration. The path is captured during loading and
+quoted for tmux’s native file expansion, so spaces and glob characters stay
+literal. Included plugin files do not replace it. Errors remain visible instead
+of being followed by an unconditional success message.
+
+Validate with `python3 modules/features/programs/_tmux/test-reload.py`.
+
 Press **Ctrl+s, H** in tmux to browse the originating pane's screen and up to
 10,000 retained history rows in a temporary Neovim popup. Use `/` and `?` to
 search, `n`/`N` to move between matches, `v`, `V`, or Ctrl+v to select, and `y`
 to copy and close. `yy` copies a whole line. `q` or Escape in normal mode closes
 without copying; Escape in visual mode cancels the selection.
+
+Managed and portable tmux retain up to 10,000 history rows per pane, matching
+the viewer’s capture window. The limit applies when a pane is created: after
+reloading the configuration, open a new pane or window to get the larger history.
+Existing panes keep their old limit, and discarded output cannot be recovered.
 
 Soft terminal wraps join back into logical lines; hard line breaks remain.
 Neovim wraps those logical lines to the popup width. Linewise copies include a
@@ -39,3 +52,17 @@ it never contacts the live tmux server. It checks pane identity, history and byt
 bounds, wrap and newline handling, search, scratch privacy, cancel, linewise and
 characterwise copy, terminal OSC 52, missing-pane failure and the actual popup
 binding. `checks.<system>.tmux-scrollback` packages this same fixture.
+
+## Broadcast input to a window's panes
+
+Press **Ctrl+s, Shift+s** to toggle tmux's native pane synchronization for the
+current window. While enabled, the status bar shows **BROADCAST** in reverse bold
+text and typed input reaches every eligible pane in that window. Press the same
+keys again to stop; the bar label disappears. Other windows keep their own state,
+so switching away hides the label and returning to a synchronized window restores
+it. Synchronization starts off and is not persisted across servers.
+
+Run `python3 modules/features/programs/_tmux/test-broadcast.py` to exercise the
+actual binding through an attached private PTY, verify input duplication and
+window isolation, and check the live status label. The existing
+`checks.<system>.tmux-scrollback` also runs this fixture.
