@@ -35,7 +35,11 @@ def main():
         config = root / "undo.vim"
         config.write_text(source)
         env = dict(os.environ, XDG_STATE_HOME=str(state), TMPDIR=str(runtime),
-                   XDG_RUNTIME_DIR=str(runtime))
+                   XDG_RUNTIME_DIR=str(runtime), HOME=str(root / "home"),
+                   XDG_CONFIG_HOME=str(root / "custom-config"),
+                   GH_CONFIG_DIR=str(root / "custom-gh"),
+                   DOCKER_CONFIG=str(root / "custom-docker"),
+                   NVIM_LOG_FILE=str(runtime / "nvim.log"))
         count = 0
 
         def run(commands, *, isolated_config=config):
@@ -78,7 +82,11 @@ def main():
 
         for name in [".env", ".env.production", "client.pem", "client.key", "note.gpg",
                      ".ssh/id_ed25519", ".gnupg/plaintext", ".aws/credentials",
-                     ".kube/config", ".config/sops/age/keys.txt", "runtime/secret.txt"]:
+                     ".kube/config", ".config/sops/age/keys.txt", "runtime/secret.txt",
+                     ".netrc", ".npmrc", ".pypirc", ".git-credentials",
+                     ".config/gh/hosts.yml", ".docker/config.json",
+                     "custom-config/gh/hosts.yml", "custom-gh/hosts.yml",
+                     "custom-docker/config.json"]:
             path = root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("before\n")
@@ -86,10 +94,72 @@ def main():
                  "call setline(1, 'sensitive fixture')", "write",
                  "call assert_false(filereadable(undofile(expand('%:p'))))"])
 
+        # Similar names and adjacent tool settings are ordinary editable files.
+        for name in ["npmrc", ".npmrc.example", ".netrc.notes", ".git-credentials.bak",
+                     ".config/gh/config.yml", ".docker/daemon.json",
+                     "custom-config/other/hosts.yml", "custom-gh/config.yml",
+                     "custom-docker/other.json", "gh/hosts.yml", "docker/config.json"]:
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("before\n")
+            run([edit(path), "call assert_true(&l:undofile)",
+                 "call setline(1, 'ordinary fixture')", "write",
+                 "call assert_true(filereadable(undofile(expand('%:p'))))"])
+
         # A regular-looking symlink must inherit its secret target's exclusion.
         link = root / "linked.txt"
         link.symlink_to(root / ".env")
         run([edit(link), "call assert_false(&l:undofile)"])
+        auth_link = root / "auth-link.txt"
+        auth_link.symlink_to(root / "custom-gh" / "hosts.yml")
+        run([edit(auth_link), "call assert_false(&l:undofile)",
+             "call setline(1, 'linked sensitive fixture')", "write",
+             "call assert_false(filereadable(undofile(expand('%:p'))))"])
+
+        # BufWritePre must protect an alternate :write target too.
+        alternate = root / "alternate.txt"
+        alternate.write_text("before\n")
+        run([edit(alternate), "call assert_true(&l:undofile)",
+             "call setline(1, 'alternate sensitive fixture')",
+             "execute 'write! ' .. fnameescape(" + vim_string(root / ".npmrc") + ")",
+             "call assert_false(&l:undofile)",
+             "call assert_false(filereadable(undofile(" + vim_string(root / ".npmrc") + ")))"])
+
+        # BufFilePost protects a rename before a new sensitive file is written.
+        run([edit(alternate), "call assert_true(&l:undofile)",
+             "call setline(1, 'renamed sensitive fixture')",
+             "execute 'file ' .. fnameescape(" + vim_string(root / "custom-docker" / "config.json") + ")",
+             "call assert_false(&l:undofile)", "write!",
+             "call assert_false(filereadable(undofile(expand('%:p'))))"])
+
+        # Default config home still applies when XDG_CONFIG_HOME is unset.
+        env.pop("XDG_CONFIG_HOME")
+        default_auth = root / "home" / ".config" / "gh" / "hosts.yml"
+        default_auth.parent.mkdir(parents=True)
+        default_auth.write_text("before\n")
+        run([edit(default_auth), "call assert_false(&l:undofile)",
+             "call setline(1, 'default sensitive fixture')", "write",
+             "call assert_false(filereadable(undofile(expand('%:p'))))"])
+        env["XDG_CONFIG_HOME"] = str(root / "custom-config")
+
+        # A sensitive display name must stay excluded even with a normal target.
+        displayed_auth = root / "nested" / ".netrc"
+        displayed_auth.parent.mkdir()
+        displayed_auth.symlink_to(ordinary)
+        run([edit(displayed_auth), "call assert_false(&l:undofile)"])
+
+        # Custom auth directories may themselves be symlinked.
+        actual_gh = root / "actual-gh"
+        actual_gh.mkdir()
+        actual_auth = actual_gh / "hosts.yml"
+        actual_auth.write_text("before\n")
+        linked_gh = root / "linked-gh"
+        linked_gh.symlink_to(actual_gh, target_is_directory=True)
+        env["GH_CONFIG_DIR"] = str(linked_gh)
+        run([edit(actual_auth), "call assert_false(&l:undofile)",
+             "call setline(1, 'resolved sensitive fixture')", "write",
+             "call assert_false(filereadable(undofile(expand('%:p'))))"])
+        env["GH_CONFIG_DIR"] = str(root / "custom-gh")
 
         opted_out = root / "opted-out.txt"
         opted_out.write_text("before\n")
