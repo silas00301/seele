@@ -12,7 +12,9 @@ let
       install -Dm644 ${./_failure-analysis/view.lua} \
         "$out/share/seele-failure-analysis/view.lua"
 
-      for binary in seele-failure-report seele-rebuild; do
+      # jj and nix stay the caller's own: the repository format and the Nix
+      # distribution must be the ones the working copy and daemon already use.
+      for binary in seele-failure-report seele-rebuild seele-rb; do
         makeWrapper "${selfPackages.failure-analysis}/bin/$binary" "$out/bin/$binary" \
           --set SEELE_FAILURE_SELF "$out/bin/seele-failure-report" \
           --set SEELE_FAILURE_ENV "${pkgs.coreutils}/bin/env" \
@@ -20,6 +22,7 @@ let
           --set SEELE_FAILURE_JOURNALCTL "${pkgs.systemd}/bin/journalctl" \
           --set SEELE_FAILURE_NH "${lib.getExe nhPackage}" \
           --set SEELE_FAILURE_NOTIFY "${pkgs.libnotify}/bin/notify-send" \
+          --set SEELE_FAILURE_NVD "${lib.getExe pkgs.nvd}" \
           --set SEELE_FAILURE_NVIM "${selfPackages.nixvim}/bin/nvim" \
           --set SEELE_FAILURE_RUNUSER "${pkgs.util-linux}/bin/runuser" \
           --set SEELE_FAILURE_SYSTEMCTL "${pkgs.systemd}/bin/systemctl" \
@@ -50,6 +53,13 @@ let
       programs.fish.shellAbbrs.rebuild = lib.mkForce {
         position = "command";
         expansion = "${package}/bin/seele-rebuild";
+      };
+
+      # Record, check, build and diff, then activate only the reviewed build.
+      # `rb --dry-run` stops after the diff; `rb --switch` skips the question.
+      programs.fish.shellAbbrs.rb = {
+        position = "command";
+        expansion = "${package}/bin/seele-rb";
       };
 
       # The OS session already delegates rebuilding through SEELE_SHELL_NH.
