@@ -819,13 +819,15 @@ Python/JavaScript validation, including the Linux Taildrop API limitations.
 
 ## Dependency update automation
 
-`.github/dependabot.yml` schedules weekly Nix updates. The Dependabot-only workflow
-checks out submodules, evaluates and builds `nerv`, and can ask Copilot to repair a
-failed update. `COPILOT_GITHUB_TOKEN` must be configured separately. Repairs are
-limited to ordinary `.nix` files; lock, submodule, staged and unrelated changes
-fail validation. Jujutsu tracks the local change, then GitHub publishes a signed
-commit through `createCommitOnBranch`, refusing a branch whose head changed during
-the build. This does not replace native Darwin validation or activate either host.
+`.github/dependabot.yml` schedules weekly Nix updates. `.github/workflows/dependabot-nix.yml`
+runs from `main` and builds `nerv` only for a same-repository Dependabot pull
+request whose base is `main` and whose diff is `flake.lock` alone. The build
+checks out main and overlays that lock. A failed build can ask Copilot, in a
+read-only job, to edit ordinary `.nix` files; Nix runs only after Git metadata
+is restored and with tokens cleared. The publish job is the only
+`contents: write` job. It does not run Nix or Copilot. `COPILOT_GITHUB_TOKEN`
+is configured outside the repository. This does not replace native Darwin
+validation or activate either host.
 
 Fish `gitignore TEMPLATE [TEMPLATE ...]` prints ignore templates to standard output
 without editing files. Space- or comma-separated names form one request; invalid
