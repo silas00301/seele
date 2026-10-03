@@ -401,6 +401,8 @@ On `nerv`, the `seele-transfers` user service automatically receives Taildrop
 files into the configured XDG Downloads folder with exclusive numbered names
 and user-owned mode-0600 files. The shell owns the Transfers panel, Control
 Center module, conditional progress bar item, and provider-neutral contract.
+The panel's layershell namespace is `seele-shell-transfers`, and it belongs in
+the Hyprland blur rule.
 The service selects only currently available targets owned by the logged-in
 Tailscale user. It retains seven days of metadata, never file contents; clearing
 history never deletes files. `asuka` has no transfer service. See the submodule's
