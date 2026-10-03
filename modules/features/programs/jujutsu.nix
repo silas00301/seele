@@ -94,14 +94,15 @@ in
   flake.modules.homeManager."jujutsu" = module;
 
   seele.portable.jj = {
-    # Jujutsu's pager and diff formatter are chosen by whether bat and hunk are
-    # present, and its `pr` alias shells out to gh, so all three take part in
-    # the standalone evaluation the way they do on a host.
+    # The configured DiffEditor command comes from nixvim's hunk plugin, not
+    # from an arbitrary nvim on the destination machine. Keep it in the same
+    # standalone profile as the pager, diff formatter and gh-backed `pr` alias.
     modules = [
       "jujutsu"
       "bat"
       "hunk"
       "github-cli"
+      "nixvim"
     ];
     binary = "jj";
   };
