@@ -94,7 +94,8 @@ Stop. See `projects/caffeinate/README.md` for the protocol and fixtures.
 The Transfers panel filters retained history by filename/device, direction and
 outcome using `qml-core` policy. Active jobs remain visible, and explicit
 notification focus clears filters before revealing its target. The service
-continues to own canonical groups and file indices. See the submodule's
+continues to own canonical groups and file indices. Its layer surface is
+`seele-shell-transfers`, which the Hyprland blur rule lists. See the submodule's
 `projects/transfers/README.md` for behavior and the native-backed store and
 production Qt panel fixtures.
 
@@ -332,7 +333,7 @@ no network requests. The same README owns its stdin/privacy and host-action test
 Ordinary panels use `WlrKeyboardFocus.OnDemand`, leaving the bar and click-away
 catcher available. Keep their namespaces in the blur rule in
 `modules/features/programs/hypr.nix`, including GitHub, Focus, Home Assistant,
-Caffeinate, Ports, Quick Look and Themes.
+Caffeinate, Ports, Quick Look, Themes and Transfers.
 Changing QML alone cannot add compositor blur.
 
 ## Validation
