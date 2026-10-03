@@ -652,6 +652,14 @@ private-server fixture packaged as `checks.<system>.tmux-scrollback`.
 
 Two things the evaluation cannot know are the foreign machine's user and home, so the builder supplies a sentinel `home.homeDirectory` that nothing in the built output may depend on; Home Manager only uses it to derive the relative layout of `home-files`, which the wrapper re-roots at runtime.
 
+Before serializing the launcher environment, the portable builder re-roots
+absolute values equal to or beneath the evaluated XDG config directory. Thus
+`RIPGREP_CONFIG_PATH` and `STARSHIP_CONFIG` follow the writable configuration
+farm instead of the synthetic build-time home. It embeds the farm's runtime
+expression directly, since those names sort before `XDG_CONFIG_HOME` is
+assigned. Similar prefixes, embedded command text, and data/state paths stay
+untouched. `checks.<system>.portable-environment` checks these boundaries.
+
 The wrapper does not point applications at the store tree directly, because the applications that read a generated config also write beside it — fish's universal variables, gh's credentials, caches keyed by config path — and the store is read-only. It instead materializes `home-files/.config` as a symlink farm below `$XDG_CACHE_HOME/seele/portable/<command>` and exports that as `XDG_CONFIG_HOME`: managed files stay store symlinks that follow this flake, directories are real and writable, and anything the application creates itself survives the next run. A generation manifest records the links Seele owns. Refreshes hold a per-application file lock, remove only links whose targets still match that manifest, and preserve application-owned files and symlinks. Generated directories are writable real directories, including when the source uses directory symlinks. `checks.<system>.portable-config` covers preservation and concurrent launches. `SEELE_PORTABLE_HOME` moves the farm. A leaf whose features write nothing below `.config` gets no farm and no `XDG_CONFIG_HOME` override at all, so a wrapper cannot hide config the foreign machine already has for no reason.
 
 Portable `jj` includes the `nixvim` feature because its `DiffEditor` command is
