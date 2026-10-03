@@ -771,6 +771,11 @@ Run the navigation package's real Qt tests and the affected production panel
 fixtures; build all five UI outputs for shared changes. `seele-shellctl bar`
 is the shell's opt-in keyboard entry point for its bar; passive layers must
 never acquire keyboard focus as a side effect of this support.
+Pending Bluetooth pairing takes exclusive focus only after the user opens
+Bluetooth, with intent tied to that request and Reject focused first. Mark a
+primary text editor with `keyboardEdit` so `i` stays distinct from search.
+Keep the isolated palette fixture's native QML import explicit and run
+`tests/auth-navigation.js` after changing password-field Escape handling.
 
 `projects/shared/Theme.qml` owns the shell and Notes visual vocabulary. Both
 entrypoints inherit it, and shared components receive it as `theme`. The shell
