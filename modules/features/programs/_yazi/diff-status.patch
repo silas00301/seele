@@ -1,0 +1,27 @@
+--- a/diff.yazi/main.lua
++++ b/diff.yazi/main.lua
+@@ -1,8 +1,9 @@
+ --- @since 26.1.22
+ 
+-local function info(content)
++local function info(content, level)
+ 	return ya.notify {
+ 		title = "Diff",
++		level = level or "info",
+ 		content = content,
+ 		timeout = 5,
+ 	}
+@@ -30,8 +31,11 @@
+ 
+ 		local output, err = Command("diff"):arg("-Naur"):arg(tostring(a)):arg(tostring(b)):output()
+ 		if not output then
+-			return info("Failed to run diff, error: " .. err)
+-		elseif output.stdout == "" then
++			return info("Failed to run diff, error: " .. tostring(err), "error")
++		elseif output.status.code ~= 0 and output.status.code ~= 1 then
++			local detail = output.stderr:gsub("[%c]", " "):sub(1, 512)
++			return info("Diff failed (" .. tostring(output.status.code or "terminated") .. "): " .. detail, "error")
++		elseif output.status.code == 0 or output.stdout == "" then
+ 			return info("No differences found")
+ 		end
+ 
