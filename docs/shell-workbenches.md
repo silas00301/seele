@@ -11,7 +11,7 @@ flake input or system privilege is required.
 | Meeting planner | World Clock → Plan meeting or `seele-shellctl control meeting` | Local-day hour ribbons per IANA zone, DST-aware day moves, working-hour fit, ranked suggestions and Next fit around calendar busy time |
 | Colour Lab | Control Center or `seele-shellctl color-lab` | Opaque sRGB parsing, unrounded WCAG thresholds, typography preview and tonal palettes |
 | Text workbench | Control Center or `seele-shellctl control text-workbench` | JSON formatting, URL and Base64 transforms, line cleanup and stable deduplication |
-| Resources | Control Center or `seele-shellctl control resources` | Live CPU, memory and searchable processes with bounded histories |
+| Resources | Control Center or `seele-shellctl control resources` | Live CPU, memory, per-device storage and searchable processes with bounded histories |
 | Network activity | Control Center, Network panel or `seele-shellctl control network-activity` | Per-interface receive/send rates and session totals |
 
 Calculator and text-workbench documents are destroyed on close. Paste and Copy

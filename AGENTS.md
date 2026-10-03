@@ -637,7 +637,10 @@ directly. Every Control Center module is reachable from the keyboard.
 Resources and Network activity are local, read-only shell panels. Their native
 workers sample only while the owning panel is open and retain bounded histories
 in memory. Resources reads CPU, memory and process names without command-line
-arguments. Network activity reads interface counters without contacting a host
+arguments, and lists the space on each mounted block-device filesystem from
+`statvfs`, one row per device, on a sampler thread of its own so a stalled disk
+marks only that group stale. Its meters turn at the Maintenance disk source's
+85% and 95%. Network activity reads interface counters without contacting a host
 or examining packets. Kernel identities and fresh baselines keep restarted
 processes and replaced interfaces from inheriting a previous object's rates.
 The parent supplies the new layer namespaces to the existing Hyprland blur rule;
