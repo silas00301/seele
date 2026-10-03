@@ -184,6 +184,12 @@ It replaces in a temporary project and checks the result on disk: the file scope
 leaves another file's match untouched, the directory scope reaches both, a
 charwise selection becomes a literal search, and non-file buffers open nothing.
 
+## Text search
+
+Lowercase `/` and `?` searches match either case. An uppercase letter in the
+pattern makes the search case-sensitive. Explicit `\C` and `\c` pattern flags
+still force sensitive and insensitive matching respectively.
+
 ## Persistent undo
 
 `undo.vim` manages private undo state and excludes sensitive/runtime paths.
