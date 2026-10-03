@@ -328,6 +328,14 @@ let
             { description = "Grow the focused window horizontally" }
           )
 
+          -- Use the compositor's history, including a workspace that became
+          -- empty, rather than guessing from the numbered workspace bindings.
+          hl.bind(
+            mod .. " + CTRL + TAB",
+            hl.dsp.focus({ workspace = "previous" }),
+            { description = "Return to the previous workspace" }
+          )
+
           hl.bind(
             mod .. " + TAB",
             hl.dsp.workspace.move({
@@ -384,8 +392,14 @@ let
 
           hl.bind(
             "XF86AudioPause",
-            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"),
-            { locked = true, description = "Toggle media playback" }
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl pause"),
+            { locked = true, description = "Pause media playback" }
+          )
+
+          hl.bind(
+            "XF86AudioStop",
+            hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl stop"),
+            { locked = true, description = "Stop media playback" }
           )
 
           hl.bind(
@@ -560,7 +574,7 @@ let
           -- corners would otherwise sit on a squared-off pane of glass.
           hl.layer_rule({
             match = {
-              namespace = "^seele-shell-(bar|osd|agents|prompt|quicklook|tray-menu|application|calendar|clock|focus|system-health|github|home-assistant|control-center|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|caffeinate|session|ports|drift|calculator|color-lab|text-workbench|resources|network-activity|themes|theme-settings|polkit)$",
+              namespace = "^seele-shell-(bar|osd|agents|prompt|quicklook|tray-menu|application|calendar|clock|focus|system-health|drift|github|home-assistant|control-center|transfers|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|caffeinate|hermes|session|ports|calculator|color-lab|text-workbench|resources|network-activity|themes|theme-settings|polkit)$",
             },
             blur = true,
             -- HoverTip uses child PopupWindows, not separate layer surfaces.
