@@ -41,5 +41,15 @@ let
     };
 in
 {
+  # Brave reads machine policies from this directory on Linux. These two
+  # policies are not dynamically refreshed, so an already running browser
+  # applies the change after a restart. Own one file alongside other policies.
+  flake.modules.nixos.brave = {
+    environment.etc."brave/policies/managed/seele.json".text = builtins.toJSON {
+      BraveP3AEnabled = false;
+      BraveStatsPingEnabled = false;
+    };
+  };
+
   flake.modules.homeManager."brave" = module;
 }

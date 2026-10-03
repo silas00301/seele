@@ -2,6 +2,7 @@
 let
   module = {
     imports = [
+      config.flake.modules.nixos.brave
       config.flake.modules.nixos.catppuccin
       config.flake.modules.nixos.cursor
       config.flake.modules.nixos.firmware-updates

@@ -89,7 +89,7 @@ single selection into its own mode's slot.
 | Neovim | Live through a file watcher, with a focus/startup fallback; Catppuccin presets use the official Catppuccin colorscheme and other presets use Stylix's Base16 palette |
 | Fish | At the next prompt |
 | tmux | Live for the default server, including Catppuccin's status modules and rounded windows; also loaded when reading its configuration |
-| Spicetify | Live through its packaged extension and a read-only loopback palette feed; restart Spotify once after the first rebuild to load the extension |
+| Spicetify | Live through its packaged extension and a read-only loopback palette feed; stalled reads abort after three seconds and retry on the next poll, keeping the last valid palette; restart Spotify once after the first rebuild to load the extension |
 | Vesktop | Restart Vesktop once after the first rebuild to unload its old fixed Mocha theme link; later CSS changes are live through Vencord QuickCSS's file watcher. Latte uses the official light stylesheet in either Discord appearance class; other Catppuccin presets import their official stylesheet, and other presets project legible text and surface colors into Discord's current variables |
 | GTK 3/4, GtkSourceView and Qt/Kvantum | New applications; existing windows may need reopening |
 | KDE color schemes | Live through `plasma-apply-colorscheme` |
