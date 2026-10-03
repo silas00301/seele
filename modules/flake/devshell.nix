@@ -11,6 +11,7 @@
           pkgs.statix
           pkgs.deadnix
           pkgs.shellcheck
+          pkgs.jq
           pkgs.nodejs_24
           pkgs.python3
           pkgs.jujutsu

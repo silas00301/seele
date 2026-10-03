@@ -1,12 +1,22 @@
 { ... }:
 let
   homeModule =
-    { config, lib, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     {
       programs.fish = {
         enable = true;
         functions = {
-          gitignore = "curl -sL https://www.toptal.com/developers/gitignore/api/$argv";
+          gitignore = {
+            description = "Print gitignore templates without changing any files";
+            body = builtins.replaceStrings [ "@curl@" ] [ "${pkgs.curl}/bin/curl" ] (
+              builtins.readFile ./_fish/gitignore.fish
+            );
+          };
           mkcd = {
             description = "Create and enter one directory";
             body = ''
@@ -122,6 +132,18 @@ in
   perSystem =
     { pkgs, ... }:
     {
+      checks.fish-gitignore =
+        pkgs.runCommand "fish-gitignore"
+          {
+            nativeBuildInputs = [
+              pkgs.fish
+              pkgs.python3
+            ];
+          }
+          ''
+            python3 ${./_fish/test_gitignore.py} ${./_fish/gitignore.fish} fish
+            touch "$out"
+          '';
       checks.fish-project-root =
         pkgs.runCommand "fish-project-root"
           {
