@@ -33,6 +33,7 @@ let
   nixosModule =
     moduleFor
       [
+        modules.nixos.configuration-inspector
         modules.nixos.codex
         modules.nixos.determinate
         modules.nixos.fish
@@ -45,6 +46,7 @@ let
   darwinModule =
     moduleFor
       [
+        modules.darwin.configuration-inspector
         modules.darwin.determinate
         modules.darwin.fish
         modules.darwin.vicinae
