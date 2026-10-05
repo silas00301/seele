@@ -1,7 +1,13 @@
 { ... }:
 let
   module = (
-    { username, pkgs, ... }:
+    {
+      config,
+      lib,
+      username,
+      pkgs,
+      ...
+    }:
     {
       programs.nh = {
         enable = true;
@@ -9,8 +15,48 @@ let
           if pkgs.stdenv.hostPlatform.isLinux then "/home/${username}/seele" else "/Users/${username}/seele";
         clean = {
           enable = true;
-          extraArgs = "--keep 3 --keep-since 3d";
+          extraArgs = [
+            "--keep"
+            "3"
+            "--keep-since"
+            "3d"
+          ];
         };
+      };
+
+      # Extend Home Manager's existing owner rather than adding another timer.
+      # Failed user services are outside the system failure-analysis generator.
+      systemd.user.services = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+        nh-clean = {
+          Unit.OnFailure = [ "seele-nh-clean-failed.service" ];
+          Service = {
+            StandardOutput = "journal";
+            StandardError = "journal";
+          };
+        };
+        seele-nh-clean-failed = {
+          Unit.Description = "Report failed Nix cleanup";
+          Service = {
+            Type = "oneshot";
+            ExecStart = lib.hm.strings.escapeSystemdExecArgs [
+              "${pkgs.libnotify}/bin/notify-send"
+              "--app-name=Seele"
+              "--icon=dialog-error"
+              "--urgency=critical"
+              "--"
+              "Nix cleanup failed"
+              "The nh cleanup did not finish. Inspect journalctl --user -u nh-clean.service before retrying."
+            ];
+          };
+        };
+      };
+
+      # launchd does not keep stdout/stderr in the systemd journal. Keep one
+      # private log for this same scheduled cleanup, including failure output.
+      launchd.agents.nh-clean.config = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+        StandardOutPath = "${config.home.homeDirectory}/Library/Logs/nh-clean.log";
+        StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/nh-clean.log";
+        Umask = 63;
       };
 
       # nh escalates on its own to activate a generation, and its `auto`

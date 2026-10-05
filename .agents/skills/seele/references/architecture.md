@@ -1087,3 +1087,9 @@ to the configured host/tag, and never writes originals. See `docs/backup-files.m
 ### Shared SSH client keepalives
 
 The shared `ssh-keepalive` Home Manager feature enables client configuration through the `common` profile on Linux and macOS. Its final `Host *` block supplies overridable `ServerAliveInterval 60` and `ServerAliveCountMax 3` defaults. Earlier host-specific settings and includes retain OpenSSH first-value precedence; the existing 1Password agent integration stays in its platform feature. Enabling the client configuration also writes the Linux 1Password feature's existing `Host *` `IdentityAgent` block, which stayed dormant while `programs.ssh` was off; it names the same agent socket as `SSH_AUTH_SOCK`, so sessions authenticate as before, and processes without that variable now find the agent too. This does not enable an incoming SSH server. See [SSH keepalives](../../../../docs/ssh-keepalives.md).
+
+The common `nh` feature retains cleanup ownership in Home Manager. Its arguments
+are a list so Darwin receives separate flags; Linux reports failed user cleanups
+through `seele-nh-clean-failed` and keeps summaries in the journal, while Darwin
+keeps the existing launchd agent's private log. See `docs/nix-cleanup-audit.md`
+for ownership, audit scope and native validation.
