@@ -1043,3 +1043,5 @@ state and explicitly opens a recorded source, optionally remapping only this
 flake's own module files into a chosen checkout. `apps.inspect` exposes it; the
 synthetic catalog check and native executable fixture cover its boundaries. See
 `docs/configuration-inspector.md` for scope and native-host validation.
+
+Broker integration inference checks CodexBar's known rate-window capacity before each attempt. Confirmed exhaustion selects isolated Claude Code Haiku, then Sonnet and Opus on model failure. Positive or unknown quota retains Codex. Claude bare mode uses a deliberately provisioned Secret Service API key (`application=seele-codex`, `account=claude`), with API billing; it never delegates subscription credentials. Activity exposes choice metadata and setup errors. See `seele-shell/projects/broker/README.md` for credential provisioning, tool isolation and outstanding real-CLI acceptance.
