@@ -117,7 +117,7 @@ let
         keymap.mgr.prepend_keymap = [
           {
             on = [ "c" "h" ];
-            run = "shell --block " + lib.escapeShellArg "${fingerprint}/bin/seele-fingerprint --copy -- \"$0\"";
+            run = "shell --block " + lib.escapeShellArg "${fingerprint}/bin/seele-fingerprint --copy -- %h";
             desc = "Copy hovered file SHA-256 (8 GiB / 2 min limit)";
           }
           (bookmark "d" "download" "Downloads")
