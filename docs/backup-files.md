@@ -48,3 +48,5 @@ restore readiness: authenticate on nerv and restore one real personal sample
 before using this as evidence for SIL-29. Full package/host builds, native dialog
 and Quick Look focus, backend credentials, and root helper authentication remain
 live acceptance checks.
+
+Explicit file previews replace any currently open Quick Look content. Restored copies cross both the file and destination-directory durability barriers before success is shown; a later sync failure leaves the new copy in place and reports failure. Escalation uses the running system’s absolute run0 path and refuses helpers outside the immutable, root-owned Nix store. UI fixtures substitute the backend only in the Rust test executable; the installed binary rejects spoofed helper and run0 paths.

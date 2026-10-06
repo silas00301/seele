@@ -63,7 +63,7 @@
     lib.mkIf (osConfig.seele.backup.browser.enable or false) {
       programs.yazi.keymap.mgr.prepend_keymap = [{
         on = "<A-r>";
-        run = "shell ${lib.escapeShellArg ''seele-restore-file "$1"''}";
+        run = "shell ${lib.escapeShellArg ''seele-restore-file %h''}";
         desc = "Preview, compare or restore a separate backup copy";
       }];
     };
