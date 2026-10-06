@@ -38,6 +38,13 @@ let
     paths = [ "/home/fixture" ];
     restoreSamples = [ "/home/fixture/Documents/example.txt" ];
   };
+  sampleSettings = {
+    enable = true; repositoryFile = "/var/lib/fixture/repository"; passwordFile = "/var/lib/fixture/password";
+    paths = [ "/home/fixture" ]; restoreSamples = [ "/home/fixture/Documents/example.txt" ];
+  };
+  excluded = evaluate (sampleSettings // { exclude = [ "/home/fixture/Documents/" ]; });
+  glob = evaluate (sampleSettings // { exclude = [ "/home/*/.cache" ]; });
+  separate = evaluate (sampleSettings // { exclude = [ "/home/fixture/.cache" ]; });
   invalid = evaluate {
     enable = true;
     repositoryFile = "/nix/store/not-a-secret";
@@ -46,6 +53,9 @@ let
     restoreSamples = [ "/outside/example.txt" ];
   };
 in
+assert !(builtins.all (entry: entry.assertion) excluded.assertions);
+assert !(builtins.all (entry: entry.assertion) glob.assertions);
+assert builtins.all (entry: entry.assertion) separate.assertions;
 assert disabled.systemd == { };
 assert disabled.services == { };
 assert builtins.all (entry: entry.assertion) active.assertions;
