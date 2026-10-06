@@ -1031,3 +1031,5 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+Broker integration inference checks CodexBar's known rate-window capacity before each attempt. Confirmed exhaustion selects isolated Claude Code Haiku, then Sonnet and Opus on model failure. Positive or unknown quota retains Codex. Claude bare mode uses a deliberately provisioned Secret Service API key (`application=seele-codex`, `account=claude`), with API billing; it never delegates subscription credentials. Activity exposes choice metadata and setup errors. See `seele-shell/projects/broker/README.md` for credential provisioning, tool isolation and outstanding real-CLI acceptance.
