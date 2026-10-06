@@ -25,6 +25,7 @@
     config.flake.modules.homeManager.seele-shell
     config.flake.modules.homeManager.command-notifications-seele
     config.flake.modules.homeManager.meeting-scratchpad
+    config.flake.modules.homeManager.file-shelf
     config.flake.modules.homeManager.quicklook
     config.flake.modules.homeManager.screen-zoom
     config.flake.modules.homeManager.theme-switching
