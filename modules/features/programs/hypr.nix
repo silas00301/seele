@@ -597,12 +597,7 @@ let
         settings = {
           splash = false;
 
-          linearCapture = pkgs.runCommand "seele-linear-capture" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
-        mkdir -p "$out/bin"
-        makeWrapper ${inputs.seele-shell.packages.${pkgs.stdenv.hostPlatform.system}.integrations}/bin/seele-linear-capture "$out/bin/seele-linear-capture" \
-          --prefix PATH : ${lib.makeBinPath [ pkgs.libsecret pkgs.zenity pkgs.coreutils pkgs.wl-clipboard ]}
-      '';
-      wallpaper = [
+          wallpaper = [
             {
               monitor = "";
               path = wallpaper;
