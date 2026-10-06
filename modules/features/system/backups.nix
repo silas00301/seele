@@ -92,7 +92,7 @@
           }
           {
             assertion = builtins.all literal cfg.exclude
-              && builtins.all (sample: builtins.all (excluded: !(sample == excluded || lib.hasPrefix "${lib.removeSuffix "/" excluded}/" sample)) cfg.exclude) cfg.restoreSamples;
+              && builtins.all (sample: builtins.all (excluded: !(sample == lib.removeSuffix "/" excluded || lib.hasPrefix "${lib.removeSuffix "/" excluded}/" sample)) cfg.exclude) cfg.restoreSamples;
             message = "Seele exclusions must be absolute literal paths and must not contain any restore sample or its parent directory.";
           }
         ];
