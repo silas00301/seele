@@ -48,6 +48,12 @@ let
                 lib.makeBinPath [ pkgs.wl-clipboard ]
               }"}
           '';
+      # repo-tools already wraps seele-archive-check with its own 7-Zip; link
+      # only that command so the other helpers stay off PATH.
+      archiveCheck = pkgs.runCommand "seele-archive-check" { } ''
+        mkdir -p "$out/bin"
+        ln -s ${selfPackages.repo-tools}/bin/seele-archive-check "$out/bin/seele-archive-check"
+      '';
       extract = lib.escapeShellArg "${config.programs.yazi.package}/bin/ya pub extract --list %s";
     in
     {
@@ -93,6 +99,7 @@ let
           diffutils
           coreutils
           fingerprint
+          archiveCheck
         ];
         settings.plugin = {
           prepend_previewers = [
@@ -126,6 +133,14 @@ let
             ];
             run = "shell --block " + lib.escapeShellArg "${fingerprint}/bin/seele-fingerprint --copy -- %h";
             desc = "Copy hovered file SHA-256 (8 GiB / 2 min limit)";
+          }
+          {
+            on = [
+              "g"
+              "a"
+            ];
+            run = "shell --block " + lib.escapeShellArg "${archiveCheck}/bin/seele-archive-check -- %h";
+            desc = "Check hovered archive integrity without extraction";
           }
           (bookmark "d" "download" "Downloads")
           (bookmark "o" "documents" "Documents")
