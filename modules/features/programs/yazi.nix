@@ -117,7 +117,7 @@ let
         keymap.mgr.prepend_keymap = [
           {
             on = [ "g" "a" ];
-            run = "shell --block " + lib.escapeShellArg "${archiveCheck}/bin/seele-archive-check -- \"$0\"";
+            run = "shell --block " + lib.escapeShellArg "${archiveCheck}/bin/seele-archive-check -- %h";
             desc = "Check hovered archive integrity without extraction";
           }
           (bookmark "d" "download" "Downloads")
