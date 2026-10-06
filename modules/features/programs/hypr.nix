@@ -30,10 +30,15 @@ let
                 ]
               }
           '';
+      recording = pkgs.runCommand "seele-record" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+        mkdir -p "$out/bin"
+        makeWrapper ${selfPackages.desktop-tools}/bin/seele-record "$out/bin/seele-record" \
+          --prefix PATH : ${lib.makeBinPath [ pkgs.curl pkgs.ffmpeg pkgs.hyprland pkgs.pulseaudio pkgs.slurp pkgs.wf-recorder pkgs.wl-clipboard pkgs.zenity ]}
+      '';
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
-      home.packages = [ screenshot ];
+      home.packages = [ screenshot recording ];
 
       wayland.windowManager.hyprland = {
         enable = true;
@@ -215,6 +220,7 @@ let
           hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"), { description = "Lock the session" })
           hl.bind(mod .. " + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot capture"), { description = "Capture a screenshot" })
           hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot annotate"), { description = "Capture and annotate a screenshot" })
+          hl.bind(mod .. " + CTRL + ALT + S", hl.dsp.exec_cmd("${recording}/bin/seele-record"), { description = "Record and trim a region or window" })
           hl.bind(mod .. " + ALT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot upload"), { description = "Capture and upload a screenshot" })
           hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating for the focused window" })
 

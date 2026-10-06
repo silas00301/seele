@@ -1062,3 +1062,10 @@ regular-file references; originals are never removed. Explicit drag uses copy
 URIs, Transfers still asks for a destination, and Notes capture creates a new
 vault note with independent attachments. There is no clipboard watcher or
 persistent collection. See `docs/file-shelf.md` for limits and reload lifetime.
+
+`Super + Ctrl + Alt + S` on nerv invokes the native `seele-record` helper from
+`desktop-tools`, wrapped by the Hyprland feature with official wf-recorder,
+FFmpeg, PulseAudio CLI, Slurp, clipboard and dialog dependencies. It offers
+explicit silent/microphone/single-application audio, a bounded recording control,
+separate non-destructive trims and a public-upload consent dialog. See
+`docs/screen-recording.md` for retention and live acceptance boundaries.
