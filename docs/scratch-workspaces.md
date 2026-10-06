@@ -1,0 +1,5 @@
+Fish `scratch` opens a separate private, disposable workspace with a plain `scratch>` prompt. No original files are copied or edited, and the caller’s directory stays put. The native helper owns a fresh 0700 temporary directory, launches Fish with --private and --no-config, applies umask 077, and routes XDG config/data/cache/state into that tree. Ordinary exit and handled cancellation remove the owned tree, including symlinks without following them. Exit status is preserved; sessions are bounded to 24 hours. No extra global cache or history is created.
+
+This is a scratch directory and history policy, not a filesystem or network sandbox: deliberately run commands still have the account’s ordinary access, and applications can choose their own logging locations. Disowned/background jobs are not promised to stop, and an uncatchable SIGKILL can leave the private temporary directory for later cleanup. Move anything worth keeping out before exiting.
+
+Fish invocation flags were checked against [the official Fish manual](https://fishshell.com/docs/current/cmds/fish.html).
