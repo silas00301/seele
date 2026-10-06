@@ -22,7 +22,7 @@
         runtime = "/run/seele-backup-restore";
         receipt = "${state}/restore-receipt.json";
       });
-      literal = path: !(builtins.any (token: lib.hasInfix token path) [ "*" "?" "[" "]" "\\" "\n" "\r" ]) && !(lib.hasInfix "/../" path) && !(lib.hasInfix "/./" path) && !(lib.hasInfix "//" path);
+      literal = path: !(builtins.any (token: lib.hasInfix token path) [ "*" "?" "[" "]" "\\" "\n" "\r" ]) && !(builtins.any (part: builtins.elem part [ "." ".." ]) (lib.splitString "/" path)) && !(lib.hasInfix "//" path);
       reference = path: path != null && !(lib.hasPrefix "/nix/store/" path);
       environment = {
         RESTIC_REPOSITORY_FILE = cfg.repositoryFile;
