@@ -22,6 +22,7 @@
         runtime = "/run/seele-backup-restore";
         receipt = "${state}/restore-receipt.json";
       });
+      literal = path: !(builtins.any (token: lib.hasInfix token path) [ "*" "?" "[" "]" "\\" "\n" "\r" ]) && !(lib.hasInfix "/../" path) && !(lib.hasInfix "/./" path) && !(lib.hasInfix "//" path);
       reference = path: path != null && !(lib.hasPrefix "/nix/store/" path);
       environment = {
         RESTIC_REPOSITORY_FILE = cfg.repositoryFile;
@@ -61,8 +62,9 @@
           description = "Explicit durable-data path list, independent of any root persistence migration.";
         };
         exclude = lib.mkOption {
-          type = lib.types.listOf lib.types.str;
+          type = lib.types.listOf absolute;
           default = [ ];
+          description = "Absolute literal files or directory trees to exclude; glob and negation patterns are refused so restore samples can be validated before activation.";
         };
         restoreSamples = lib.mkOption {
           type = lib.types.listOf absolute;
@@ -87,6 +89,11 @@
           {
             assertion = builtins.all (sample: builtins.any (path: sample == path || lib.hasPrefix "${path}/" sample) cfg.paths) cfg.restoreSamples;
             message = "Every Seele restore sample must be included in the backup path list.";
+          }
+          {
+            assertion = builtins.all literal cfg.exclude
+              && builtins.all (sample: builtins.all (excluded: !(sample == excluded || lib.hasPrefix "${lib.removeSuffix "/" excluded}/" sample)) cfg.exclude) cfg.restoreSamples;
+            message = "Seele exclusions must be absolute literal paths and must not contain any restore sample or its parent directory.";
           }
         ];
         services.systembus-notify.enable = true;
