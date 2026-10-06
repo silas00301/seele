@@ -5,12 +5,24 @@ let
       config,
       lib,
       pkgs,
+      selfPackages,
       ...
     }:
     {
       programs.fish = {
         enable = true;
         functions = {
+          scratch = {
+            description = "Open a disposable private Fish workspace; exit removes it";
+            body = ''
+              if test (count $argv) -ne 0
+                printf 'Usage: scratch (no arguments)\n' >&2
+                return 2
+              end
+              set -lx PATH ${lib.makeBinPath [ pkgs.fish ]} $PATH
+              command ${selfPackages.repo-tools}/bin/seele-scratch
+            '';
+          };
           gitignore = {
             description = "Print gitignore templates without changing any files";
             body = builtins.replaceStrings [ "@curl@" ] [ "${pkgs.curl}/bin/curl" ] (
