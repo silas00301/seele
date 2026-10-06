@@ -75,7 +75,7 @@ let
       home.packages = [
         (pkgs.runCommand "seele-jj-helpers" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
           mkdir -p "$out/bin"
-          for binary in jj-flip jj-pr; do
+          for binary in jj-flip jj-pr seele-lock-graph; do
             makeWrapper "${selfPackages.repo-tools}/bin/$binary" "$out/bin/$binary" \
               --prefix PATH : ${
                 lib.makeBinPath [
