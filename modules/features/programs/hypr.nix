@@ -1,4 +1,4 @@
-{ ... }:
+{ inputs, ... }:
 let
   module = (
     {
@@ -23,6 +23,7 @@ let
                   pkgs.hyprland
                   pkgs.hyprpicker
                   pkgs.libnotify
+                  linearCapture
                   pkgs.satty
                   pkgs.slurp
                   pkgs.wl-clipboard
@@ -30,10 +31,15 @@ let
                 ]
               }
           '';
+      linearCapture = pkgs.runCommand "seele-linear-capture" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+        mkdir -p "$out/bin"
+        makeWrapper ${inputs.seele-shell.packages.${pkgs.stdenv.hostPlatform.system}.integrations}/bin/seele-linear-capture "$out/bin/seele-linear-capture" \
+          --prefix PATH : ${lib.makeBinPath [ pkgs.libsecret pkgs.zenity pkgs.coreutils pkgs.wl-clipboard ]}
+      '';
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
-      home.packages = [ screenshot ];
+      home.packages = [ screenshot linearCapture ];
 
       wayland.windowManager.hyprland = {
         enable = true;
@@ -215,6 +221,7 @@ let
           hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"), { description = "Lock the session" })
           hl.bind(mod .. " + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot capture"), { description = "Capture a screenshot" })
           hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot annotate"), { description = "Capture and annotate a screenshot" })
+          hl.bind(mod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot linear"), { description = "Capture and review a Linear issue draft" })
           hl.bind(mod .. " + ALT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot upload"), { description = "Capture and upload a screenshot" })
           hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating for the focused window" })
 
@@ -590,7 +597,12 @@ let
         settings = {
           splash = false;
 
-          wallpaper = [
+          linearCapture = pkgs.runCommand "seele-linear-capture" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+        mkdir -p "$out/bin"
+        makeWrapper ${inputs.seele-shell.packages.${pkgs.stdenv.hostPlatform.system}.integrations}/bin/seele-linear-capture "$out/bin/seele-linear-capture" \
+          --prefix PATH : ${lib.makeBinPath [ pkgs.libsecret pkgs.zenity pkgs.coreutils pkgs.wl-clipboard ]}
+      '';
+      wallpaper = [
             {
               monitor = "";
               path = wallpaper;
