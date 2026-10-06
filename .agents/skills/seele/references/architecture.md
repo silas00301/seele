@@ -1031,3 +1031,11 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+The `file-shelf` Home Manager feature is active on `nerv` only. It binds
+Super+Ctrl+Shift+E and Yazi manager-layer Alt+S to the shell's temporary shelf.
+The shell owns one native `seele-shelf` worker, private runtime snippets and
+regular-file references; originals are never removed. Explicit drag uses copy
+URIs, Transfers still asks for a destination, and Notes capture creates a new
+vault note with independent attachments. There is no clipboard watcher or
+persistent collection. See `docs/file-shelf.md` for limits and reload lifetime.
