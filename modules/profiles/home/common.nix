@@ -48,6 +48,7 @@ let
       modules.nixvim
       modules.ripgrep
       modules.sesh
+      modules.ssh-keepalive
       modules.starship
       modules.tealdeer
       modules.television
