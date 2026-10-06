@@ -40,7 +40,7 @@ copies. Closing the panel retains collection; shell worker exit, including a QML
 reload, clears it. EOF, SIGTERM and normal error paths remove private runtime text
 and the worker's own socket. A forced SIGKILL cannot run cleanup; the operating
 system's private runtime directory remains the retention boundary for that case.
-The shelf writes no persistent cache or collection history.
+An owned inactive socket can be retired on restart under an exclusive process lock; active or unsafe endpoints are preserved. The empty private lock file remains in the runtime directory. The shelf writes no persistent cache or collection history.
 
 Validation drives the production worker, CLI socket and Notes copier using only
 fixture files. It covers atomic file batches, deduplication, limits, remote URI
