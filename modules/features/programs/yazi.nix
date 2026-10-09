@@ -5,6 +5,7 @@ let
       config,
       lib,
       pkgs,
+      selfPackages,
       ...
     }:
     let
@@ -38,6 +39,11 @@ let
           "Yazi extraction relies on the symbolic link checks 7-Zip added in 25.01";
         pkgs._7zz-rar;
       # Yazi replaces `%s` with the selected (or hovered) paths, each quoted.
+      archiveCheck = pkgs.runCommand "seele-archive-check" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+        mkdir -p "$out/bin"
+        makeWrapper ${selfPackages.repo-tools}/bin/seele-archive-check "$out/bin/seele-archive-check" \
+          --prefix PATH : ${lib.makeBinPath [ sevenZip ]}
+      '';
       extract = lib.escapeShellArg "${config.programs.yazi.package}/bin/ya pub extract --list %s";
     in
     {
@@ -82,6 +88,7 @@ let
           glow
           diffutils
           coreutils
+          archiveCheck
         ];
         settings.plugin = {
           prepend_previewers = [
@@ -108,6 +115,11 @@ let
           ];
         };
         keymap.mgr.prepend_keymap = [
+          {
+            on = [ "g" "a" ];
+            run = "shell --block " + lib.escapeShellArg "${archiveCheck}/bin/seele-archive-check -- %h";
+            desc = "Check hovered archive integrity without extraction";
+          }
           (bookmark "d" "download" "Downloads")
           (bookmark "o" "documents" "Documents")
           (bookmark "p" "pictures" "Pictures")
