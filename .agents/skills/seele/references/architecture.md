@@ -1031,3 +1031,7 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+### Shared SSH client keepalives
+
+The shared `ssh-keepalive` Home Manager feature enables client configuration through the `common` profile on Linux and macOS. Its final `Host *` block supplies overridable `ServerAliveInterval 60` and `ServerAliveCountMax 3` defaults. Earlier host-specific settings and includes retain OpenSSH first-value precedence; the existing 1Password agent integration stays in its platform feature. This does not enable an incoming SSH server. See [SSH keepalives](../../../../docs/ssh-keepalives.md).

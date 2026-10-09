@@ -105,6 +105,8 @@ daemon already reports each successful release.
 
 Remote shell access on `nerv` is one exclusive Seele Shell selector: `off` disables both incoming paths, `tailscale` enables Tailscale SSH and stops OpenSSH, and `ssh` disables Tailscale SSH and starts ordinary OpenSSH. OpenSSH never starts automatically, accepts public keys only, and uses the normal port 22 firewall opening while selected.
 
+The shared `ssh-keepalive` Home Manager feature enables client configuration through the `common` profile on Linux and macOS. Its final `Host *` block supplies overridable `ServerAliveInterval 60` and `ServerAliveCountMax 3` defaults. Earlier host-specific settings and includes retain OpenSSH first-value precedence; the existing 1Password agent integration stays in its platform feature. This does not enable an incoming SSH server. See [SSH keepalives](docs/ssh-keepalives.md).
+
 Containers on `nerv` are rootless Podman only. `modules/features/system/containers.nix`
 publishes `flake.modules.nixos.podman` and a matching `homeManager.podman`; the
 `nerv` system aggregate and the `nerv` home profile import them, and `asuka`
