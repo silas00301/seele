@@ -1031,3 +1031,9 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+The common `nh` feature retains cleanup ownership in Home Manager. Its arguments
+are a list so Darwin receives separate flags; Linux reports failed user cleanups
+through `seele-nh-clean-failed` and keeps summaries in the journal, while Darwin
+keeps the existing launchd agent's private log. See `docs/nix-cleanup-audit.md`
+for ownership, audit scope and native validation.
