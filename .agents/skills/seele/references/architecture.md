@@ -1031,3 +1031,10 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+The optional `backup-browser` NixOS/Home Manager feature inherits configured
+scheduled-backup references when available, otherwise stays disabled. Its
+`seele-restore-file` native dialogs and Yazi `<A-r>` offer exact file versions,
+Quick Look, comparison and a separate restored copy. A fixed read-only root
+helper authenticates through run0, bounds paths to the user's home and snapshots
+to the configured host/tag, and never writes originals. See `docs/backup-files.md`.
