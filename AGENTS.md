@@ -268,7 +268,7 @@ local notification image leads its card as the rounded sender identity, while
 the sending application's icon moves to a lower-right badge instead of the
 image being repeated in the body. Toasts declare no keyboard interactivity,
 so an arriving notification never interrupts typing. Only the deliberately
-opened notification panel takes keyboard focus. Do Not Disturb is one control in the panel
+opened notification panel takes keyboard focus. The panel has an identity-based keyboard cursor: j/k or arrows move, g/G or Home/End reach the ends, Enter opens a stack or its default action, h/l fold or open the stack, d/Delete dismisses, p pins, c copies an offered code, and 1–9 runs the selected card’s named actions. Ctrl+Tab switches Current/History; Tab retains control traversal. The cursor appears only after navigation and follows the nearest remaining card on removal. Do Not Disturb is one control in the panel
 header: its mark reports silence, the time beside it counts a running period
 down, and it drops a menu of every way to set that silence -- 15 minutes, 1
 hour, 4 hours, no end, and the way out -- so no row below the title is spent
