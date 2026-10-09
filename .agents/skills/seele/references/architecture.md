@@ -1031,3 +1031,10 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+`Super + Ctrl + Alt + S` on nerv invokes the native `seele-record` helper from
+`desktop-tools`, wrapped by the Hyprland feature with official wf-recorder,
+FFmpeg, PulseAudio CLI, Slurp, clipboard and dialog dependencies. It offers
+explicit silent/microphone/single-application audio, a bounded recording control,
+separate non-destructive trims and a public-upload consent dialog. See
+`docs/screen-recording.md` for retention and live acceptance boundaries.
