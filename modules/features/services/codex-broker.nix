@@ -50,6 +50,7 @@
               ExecStart = "${lib.getExe package} serve --model ${lib.escapeShellArg cfg.model} --concurrency ${toString cfg.concurrency} --idle ${toString cfg.idleSeconds}";
               Restart = "on-failure";
               RestartSec = 1;
+              Environment = "SEELE_BROKER_CODEXBAR=${lib.getExe selfPackages.codexbar}";
               UMask = "0077";
               NoNewPrivileges = true;
               LimitCORE = 0;
