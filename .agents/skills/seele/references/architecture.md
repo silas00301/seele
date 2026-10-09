@@ -1031,3 +1031,12 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+The NixOS `backups` feature defines gated `seele.backup` options, daily restic
+backups, static failure notifications, durable age markers and a monthly native
+restore verifier. `nerv` imports it with explicit whole-home/identity paths and
+rebuildable exclusions, disabled until a real destination and private runtime
+credential references are supplied. The shell maintenance package owns
+`seele-restic-test`; existing Maintenance owns missed-run findings. This is
+SIL-28 infrastructure, not a claim of successful live backups. SIL-29 still
+requires real destination restores before any root migration. See `docs/backups.md`.
