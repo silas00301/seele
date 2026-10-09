@@ -1031,3 +1031,13 @@ palette ownership or adding another runtime theme consumer.
 Git URL shorthands require an explicit colon: `gh:owner/repository` expands to
 GitHub SSH and `me:repository` selects the personal namespace. Bare relative
 paths starting with `gh` or `me` remain local paths.
+
+`configuration-inspector` is a common Home Manager feature with matching NixOS
+and Darwin metadata modules in their system-common aggregates. Its version-1
+catalog projects enable booleans, direct package definition locations and supported
+literal Hyprland shortcut descriptions, never arbitrary option values or command
+arguments. The native `config-tools` executable `seele-inspect` searches declared
+state and explicitly opens a recorded source, optionally remapping only this
+flake's own module files into a chosen checkout. `apps.inspect` exposes it; the
+synthetic catalog check and native executable fixture cover its boundaries. See
+`docs/configuration-inspector.md` for scope and native-host validation.
