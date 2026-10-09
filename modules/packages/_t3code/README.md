@@ -6,9 +6,11 @@ removes the old bundled libnotify and applies `appimage-sandbox.patch` before it
 enters the FHS compatibility wrapper. The Electron application itself remains an
 upstream runtime dependency.
 
-The upstream desktop entry explicitly passed `--no-sandbox`; its AppRun also
-silently added that flag when `unshare -Ur true` failed or was missing. The
-package removes both automatic paths. AppRun supplies only
+Older upstream desktop entries explicitly passed `--no-sandbox`; the current
+pinned release no longer does. Its AppRun still silently adds that flag when
+`unshare -Ur true` fails or is missing, so the package removes that automatic
+path. It also rewrites the desktop entry to call the wrapped `t3code` command.
+AppRun supplies only
 `--disable-setuid-sandbox`, because Nix store files cannot serve as a privileged
 setuid helper. Chromium's user-namespace and seccomp sandboxes remain enabled;
 startup fails when the namespace sandbox cannot be established. No setuid
