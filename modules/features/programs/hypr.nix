@@ -566,12 +566,13 @@ let
             blur = true,
           })
 
-          -- The shell's bar and panels are translucent so the surface behind
-          -- them reads as frosted glass. The wallpaper and the click-away
-          -- catcher are left out: one is opaque and the other is empty.
-          -- ignore_alpha keeps the blur off transparent pixels, which matters
-          -- because the AI surfaces stay mapped while closed and their rounded
-          -- corners would otherwise sit on a squared-off pane of glass.
+          -- The shell draws solid Material containers, so blur only shows
+          -- where a surface leaves its pixels translucent, such as the polkit
+          -- dialog's scrim. The wallpaper and the click-away catcher are left
+          -- out: one is opaque and the other is empty. ignore_alpha keeps the
+          -- blur off transparent pixels, which matters because the AI surfaces
+          -- stay mapped while closed and their rounded corners would otherwise
+          -- sit on a squared-off pane of glass.
           hl.layer_rule({
             match = {
               namespace = "^seele-shell-(bar|osd|agents|prompt|quicklook|tray-menu|application|calendar|clock|focus|system-health|drift|github|home-assistant|control-center|transfers|media|audio|network|vpn|bluetooth|airpods|battery|notifications|camera|caffeinate|hermes|session|ports|calculator|color-lab|text-workbench|resources|network-activity|themes|theme-settings|polkit|sensors)$",
