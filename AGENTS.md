@@ -49,6 +49,16 @@ for scope, ownership and application reload boundaries.
 
 ## Architecture
 
+Every first-party Qt UI — Seele Shell, Seele Notes, the lock, the greeter and
+the polkit agent — is drawn in Material 3 Expressive on the active theme's
+palette. `seele-shell/projects/shared/Palette.js` derives Material's colour
+roles from the eleven palette colours, so a preset still decides the colours;
+`Theme.qml` holds the corner scale, tonal elevation, state layers and the
+Expressive springs `Motion.js` samples, and `Shapes.js` the shape library the
+panel marks and the loading indicator draw. Surfaces are solid tonal
+containers with no grain, wash or lit edge. The `seele-style` skill is the
+guide to which token and part a surface takes.
+
 - `flake.nix`: inputs and the `flake-parts`/`import-tree` bootstrap.
 - `modules/flake/`: repository options, systems, package-set policy, overlays, the formatter, the portable-application builder, and repository helper apps.
 - `modules/features/`: program, service, theme, and system leaves. Each leaf publishes deferred modules through `flake.modules.<class>.<name>`.

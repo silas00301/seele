@@ -784,43 +784,54 @@ Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
   play. A glyph normally takes the step above the text beside it; a glyph set
-  in a well takes the step below, because the well carries the weight.
+  in a shape or a container takes the step below, because the shape carries the
+  weight. Labels are sentence case; nothing is tracked out in capitals.
 - **Weight** — `weightLight`, `weightRegular`, `weightMedium`, `weightStrong`.
   Nothing sets `font.bold`.
-- **Tracking** — `trackingLabel`, for uppercase section rules only.
 - **Space and size** — `spaceTight` through `spaceLarge`, `cardPadding`, and the
-  three control heights `chipHeight`, `controlHeight`, `rowHeight`, beside the
-  existing `radius`, `panelMargin`, `panelSpacing`, and `panelHeaderHeight`.
-- **Elevation** — `panelColor`, `cardColor`, `rowColor`, `wellColor`,
-  `floatColor`, `cardBorder`, and `separatorColor`. Depth is built out of one
-  ink, `crust`: chrome is cut out of the wallpaper with it and wells are cut
-  back to it.
-- **Edges** — `panelBorder` grounds a surface in that ink, `edgeLight` is the
-  hairline of light inside it, and `edgeCrown` is the brighter line along the
-  top. No edge carries the accent.
-- **Interaction** — `hoverColor` is the neutral light wash that reports the
-  pointer. Apply it directly only over transparency; a filled control uses
-  `hoveredColor(<resting fill>)` so the wash remains visibly composited over
-  its material. `pressColor`, `selectedColor` and `activeTint` report state in
-  accent. A state that is not hover never borrows `hoverColor`. An animated
-  fill that rests on nothing rests on `clearColor`, or on `clearDanger` where
-  the state it fades from is red — never on `transparent`, because Qt
-  interpolates a colour channel by channel and `transparent` is black, so a
-  tint animated against it is dragged through grey at both ends of the fade.
-- **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
-  control that travels.
+  three control heights `chipHeight`, `controlHeight`, `rowHeight`, beside
+  `panelMargin`, `panelSpacing`, `panelHeaderHeight` and `levelHeight`.
+- **Shape** — Material's corner scale, `shapeExtraSmall` through
+  `shapeExtraLarge`, with role tokens `radiusPanel`, `radius`
+  (a card), `radiusRow` and `radiusSmall`. A control the pointer aims at is a
+  full pill or circle; controls that change state change shape on the spatial
+  spring and pinch while held.
+- **Colour roles** — `Palette.roles()` derives Material's roles from the
+  palette: `primary`, the primary, secondary, error, success and warning
+  containers, their `textOn…` content colours (QML reserves `on…` for
+  handlers), `outline`, `outlineVariant`, the inverse surface and the surface
+  container ramp. Every container is paired with its own content colour.
+- **Elevation** — tonal and solid: `panelColor` (surface container),
+  `cardColor` (high), `rowColor`, `wellColor` and `floatColor` (highest).
+  Only a floating surface takes an edge, the `panelBorder` hairline, because a
+  layer surface casts no shadow. No edge carries the accent.
+- **Interaction** — `hoverColor` is the state layer that reports the pointer,
+  at Material's 8%; `HoverWash` lays it, and the 10% pressed layer, over a
+  control. A filled control uses `hoveredColor(<resting fill>)` where it
+  composites by colour instead. `selectedColor` is the secondary container,
+  `activeTint` the primary container. An animated fill that rests on nothing
+  rests on `clearColor`, or on `clearDanger` where the state it fades from is
+  red — never on `transparent`, because Qt interpolates a colour channel by
+  channel and `transparent` is black.
+- **Motion** — Material's Expressive springs, sampled by `Motion.js` into
+  eight-segment Bézier splines (Qt's spline easing corrupts memory past ten):
+  `springFastSpatial` over `durationFastSpatial` for travel and shape,
+  `springDefaultSpatial` over `durationDefaultSpatial` for a surface that
+  unfolds, `durationFast` for a tint or a fade. `durationNormal` is the fast
+  spatial duration.
 
 Assemble a surface from the shared components rather than repeating their
-parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
-detail, trailing slot), `SectionLabel`, `SectionRule` (that label with the
-group's live summary at the far end and, where the group folds, the chevron and
-the click target that fold it), `SegmentWell` with `Segment`, `IconButton`,
-`HoverWash`, `MeterBar`, `CardEdge`, `PanelSurface`,
-`SurfaceWash`, `SurfaceEdge`, `SurfaceGrain`, `SlimScrollBar`, `ControlSwitch`,
-`RefreshGlyph`, `CenteredGlyph`, `FocusRing`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
-`ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
-all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
-the wash under the content, the edge and the film over it.
+parts: `PanelSurface`, `PanelHeader` (glyph or `mark` in an Expressive
+`MaterialShape`, title, optional detail, trailing slot), `SectionLabel`,
+`SectionRule` (that subheader with the group's live summary at the far end and,
+where the group folds, the chevron and the click target that fold it),
+`SegmentWell` with `Segment` or `SegmentChoice` (a connected button group),
+`ActionButton`, `IconButton`, `GlyphButton`, `HoverWash`, `MeterBar` (with its
+`wavy` progress), `LevelTrack`, `DeviceSlider`, `SlimScrollBar`,
+`ControlSwitch`, `RefreshGlyph`, `LoadingIndicator`, `CenteredGlyph`,
+`FocusRing`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
+`ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. No surface
+draws a wash, a lit edge or a texture; depth is the surface ramp.
 
 A `HoverTip` on a control inside a panel needs `inOverlay: true`; without it the
 menu bar's guard hides the tip whenever the panel is open.
@@ -839,7 +850,7 @@ so grepping for `MouseArea` misses both.
 
 Two more ways a surface goes quiet under the pointer. A fill that branches on
 state before hover — `active ? accent : hovered ? ...` — can never report a
-pointer on an active control; lay the neutral hover wash over the state as its
+pointer on an active control; lay the state layer over the state as its
 own child instead of making it another branch. And a highlight inset inside its
 row leaves a dead line above and below itself, which the spacing between rows
 widens into a band; a row highlight takes the row's full height.
@@ -861,8 +872,9 @@ rate is not a choice: that is the normal case, since Spotify reports
 `minRate == maxRate == 1`. Column positioners skip invisible children, so the
 panel's height keeps falling out of its content.
 
-`PanelPicker` is the shell's dropdown: the well material, the section rule's fold
-arrow, and a list on `floatColor` whose current row is lit. A caller supplies the
+`PanelPicker` is the shell's dropdown: a chip on the highest surface step behind
+the section rule's fold arrow, opening Material's menu on `surfaceContainerHigh`
+with the current row in the secondary container. A caller supplies the
 model, `displayText`, a `label`/`caption` pair for how a row is worded, and a
 `chosen` predicate — a predicate rather than a value, because a player matches by
 identity and a rate within a tolerance, and a player running a rate it was given
@@ -917,9 +929,10 @@ counted constant, and derive any viewport inside it from the same terms.
 
 `projects/lock/`, `projects/greeter/`, and `projects/polkit/` are separate
 clients that mirror the subset of non-palette tokens they use. Their roots take
-fallback palette values and JSON assignment from `projects/shared/Palette.js`,
-which each package copies beside its root; do not restore local Catppuccin values
-or assignment loops. Keep another shared token identical to the shell's, and
+fallback palette values, JSON assignment and the Material roles
+(`Palette.roles()`) from `projects/shared/Palette.js`, which each package copies
+into its own `shared/`; do not restore local Catppuccin values, assignment loops
+or a second role derivation. Keep another shared token identical to the shell's, and
 drop it from a client block when nothing there reads it.
 
 A palette colour a client reads has to arrive from the parent as well: the
@@ -927,11 +940,11 @@ generated `theme.json` in `modules/features/programs/seele-shell.nix` and
 `seele-greeter.nix` carries the named palette entries, and a client that reads
 a new one needs both the key there and the assignment in its own `FileView`.
 
-The grain film is generated at build time by `seele-tools grain`, in
-`projects/tools/src/grain.rs`. It is a seeded two-octave tile — fine noise
-drawn as the mean of several samples, clumped by a coarse wrapping octave —
-and both octaves wrap, so the tile stays seamless. Tune `grainOpacity` with it:
-a finer film needs a little more of it to read at all.
+The auth clients copy only the shared files they draw with: `Palette.js` for the
+fallback palette, theme assignment and the Material roles, and in the lock and
+greeter `Motion.js`, `Shapes.js` and `LoadingIndicator.qml` for the loading
+indicator. Each package installs them into its own `shared/` directory and
+rewrites the `../shared` imports to it.
 
 Use the narrowest package build that contains the change:
 
@@ -1095,7 +1108,9 @@ Activation is separate. Run `nh os switch`, `nh darwin switch`, or an equivalent
 
 Shared palette changes must keep `projects/shared/Palette.js` beside every
 consumer. Shell/Notes packages and isolated Qt fixtures copy shared `.qml` and
-`.js` assets together; auth-client packages copy Palette.js beside shell.qml.
-Run `node tests/palette.js ...` and the offscreen `tests/palette.sh` fixture.
+`.js` assets together; auth-client packages copy `Palette.js` (and, for the lock
+and greeter, `Motion.js`, `Shapes.js` and `LoadingIndicator.qml`) into their own
+`shared/`. Run `node tests/palette.js ...`, which pins the role derivation on a
+dark and a light palette, and the offscreen `tests/palette.sh` fixture.
 Palette data/property assignment is a necessary Qt API boundary, with no service
 or background logic. Preserve existing theme and wallpaper assignment semantics.

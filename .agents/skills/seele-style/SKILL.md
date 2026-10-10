@@ -5,20 +5,25 @@ description: Use this to build new applications and shell elements matching the 
 
 # Seele's visual language
 
-Every surface in the shell is assembled from one vocabulary. A new control **picks a
+Seele draws in **Material 3 Expressive**: colour roles derived from the theme's palette,
+Material's corner scale with shapes that change with state, tonal elevation instead of
+translucency, state layers for the pointer, and spring motion. Every surface in the shell
+is assembled from one vocabulary. A new control **picks a
 token and reaches for a component**; it does not invent a value or rebuild a part. That
 one law is what makes the shell look designed rather than accumulated, and it is the
 thing to hold onto when a surface tempts you to write `height: 36` or a fifth hover
 branch.
 
 The words below are the vocabulary. Use them in code, in comments, and when reporting
-work: **token**, **ramp**, **rule**, **card**, **row**, **well**, **wash**, **mark**,
-**meter**, **edge**, **grain**.
+work: **token**, **role**, **ramp**, **container**, **card**, **row**, **rule**,
+**state layer**, **shape**, **spring**, **mark**, **meter**, **track**.
 
 ## Start from the block
 
-`seele-shell/projects/shared/Theme.qml` holds the whole vocabulary — palette, type ramp,
-weights, spacing ramp, control heights, elevation, edges, interaction tints, motion.
+`seele-shell/projects/shared/Theme.qml` holds the whole vocabulary — palette, colour
+roles, type ramp, weights, spacing ramp, control heights, the shape scale, elevation,
+state layers and springs. `Palette.js` derives the colour roles from the palette,
+`Motion.js` samples the springs and `Shapes.js` holds the Expressive shape library.
 **Read that block before drawing anything.** It is the source of truth for every value;
 this skill is the source of truth for which one to pick. The shell and every standalone
 Seele application root at `Shared.Theme`, so they all read the same block, and a user's
@@ -39,76 +44,95 @@ number that lands nearest.
 `textBody` a row title, `textLead` a card's own subject, `textTitle` a panel title,
 `textDisplay` a hero numeral. Two rules decide glyph sizes: a glyph beside text takes the
 step **above** that text, because an icon drawn at the same pixel size reads smaller than
-a letter; a glyph set **in a well** takes the step below, because the well carries the
-weight.
+a letter; a glyph set **in a shape or a container** takes the step below, because the
+shape carries the weight.
 
-**Weight** — `weightStrong` for a title or an active label, `weightMedium` for a quiet
-uppercase rule, `weightLight` only for large numerals that would otherwise read as a
-wall, `weightRegular` for everything else. Nothing sets `font.bold`.
+**Weight** — `weightStrong` for a title, a subheader or an active label, `weightMedium`
+for a button's label, `weightLight` only for large numerals that would otherwise read as
+a wall, `weightRegular` for everything else. Nothing sets `font.bold`.
 
-**Tracking** — `trackingLabel`, on uppercase section rules and nowhere else. A run of
-capitals at ordinary spacing reads as a shouted word; spread far enough apart it reads as
-a rule.
+**Case** — sentence case everywhere, section rules included. Material's subheader is a
+short label in the primary colour, so nothing is written in capitals or tracked out to
+read as a rule.
 
 **Space** — `spaceTight` → `spaceLarge` inside a card, `cardPadding` for a card's own
 inset, `panelMargin` and `panelSpacing` for the panel.
 
-**Control height** — `chipHeight` (28), `controlHeight` (34), `rowHeight` (40). A chip, a
-button and a list row each take one; `detailRowHeight` (52) is the row that leads with a
+**Control height** — `chipHeight` (28), `controlHeight` (34), `rowHeight` (40). This is
+Material at the desktop's density. A chip, a button and a list row each take one; `detailRowHeight` (52) is the row that leads with a
 mark and sets a caption under its title. A card or tile still sizes to what it holds.
 `knobSize` is the round control a connectivity row, a Control Center tile and a level lead
 with, and a tile without a knob keeps that column for its glyph so titles line up.
 
 **Media geometry** — `mediaPanelWidth` is the width that lets the shared media block
 carry art, text and transport without squeezing them. `trackTarget` is the taller pointer
-strip around a thin interactive timeline; `trackHead` is the handle drawn on that track.
+strip around a thin interactive timeline; `trackHead` is the width of the upright handle
+Material's slider draws, held `trackHandleGap` clear of the track on either side.
+`levelHeight` is the large slider a module's own level is drawn as.
 
-**Motion** — `durationFast` for an in-surface tint, `durationNormal` for a control that
-travels. Only in-surface state changes animate. Never animate a whole window, layer
-surface or translucent card.
+**Shape** — the corner scale is Material's: `shapeExtraSmall` (4), `shapeSmall` (8),
+`shapeMedium` (12), `shapeLarge` (16), `shapeLargeIncreased` (20) and `shapeExtraLarge`
+(28), and a full pill at any height is `height / 2`. Pick by role: `radiusPanel` for a floating panel,
+`radius` for a card, `radiusRow` for a row, a field or a menu item, `radiusSmall` for a
+part inside an already-rounded part. A control the pointer aims at — a button, an icon
+button, a bar entry, a knob — is a full pill or circle (`height / 2`).
 
-## Material and depth
+**Motion** — springs, never curves picked by eye. `springFastSpatial` over
+`durationFastSpatial` for anything that travels, grows or changes shape; it overshoots a
+little and settles. `springDefaultSpatial` over `durationDefaultSpatial` for a surface
+that unfolds — a fold growing, a group opening. `durationFast` (the fast effects spring)
+for a tint or a fade, which never overshoots. Pass a spring as
+`easing.type: Easing.BezierSpline; easing.bezierCurve: root.springFastSpatial`. Only
+in-surface state changes animate. Never animate a whole window or layer surface.
 
-Depth is built out of translucency and one ink, never out of a stack of greys. `crust` is
-that ink: chrome is cut out of the wallpaper with it and wells are cut back to it.
+## Roles and elevation
 
-The **elevation ramp** is `panelColor` → `cardColor` → `rowColor`, with `wellColor` cut
-below all three and `floatColor` reserved for a control overlapping a row whose own fill
-moves under the pointer. A card is a tint of the panel's material; a row inside that card
-is a lighter tint again; a track or an unset switch is a well.
+Material names a colour by what it does. `Palette.js` derives every role from the eleven
+palette colours a theme carries, so the switcher's presets, the lock and Notes repaint
+together: `primary` is the accent; `primaryContainer`, `secondaryContainer`,
+`errorContainer`, `successContainer` and `warningContainer` are tones of a palette colour
+over the base; each container has its content colour, written `textOn…` because QML
+reserves the `on` prefix for signal handlers (`textOnPrimary`,
+`textOnSecondaryContainer`, …). `text` and `subtext` are Material's `onSurface` and
+`onSurfaceVariant`; `outline` and `outlineVariant` are the quiet lines. Never pair a
+container with a content colour from another role: text on `primary` is
+`textOnPrimary`, never `crust`, because on a light scheme the palette's `crust` is
+light.
 
-**Edges** come in two parts and never carry the accent. `panelBorder` grounds a surface
-in the ink and cuts it out of the wallpaper; `edgeLight` is the hairline of light inside
-it, `edgeCrown` the brighter line along the top where light would actually land. A card
-takes the same edge one step quieter through `CardEdge`. Lift a card with a hairline, not
-with a heavier fill.
+**Elevation is tonal.** The surface ramp `surfaceContainerLowest` → `surfaceContainerLow`
+→ `surfaceContainer` → `surfaceContainerHigh` → `surfaceContainerHighest` steps towards
+the text: lighter on a dark scheme, darker on a light one. The legacy role tokens sit on
+it: `panelColor` (container) → `cardColor` (high) → `rowColor` and `wellColor`
+(highest). Every container is solid. Depth comes from the step, never from translucency,
+a gradient wash, a lit edge or a texture.
 
-A framed surface takes all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in
-that order: the wash under the content, the edge and the grain film over it. The grain
-tile is generated at build time by `seele-tools grain`; it is never committed.
+**Edges** belong only to floating surfaces. `PanelSurface` draws `panelBorder`, a
+hairline of the outline variant, because a layer surface casts no shadow to lift it off
+the window below. Cards, rows and controls take no stroke.
 
-The one surface that takes the material and the edge but neither the wash nor the grain
-is a surface whose content is being *measured*: the colour picker's lens. Both are films
-laid over the whole surface, and a film over the pixels being read changes the colour
-being read.
+Hold a container's content and its state colour together: a selected row sits in
+`selectedColor` (the secondary container) with `textOnSecondaryContainer`; an active
+tile in `activeTint` (the primary container) with `textOnPrimaryContainer`; the one
+thing that is *on* — a switch, the play button, the workspace in front — in `primary`
+with `textOnPrimary`.
 
-Round every surface on `radius` — the same 8px Hyprland rounds windows with — and use
-`radiusSmall` only for a part inside an already-rounded part. Reserve pill and circular
-shapes for switches, meters and status dots. A meter or a rounded end rounds on its own
-height, never on a literal.
+A tint laid **over** content — the URI picker's region over frozen pixels, the bar's drop
+highlight over its entries — is the primary colour at a state layer's alpha, never a
+container: containers are opaque and would hide what they mark.
 
 ## Colour
 
-**Spend the accent on state, not on chrome.** The pointer is reported in neutral light;
-the accent is reserved for what a surface is actually saying — pressed, selected, on. A
-panel outlined in lavender, a hover that lights every row, and an outline around a chip
-whose fill already states its selection are all the accent spent on decoration, and it
-stops meaning anything once everything wears it.
+**Spend the accent on state, not on chrome.** The pointer is reported by a neutral state
+layer; the primary colour and its containers are reserved for what a surface is actually
+saying — selected, active, on. A panel outlined in the accent, a hover that lights every
+row, and an outline around a chip whose fill already states its selection are all the
+accent spent on decoration, and it stops meaning anything once everything wears it.
 
-Semantic colour is graded rather than binary. A capacity meter runs `accent` while the
+Semantic colour is graded rather than binary. A capacity meter runs `primary` while the
 window is comfortable, `yellow` once about a third is left, `red` once it is nearly
 spent. A destructive control is the one place hover itself is semantic: dismiss and shut
-down say what they will do while the pointer is on them, through `HoverWash`'s `tint`.
+down sit in the error container and say what they will do through their content
+colour, and `HoverWash`'s `tint` takes that content colour.
 
 An animated fill that rests on nothing rests on that tint at zero alpha — `clearColor`,
 `clearDanger`, or `alpha(tint, 0)` — never on `transparent`. Qt interpolates channel by
@@ -131,42 +155,50 @@ alias — put it there when you add it, not after the second caller appears.
 
 | Part | What it is for |
 | --- | --- |
-| `PanelSurface` | A panel's material, edge, wash and grain in one. |
-| `PanelHeader` | A panel's mark in its accent well, title, optional detail, trailing slot. |
-| `SectionRule` | The uppercase rule that opens a group, with the group's live summary at the far end, a trailing slot for whatever control governs the group, and a chevron where the group folds. |
-| `SectionLabel` | The bare uppercase label, for a caption that is not opening a group. |
-| `CardEdge` | The hairline that lifts a card off the panel behind it. |
+| `PanelSurface` | A floating panel's container: the extra-large corner, `panelColor`, and the outline-variant hairline. |
+| `PanelHeader` | A panel's mark in an Expressive shape on the primary container, title, optional detail, trailing slot. |
+| `MaterialShape` | One of Material 3 Expressive's shapes (`cookie9`, `softBurst`, `clover4`, `pill`, …) filled in a colour, morphing on the spatial spring when `shape` changes. The mark a header or an empty state leads with. |
+| `SectionRule` | Material's subheader: a sentence-case label in the primary colour that opens a group, the group's live summary at the far end, a trailing slot for whatever control governs the group, and a chevron where the group folds. |
+| `SectionLabel` | The bare subheader, for a caption that is not opening a group. |
 | `DeviceListCard` | A card sized to the list inside it. |
-| `SegmentWell` + `Segment` | A set of exclusive choices as one well with the chosen one lit. |
-| `IconButton` | The square material behind an icon action. |
-| `GlyphButton` | A complete icon action with the shared material, centered glyph, keyboard activation, accessible name and tooltip. |
-| `HoverWash` | The neutral light that reports the pointer, laid over whatever the control already says. |
-| `ControlSwitch` | A persistent on/off state. Off is a well, not a grey pill. |
-| `MeterBar` | Every filled track in the shell — capacity, usage, battery, volume, a media timeline's position, a day's temperature span. Graded along its length, running in a well with its own hairline; `from` starts the fill partway along for a span. Drawn thin: a track the pointer must hit is targeted by the strip around it, not by growing the meter. |
-| `RefreshGlyph` | An in-place spinner for asynchronous work. |
-| `HoverTip` | A tooltip. Inside a panel it needs `inOverlay: true`. |
-| `FocusRing` | Where the keyboard is when a control has no focus indication of its own, laid over that control on its own corner. Tracks may instead state focus through their border. |
-| `PanelPicker` | The shell's dropdown: well material, the rule's fold arrow, and a list on the floating material with the current row lit. Shell-only for now, because the callers are both in `shell.qml`. |
+| `SegmentWell` + `Segment` / `SegmentChoice` | Material's connected button group: exclusive choices side by side, the ends fully round and the inner corners small, the chosen one in the secondary container with its inner corners rounded too. The group tells each choice whether it opens or closes the row; a choice passes `fill` only to acknowledge a result for a moment. |
+| `ActionButton` | A one-shot action: a pill in the secondary container, `primary` when `selected`, the error container when `danger`. It pinches to the small corner while held. |
+| `IconButton` | The container behind an icon action: round at rest, squared towards the medium corner while `active`, pinched while `pressed`. An action whose state is not the accent's passes its own `tint`. |
+| `GlyphButton` | A complete icon action on `IconButton`, with centred glyph, keyboard activation, accessible name and a plain tooltip. |
+| `HoverWash` | The state layer: the content's own colour at 8% under the pointer and 10% while `pressed`, laid over whatever the control already says. It follows its parent's corners one by one. |
+| `ControlSwitch` | Material's switch: an outlined track with a small handle when off, the primary track with a grown handle and a check when on, the loading indicator in the handle while `busy`. |
+| `MeterBar` | Every filled track in the shell — capacity, usage, battery, volume, a day's temperature span — as Expressive's linear progress: the filled part and the rest of the track as separate pills with a gap, and a stop dot at the end. `from` starts the fill partway along for a span; `wavy` with `flowing` turns the filled part into the moving wave a playing track's timeline draws. |
+| `LevelTrack` | The drawing of a level the pointer sets, as Expressive's large slider: fill, upright handle and rest with gaps, the level named inside the track in whichever ink each part needs. `DeviceSlider`, the Audio levels and a player's volume all draw it; the owner keeps the input. |
+| `DeviceSlider` | A device level on `LevelTrack`, with Qt's Slider keyboard and accessibility. `spectrum` draws a colour range. |
+| `RefreshGlyph` | Asynchronous work in place: the refresh glyph at rest, the loading indicator while `spinning`. |
+| `LoadingIndicator` | Expressive's loading indicator: seven shapes morphing into one another as it turns. Needs no theme, so the auth clients draw it too. |
+| `HoverTip` / `PlainTooltip` | Material's plain tooltip on the inverse surface. Inside a panel `HoverTip` needs `inOverlay: true`. |
+| `FocusRing` | Where the keyboard is: a secondary-coloured outline held `focusGap` clear of the control on its own corners. Pass `gap: 0` inside a parent that clips, `baseRadius` where the parent is not a Rectangle. |
+| `PanelPicker` | The shell's dropdown: a chip on the highest surface step behind the rule's fold arrow, opening Material's menu with the current row in the secondary container. Shell-only for now, because the callers are both in `shell.qml`. |
 | `CenteredGlyph` | A font glyph centred by its visible ink rather than its advance width. |
 | `BarLabel` | A menu bar label carrying arbitrary text, baseline-anchored to the primary font. |
 | `SeeleListView` / `SeeleFlickable` | Every scrollable, so one spring governs them all. |
-| `ChoiceBox` | A bounded native ComboBox with standard keyboard navigation on the shared well material. |
+| `ChoiceBox` | A bounded native ComboBox as Material's exposed dropdown: the filled field and a menu on the high surface step. |
 | `HistoryChart` | Render-only bounded series: fixed recent window, shared scale and breaks for missing samples. |
-| `SearchField` | The one input that filters a list. A well, because it holds a query rather than content. |
-| `ValueField` | A short editable value, such as a custom timer duration, on the same well material with a visible keyboard-focus edge. |
-| `EmptyState` | What a surface says when it has nothing to show, with its own mark, sentence and way out. |
-| `StatusBanner` | A surface's own bad news, carrying the actions that answer it. |
-| `StatusChip` | A short state named in its own tint — GitHub priority, Maintenance urgency, a job, transfer or integration state, PR checks and review, notification urgency. Red for failure or act now, yellow for attention, green for done, accent for live work, overlay otherwise. A readout on the small radius, never a pill and never a control; in a dense row it takes that row's height. |
+| `SearchField` | The one input that filters a list: Material's search bar, a pill on the highest surface step outlined in the primary colour while it has the keyboard. |
+| `ValueField` | A short editable value as Material's filled text field: the highest surface step closed by an active indicator that thickens into the primary colour on focus and turns to the error colour when `invalid`. |
+| `EmptyState` | What a surface says when it has nothing to show: its mark in an Expressive shape, a sentence and a way out. |
+| `StatusBanner` | A surface's own bad news on a card toned in its colour, carrying the actions that answer it. |
+| `StatusChip` | A short state named in its own tint — GitHub priority, Maintenance urgency, a job, transfer or integration state, PR checks and review, notification urgency. Red for failure or act now, yellow for attention, green for done, primary for live work, overlay otherwise. Material's chip on the small corner, its container toned from its own colour, never a control; in a dense row it takes that row's height. |
 | `SlimScrollBar` | The scroll indicator, shown only while the pointer is over the popup. |
-| `RoundedSource` | An Image rounded on the shell's radius through `MultiEffect` masking. |
+| `RoundedSource` | An Image rounded through `MultiEffect` masking. A sender's picture or an account is an avatar, which Material draws as a circle. |
 | `AgentMark` | A harness or vendor drawn as its own vendored SVG. |
 
 The Control Center and media surfaces add `ControlTile`, `UtilityTile`, `ConnectivityRow`,
 `ControlLevel`, `AudioLevelRow`, `ApplicationLevelRow`, `MediaBody`, `MediaButton` and
 `MediaTimeline`. `ControlTile` is a module with state, half the grid wide, a title over a
-detail line; `UtilityTile` is a quarter-wide launcher, a glyph over a short name, whose
-description lives in its tooltip and whose only state is a corner reading and the active
-tint. `ControlCenterGrid` lays them out with positioners, never counted offsets, and owns
+detail line, drawn as Expressive's quick setting — a card on the large corner while
+quiet, the primary container rounded into a pill while active; `UtilityTile` is a
+quarter-wide launcher, a glyph over a short name, whose description lives in its tooltip
+and whose only state is a corner reading and a fill toned in that reading's colour.
+`ConnectivityRow` leads with a knob that is round while its radio is off and a
+square-cornered primary knob while it is on. Every tile and knob pinches while it is
+held. `ControlCenterGrid` lays them out with positioners, never counted offsets, and owns
 arrow-key movement across everything in it that takes focus. A module
 that lives in both the Control Center and its own panel draws the same body in both,
 **and frames it the same way**: the panel puts the block on a card exactly as the
@@ -184,8 +216,9 @@ A panel is a stack of groups, and every group has the same shape:
 1. A `SectionRule` opens it. The group's live summary goes at the far end of that rule;
    whatever switch governs the group rides on it rather than standing in a row above it.
 2. The group's content sits in a **card** — `DeviceListCard` for a list, otherwise a
-   `Rectangle` on `cardColor` with a `CardEdge`, sized from its own content column.
-3. Rows inside that card take `rowColor`, one step up the ramp from the card.
+   `Rectangle` on `cardColor` with the `radius` corner, sized from its own content column.
+3. Rows inside that card take `rowColor` on `radiusRow`, one step up the ramp from the
+   card.
 
 What the panel is *about* goes in its header's `detail` line, never on a loose line under
 the title. Every panel is introduced by its own mark.
@@ -193,11 +226,11 @@ the title. Every panel is introduced by its own mark.
 Choose the control by what the user is doing:
 
 - **An exclusive choice** — a usage range, a noise mode, which path SSH takes, which of
-  two views is being read — is a `SegmentWell` of `Segment`s. Never several outlined
-  boxes side by side: an outline around every alternative says what the fill of the one
-  that is on already says, and the well is what makes the group read as one control.
-  The well is for a choice worth seeing all of at once. A choice that is rarely made,
-  or whose set can shrink to one, is a dropdown on the group's rule instead — a well
+  two views is being read — is a connected button group, `SegmentWell` of `Segment`s or
+  `SegmentChoice`s. Never several separate outlined boxes side by side: the shared
+  outer pill and the small inner corners are what make the group read as one control.
+  The group is for a choice worth seeing all of at once. A choice that is rarely made,
+  or whose set can shrink to one, is a dropdown on the group's rule instead — a group
   that spends a row on five segments, or draws a single segment because the set has
   one member, is the shape telling you it was the wrong one.
 - **A one-shot action** is a button. Actions are not a choice among each other.
@@ -215,16 +248,16 @@ parts the panel is actually laid out with, measured rather than counted.
 
 ## The menu bar
 
-The bar is the one surface always on screen, so it is the darkest and quietest: ink the
-wallpaper shows through, closed at the bottom with a hairline rather than a coloured
-rule, and no light along the top edge, where there is no wallpaper for that edge to be
-lit against. Its workspaces take three steps and only the top one is lit — accent for the
-workspace in front of the user, a tint of the strip's own light for one holding windows,
-barely anything for an empty one.
+The bar is the one surface always on screen, so it is the lowest and quietest step of the
+surface ramp, with no divider under it, as Material draws a top app bar that nothing has
+scrolled beneath. Its workspaces are Expressive's page indicator and take three steps,
+only the top one lit — a wide `primary` pill for the workspace in front of the user, the
+secondary container for one holding windows, `surfaceContainerHigh` for an empty one —
+and the pill travels on the spatial spring.
 
 A `BarItem` spans the bar's full height so a pointer thrown at the screen edge still
-lands on it, while only the visible pill is inset. An open panel highlights just the
-entry on the screen it was opened from.
+lands on it, while only the visible pill is inset. An open panel puts just the entry on
+the screen it was opened from in the secondary container.
 
 A panel opens directly below the entry that opened it, with their horizontal centres
 aligned, and is clamped only when it reaches a screen side, using the compositor's outer
@@ -241,10 +274,13 @@ mark still reads.
 
 ## Interaction
 
-**The pointer is reported by a `HoverWash` laid over the control, never by another branch
-of its fill.** A fill that tests its own state first — `selected ? … : hovered ? …` — can
-never report a pointer on the control that is selected, on, pinned or already running,
-which is the control the pointer is most often aimed at. A momentary acknowledgement —
+**The pointer is reported by a state layer — `HoverWash` — laid over the control, never
+by another branch of its fill.** A fill that tests its own state first —
+`selected ? … : hovered ? …` — can never report a pointer on the control that is
+selected, on, pinned or already running, which is the control the pointer is most often
+aimed at. A press is the same layer at the pressed opacity, and on a control that
+changes shape it is the shape too: buttons, knobs, tiles and segments pinch towards a
+smaller corner while they are held. A momentary acknowledgement —
 busy, complete, failed — may still outrank the resting fill, because it lasts a second
 and then goes.
 
@@ -275,7 +311,7 @@ A group that opens — a stack of notifications, a fold — grows the item it is
 already in rather than inserting rows around it. Inserting displaces everything
 below and can carry the group out from under the pointer that just opened it;
 growing in place keeps it where the click landed, and gives the height something
-to animate over `durationNormal`. Clip the growing item so its content is
+to animate on the default spatial spring. Clip the growing item so its content is
 revealed rather than appearing.
 
 A **readout** is not a control. Where a surface reports what something else is doing —
@@ -303,15 +339,23 @@ Each of these has been hit at least once. The symptom is what to watch for.
 - **A control labelled from its own state.** Symptom: everything left of a row's button
   shifts because `Unpin` is wider than `Pin`. Cure: measure the widest label with
   `TextMetrics` and give the control that width in every state.
-- **A tiled image on a rounded corner.** Symptom: the grain film squares off the arc.
-  Cure: `SurfaceGrain`'s `inset`.
+- **A container laid over content.** Symptom: a highlight that used to tint what it
+  marked now hides it. Roles are opaque. Cure: the primary colour at a state layer's
+  alpha.
+- **A content colour from another role.** Symptom: text on a filled control vanishes on
+  a light theme. Cure: the matching `textOn…` role, never `crust` or `base`.
+- **A property named like Material's `onPrimary`.** Symptom: the binding silently does
+  nothing, because QML reads `on…` as a signal handler. Cure: the `textOn…` names.
+- **A spring sampled finer than Qt allows.** Symptom: the shell aborts with heap
+  corruption when an animation starts. Qt's `BezierSpline` easing overruns its storage
+  past ten segments. Cure: the springs from `Motion.js`, which use eight.
 - **A `Rectangle` asked to clip.** Symptom: content escapes the rounded corner. Cure:
   `ClippingRectangle`.
 - **A tabbable control that draws nothing for focus.** Symptom: tab moves through a
-  transport or picker and the panel never changes. Cure: use `FocusRing`, or the
-  control's own explicit focus border when its track already provides one.
-- **A group that stays open to say it is empty.** Symptom: a well whose only content is
-  a sentence about why the well has nothing in it, or the same "nothing here" written
+  transport or picker and the panel never changes. Cure: `FocusRing`, with `gap: 0`
+  inside a parent that clips.
+- **A group that stays open to say it is empty.** Symptom: a card whose only content is
+  a sentence about why the card has nothing in it, or the same "nothing here" written
   once per group. Cure: withdraw the rule and its content together, and let one
   `EmptyState` speak for the whole surface.
 - **An anchored click area inside a `Column`.** Symptom: labels overlap because Qt disables the positioner. Put the labels in a nested column and its full-size click area beside it, inside an `Item` sized from the labels.
@@ -329,7 +373,7 @@ baseline.
 
 Seele Notes (`projects/notes/`) is a full application built from this vocabulary: it
 imports `../shared` directly, roots at `Shared.Theme`, and is the reason a part worth
-sharing goes in `shared/`. Its package copies shared QML components and `Palette.js` together and
+sharing goes in `shared/`. Its package copies shared QML components and their JavaScript together and
 runs `qmllint` over the result, so a new shared component is picked up automatically and
 a warning in one fails `nix build .#notes`. `SearchField`, `EmptyState` and
 `StatusBanner` moved there when Notes needed them, because a query, a nothing-to-show
@@ -344,15 +388,19 @@ underneath, the folder that cannot be written to. Each one carries its own way o
 state without an action is a state the reader can do nothing about.
 
 `projects/lock/`, `projects/greeter/` and `projects/polkit/` are separate clients that
-mirror the subset of non-palette tokens they use. Their roots take fallback palette values
-and JSON assignment from `projects/shared/Palette.js`, copied into each package; never put
-a Catppuccin value or a second assignment loop back in those roots. Keep another shared
+mirror the subset of non-palette tokens they use. Their roots take fallback palette values,
+JSON assignment and the Material roles (`roles: Palette.roles({...})`) from
+`projects/shared/Palette.js`, and the lock and greeter draw the shared
+`LoadingIndicator` with `Motion.js` and `Shapes.js`; each package copies exactly those
+files into its own `shared/`. Never put a Catppuccin value, a second assignment loop or a
+second role derivation back in those roots. Keep another shared
 token identical to the shell's, and drop it when nothing in that client reads it. A palette
 colour a client reads also has to arrive from the parent: the generated `theme.json` in
 `modules/features/programs/seele-shell.nix` and `seele-greeter.nix` carries the named
 entries, and a client reading a new one needs the key there; the shared palette assignment covers every declared palette
 property. `tests/palette.js` and `tests/tst_palette.qml` preserve fallback and
-Qt color/alpha behavior, including the main shell's existing wallpaper override.
+Qt color/alpha behavior, including the main shell's existing wallpaper override, and pin
+the role derivation on a dark and a light palette.
 
 ## Finish
 
@@ -362,8 +410,9 @@ Before reporting a surface done, account for **every control you drew**:
   block. No literal survives at a call site.
 - Every part that exists as a shared component is that component, not a rebuild of it,
   and a new part a second surface could want went into `projects/shared/`.
-- Every group is a rule over a card; every exclusive choice is a well; every one-shot
-  action is a button.
+- Every group is a rule over a card; every exclusive choice is a connected button group;
+  every one-shot action is a button; every container is paired with its own content
+  colour.
 - Every control that answers a click reports the pointer through a `HoverWash` and shows
   the pointer cursor; every control that does not, does neither.
 - The panel's height falls out of its content.
