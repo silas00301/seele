@@ -49,7 +49,11 @@ for scope, ownership and application reload boundaries. Every preset and the
 unthemed fallback have pixel baselines on ten shell surfaces in
 `seele-shell/tests/theme-snapshots/`; `theme-snapshots` in the shell's
 development shell fails on any changed pixel, so a theme refactor proves it
-changed nothing.
+changed nothing. Every styling value the shell and Notes draw is a slot of the
+theme contract: `seele-shell/projects/shared/theme-contract.json` is its schema,
+`Theme.qml` its only implementation, and the shell's `tests/theme-contract.js`
+fails on a styling literal anywhere else. Sound and wallpaper slots are
+optional and fall back to silence and to the configured wallpaper.
 
 ## Architecture
 

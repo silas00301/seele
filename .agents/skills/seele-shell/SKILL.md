@@ -799,6 +799,25 @@ resolved there without the shell's own wrapper. Keep both lists current:
 shipped unlinted long
 enough for that surface to grow its own formatting and rebuild parts the
 vocabulary already had. Add a new shell QML file to both lists.
+
+That vocabulary is the theme contract. `projects/shared/theme-contract.json`
+lists all of its slots in eleven groups -- palette, signal, typography, shape,
+spacing, metrics, layout, material, motion, sound and wallpaper -- with their
+types, defaults and derivations, the rules a theme document follows, and the
+fallbacks of the optional sound and wallpaper slots; `THEME-CONTRACT.md` beside
+it explains them. `Theme.qml` is its only implementation, one `// <Section> ----`
+header per group and one property per line in the JSON's order. No surface in
+`projects/shell`, `projects/shared` or `projects/notes` writes a colour, colour
+arithmetic on a literal, an easing or weight enum, or a styling number of its
+own: add a slot named for its role, with a comment saying what it is for, run
+`node tests/theme-contract.js projects --update`, review the JSON diff, and run
+the check without `--update`. It allows only structural numbers -- zero, a
+count, a half, full opacity or a clamp -- and drawing coordinates inside a
+region marked `// theme-contract: artwork -- <reason>` ... `// theme-contract:
+end`. Moving a value into the contract must leave every theme snapshot
+pixel-identical. The greeter, lock and polkit scenes are outside this version;
+they take only the palette.
+
 Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
@@ -827,7 +846,7 @@ Every surface reads from that block rather than deciding for itself:
   interpolates a colour channel by channel and `transparent` is black, so a
   tint animated against it is dragged through grey at both ends of the fade.
 - **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
-  control that travels.
+  control that travels, and `easingStandard` for every eased transition.
 
 Assemble a surface from the shared components rather than repeating their
 parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
