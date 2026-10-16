@@ -1118,3 +1118,20 @@ consumer. Shell/Notes packages and isolated Qt fixtures copy shared `.qml` and
 Run `node tests/palette.js ...` and the offscreen `tests/palette.sh` fixture.
 Palette data/property assignment is a necessary Qt API boundary, with no service
 or background logic. Preserve existing theme and wallpaper assignment semantics.
+
+## Keep every theme pixel-identical
+
+`tests/theme-snapshots/` holds pixel baselines of all 13 theme presets and the
+unthemed `Palette.js` fallback on ten production surfaces: the bar, Control
+Center, toasts, the notification panel, Now Playing, Audio, Power, the volume
+OSD, the theme switcher and the Themes panel. `nix develop -c theme-snapshots`
+fails on any changed pixel; `--keep <dir>` writes actual, baseline and diff
+images. Run it for any change to theming, `Theme.qml`, `Palette.js` or a drawn
+surface that is meant to look the same, and re-record with `--update` only for
+an intended new look, reviewing every changed image. The harness lifts root
+members and whole layer windows from `shell.qml`, so a new store or Quickshell
+service a covered surface reads needs a stand-in in `tests/theme-snapshots/`
+(`scene.qml` or `fixture/`); any Qt warning fails the run. Pixels depend on
+the Qt build and FreeType: under a renderer other than the recorded one, record
+the base revision with `--update --baseline <dir outside the tree>` and compare
+the change against that directory. See the README there.

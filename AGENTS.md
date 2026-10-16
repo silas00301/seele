@@ -45,7 +45,11 @@ rather than reading Base16's dim slots verbatim, because Catppuccin's Base16
 file puts surface colours there. Vesktop reloads the helper's in-place QuickCSS
 update; Neovim selects the official colorscheme for Catppuccin presets and
 Stylix's Base16 palette for the others. See [the theme switching guide](docs/theme-switching.md)
-for scope, ownership and application reload boundaries.
+for scope, ownership and application reload boundaries. Every preset and the
+unthemed fallback have pixel baselines on ten shell surfaces in
+`seele-shell/tests/theme-snapshots/`; `theme-snapshots` in the shell's
+development shell fails on any changed pixel, so a theme refactor proves it
+changed nothing.
 
 ## Architecture
 
