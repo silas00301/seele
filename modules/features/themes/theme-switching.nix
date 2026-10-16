@@ -6,6 +6,12 @@
 }:
 let
   themeSettings = config.seele.catppuccin;
+  # The shell's drop-in theme folders (seele-shell/themes/default.nix), each
+  # checked by `seele-theme register` when the catalog that names it is built.
+  themeFolders =
+    pkgs: configTools:
+    (inputs.seele-shell.lib.mkThemes { inherit pkgs configTools; }).entries
+      inputs.seele-shell.lib.themeFolders;
 in
 {
   perSystem =
@@ -25,6 +31,7 @@ in
                   inherit inputs pkgs;
                   catppuccin = themeSettings;
                   catppuccinPalette = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.palette;
+                  folders = themeFolders pkgs config.packages.config-tools;
                 };
               }
             );
@@ -50,6 +57,7 @@ in
       themes = import ./_theme-switching {
         inherit inputs pkgs catppuccin;
         catppuccinPalette = config.catppuccin.sources.palette;
+        folders = themeFolders pkgs selfPackages.config-tools;
       };
       package = selfPackages.config-tools;
       tmuxTheme = "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin/catppuccin_tmux.conf";

@@ -820,12 +820,24 @@ they take only the palette.
 
 The existing presets are documents of that contract. `seele-theme` builds each
 from its Base16 palette, and `projects/config-tools/src/theme_contract.rs`
-embeds the contract JSON (the native build adds that one file to config-tools'
-source) and checks every listed document and every published `theme.json`
-against the same rules as the JavaScript check, with the same messages. Keep
+embeds the contract JSON (the native build adds it, the theme-folder fixtures
+and `folders.json` to config-tools' source) and checks every listed document
+and every published `theme.json` against the same rules as the JavaScript
+check, with the same messages. Keep
 the two validators in step when a document rule changes.
 `tests/theme-snapshots/themes.json` is the presets as `seele-theme list` prints
 them, so the baselines render the documents themselves.
+
+A theme that is not a Base16 preset is a folder under `themes/` plus one line in
+`themes/default.nix` (`themes/README.md`), never shell code. `seele-theme
+register` (`projects/config-tools/src/theme_folder.rs`) holds the folder to the
+contract and the folder rules at build time and writes the registered copy;
+`packages/core/themes.nix` (`lib.mkThemes`) wraps it for the parent's catalog.
+`Theme.qml` applies every slot a theme may supply except the wallpaper, so a
+folder restyles the shell without a code change and a preset after it looks as
+it always did. Keep `tests/theme-folders/`,
+`projects/config-tools/tests/theme_folders.py`, `checks.theme-folders` and the
+example's two baselines (`folders.json`) passing.
 
 Every surface reads from that block rather than deciding for itself:
 
@@ -1142,18 +1154,23 @@ Activation is separate. Run `nh os switch`, `nh darwin switch`, or an equivalent
 
 Shared palette changes must keep `projects/shared/Palette.js` beside every
 consumer. Shell/Notes packages and isolated Qt fixtures copy shared `.qml` and
-`.js` assets together; auth-client packages copy Palette.js beside shell.qml.
+`.js` assets together, and the packages also install `theme-contract.json`,
+which `Theme.qml` reads to apply every slot a published theme supplies through
+`applyTheme` and `Contract.js`; auth-client packages copy Palette.js beside
+shell.qml.
 Run `node tests/palette.js ...` and the offscreen `tests/palette.sh` fixture.
 Palette data/property assignment is a necessary Qt API boundary, with no service
-or background logic. Preserve existing theme and wallpaper assignment semantics.
+or background logic. Preserve the auth clients' assignment semantics and the
+shell's wallpaper selection, which `applyTheme` leaves to its consumers.
 
 ## Keep every theme pixel-identical
 
 `tests/theme-snapshots/` holds pixel baselines of all 13 theme presets and the
 unthemed `Palette.js` fallback on ten production surfaces: the bar, Control
 Center, toasts, the notification panel, Now Playing, Audio, Power, the volume
-OSD, the theme switcher and the Themes panel. `nix develop -c theme-snapshots`
-fails on any changed pixel; `--keep <dir>` writes actual, baseline and diff
+OSD, the theme switcher and the Themes panel, plus the example theme folder on
+those last two, each theme applied through `Theme.qml`'s `applyTheme`.
+`nix develop -c theme-snapshots` fails on any changed pixel; `--keep <dir>` writes actual, baseline and diff
 images. Run it for any change to theming, `Theme.qml`, `Palette.js` or a drawn
 surface that is meant to look the same, and re-record with `--update` only for
 an intended new look, reviewing every changed image. The harness lifts root

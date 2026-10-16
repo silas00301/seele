@@ -1026,7 +1026,14 @@ active GTK, GtkSourceView, Qt/Kvantum, KDE, Spicetify and Zen targets. The
 native helper publishes their per-preset assets into one selected generation;
 Home Manager supplies stable app links, and a loopback-only palette service
 feeds Spicetify's packaged extension. The Linux `theme-presets` check validates
-the generated assets through the runtime. See
+the generated assets through the runtime. Drop-in theme folders come from the
+shell input: `inputs.seele-shell.lib.mkThemes` turns each folder listed in
+`inputs.seele-shell.lib.themeFolders` into a catalog entry whose `document` is
+the `theme.json` that `seele-theme register` wrote at build time, so the catalog
+cannot be built around an invalid folder. `_theme-switching` takes them as
+`folders`, gives Stylix a folder's own Base16 palette as an attribute set, and
+keeps that palette, rather than Stylix's echo of it, in the entry, because the
+helper requires the entry and the registered document to agree. See
 [the theme switching guide](../../../../docs/theme-switching.md) before changing
 palette ownership or adding another runtime theme consumer.
 

@@ -57,7 +57,13 @@ optional and fall back to silence and to the configured wallpaper. Each preset
 is a document of that contract: `seele-theme` projects its eleven palette roles
 from the preset's Base16 palette, adds the configured typeface, and refuses the
 whole catalog, naming the preset and the rule, when one breaks a contract rule,
-so `checks.theme-presets` fails the build on it.
+so `checks.theme-presets` fails the build on it. A theme beyond the Base16
+presets is a drop-in folder in `seele-shell/themes/` plus one line in
+`seele-shell/themes/default.nix`: `seele-theme register` checks it against the
+contract when the catalog is built and fails the rebuild naming every rule it
+broke, the parent renders its applications from the folder's own Base16
+palette, and `Theme.qml` applies every slot a theme supplies, restoring
+defaults for the rest.
 
 ## Architecture
 

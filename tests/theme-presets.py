@@ -1,7 +1,9 @@
 """Check generated Stylix presets against the real runtime and launcher contract.
 
 Usage: python3 tests/theme-presets.py /path/to/seele-theme /path/to/catalog.json
-The flake check supplies its actual generated catalog and theme files.
+The flake check supplies its actual generated catalog and theme files. A
+registered theme folder's entry names its document; the shell and the terminal
+then take that document's own roles, not a projection of its Base16 palette.
 """
 import json
 import configparser
@@ -40,11 +42,16 @@ with tempfile.TemporaryDirectory(prefix="seele-stylix-") as directory:
         assert launcher["colors"]["core"]["background"] == theme["palette"]["base00"]
         assert launcher["colors"]["core"]["foreground"] == theme["palette"]["base05"]
         assert launcher["colors"]["core"]["accent"] == theme["palette"]["base0D"]
-        assert selected["base"] == launcher["colors"]["core"]["background"]
-        assert selected["accent"] == launcher["colors"]["core"]["accent"]
+        document = json.loads(Path(theme["document"]).read_text()) if "document" in theme else None
+        if document is None:
+            assert selected["base"] == launcher["colors"]["core"]["background"]
+            assert selected["accent"] == launcher["colors"]["core"]["accent"]
+        else:
+            for key, value in document.items():
+                assert selected[key] == value, (theme["id"], key)
         assert (state / "current/vicinae.toml").read_bytes() == Path(theme["vicinaeTheme"]).read_bytes()
         ghostty = (state / "current/ghostty").read_text()
-        assert "background = " + theme["palette"]["base00"] in ghostty
+        assert "background = " + (document or {}).get("base", theme["palette"]["base00"]) in ghostty
         assets = {
             "gtkCss": "gtk.css",
             "gtkSourceView": "gtksourceview.xml",
@@ -70,4 +77,5 @@ with tempfile.TemporaryDirectory(prefix="seele-stylix-") as directory:
         assert spicetify["base"]["main"].lower() == theme["palette"]["base00"].removeprefix("#").lower()
         assert "*background: " + theme["palette"]["base00"] in (state / "current/Xresources").read_text()
         assert len(list(state.glob(".theme-*"))) == 1
-    print(f"{len(entries)} generated presets passed palette, mode, publication and launcher parity checks")
+    folders = sum("document" in theme for theme in catalog["themes"])
+    print(f"{len(entries)} generated presets, {folders} of them theme folders, passed palette, mode, publication and launcher parity checks")

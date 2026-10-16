@@ -150,6 +150,17 @@ To add another scheme, add its ID, display name (at most 64 characters, as the
 contract allows) and light/dark mode to `presets.json`, then rebuild once to
 include it. No application-specific theme name or plugin mapping is needed.
 
+A theme that is not a Base16 scheme is a drop-in folder in the shell's
+`themes/` directory plus one line in `seele-shell/themes/default.nix`; see
+`seele-shell/themes/README.md`. Its `theme.json` chooses the shell's palette
+roles and any other slot of the theme contract (radii, type, motion) and
+carries the Base16 palette the other applications are rendered from. The
+helper `_theme-switching` renders those applications from that palette exactly
+as for a preset, and the folder joins the catalog after the presets. Each
+folder is checked by `seele-theme register` when the catalog that names it is
+built, so an invalid or incomplete folder fails the rebuild with a message
+naming the folder and every rule it broke, and never reaches the desktop.
+
 `modules/features/themes/theme-switching.nix` declares the catalog and includes. It is
 imported only by the `nerv` home profile. Home Manager owns those includes;
 `seele-theme` owns only `$XDG_STATE_HOME/seele-theme`. The palette enters the

@@ -1,10 +1,15 @@
-# Evaluate the upstream targets once per curated preset. Only their generated
-# theme data is used; these isolated homes are never built or activated.
+# Evaluate the upstream targets once per curated preset and per registered
+# theme folder. Only their generated theme data is used; these isolated homes
+# are never built or activated.
 {
   inputs,
   pkgs,
   catppuccin,
   catppuccinPalette,
+  # The shell's drop-in theme folders, as `mkThemes` registers them: each is
+  # checked when it is built, and its catalog entry names the registered
+  # document. They follow the presets in the switcher.
+  folders ? [ ],
 }:
 let
   lib = pkgs.lib;
@@ -13,6 +18,7 @@ let
   render =
     preset:
     let
+      folder = preset ? document;
       generated =
         (inputs.home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -39,10 +45,19 @@ let
               stylix = {
                 enable = true;
                 autoEnable = false;
-                base16Scheme = "${pkgs.base16-schemes}/share/themes/${preset.id}.yaml";
+                # A folder carries its own Base16 palette; a preset names a
+                # scheme from the pinned base16-schemes.
+                base16Scheme =
+                  if folder then
+                    {
+                      inherit (preset) name palette;
+                      slug = preset.id;
+                    }
+                  else
+                    "${pkgs.base16-schemes}/share/themes/${preset.id}.yaml";
                 polarity = preset.mode;
                 # Keep the configured accent for the existing Catppuccin presets.
-                override = lib.optionalAttrs (lib.hasPrefix "catppuccin-" preset.id) {
+                override = lib.optionalAttrs (!folder && lib.hasPrefix "catppuccin-" preset.id) {
                   base0D =
                     lib.removePrefix "#"
                       catppuccinColors.${lib.removePrefix "catppuccin-" preset.id}.colors.${catppuccin.accent}.hex;
@@ -83,10 +98,13 @@ let
         lib.filter lib.isString (builtins.split "[^a-zA-Z]" generated.lib.stylix.colors.scheme)
       );
     in
-    preset
-    // {
+    {
+      inherit (preset) id name mode;
       # This is the actual Stylix NixVim target output, not a second Base16 map.
-      palette = generated.programs.nixvim.plugins.mini.modules.base16.palette;
+      # A folder's is its own, which Stylix was given unchanged and which the
+      # helper requires its registered document to repeat exactly.
+      palette =
+        if folder then preset.palette else generated.programs.nixvim.plugins.mini.modules.base16.palette;
       vicinaeTheme = toString (
         (pkgs.formats.toml { }).generate "seele-${preset.id}-vicinae.toml" (
           launcher
@@ -110,6 +128,7 @@ let
           toString (lib.head generated.qt.kvantum.themes) + "/share/Kvantum/Base16Kvantum/Base16Kvantum.svg";
         kdeColors = toString kdePackage + "/share/color-schemes/${kdeScheme}.colors";
       };
-    };
+    }
+    // lib.optionalAttrs folder { inherit (preset) document; };
 in
-map render presets
+map render (presets ++ folders)
