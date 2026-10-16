@@ -137,9 +137,18 @@ every preset's quiet roles clear the floor.
 These assets are generated during the build; switching only selects local files.
 The configured Catppuccin accent is retained for the Catppuccin presets.
 
-To add another scheme, add its ID, display name and light/dark mode to
-`presets.json`, then rebuild once to include it. No application-specific theme
-name or plugin mapping is needed.
+Every preset reaches the shell as a document of the shell's theme contract
+(`seele-shell/projects/shared/THEME-CONTRACT.md`): its identity, the eleven
+palette roles projected above, the configured monospace font, and its Base16
+palette and terminal colours as extensions. It supplies no other slot, so the
+shell keeps the look the contract's defaults describe. The helper checks every
+preset against the contract whenever it reads the catalog and refuses the whole
+catalog, naming the preset and the broken rule, so `checks.theme-presets` fails
+the build on a preset the shell could not take.
+
+To add another scheme, add its ID, display name (at most 64 characters, as the
+contract allows) and light/dark mode to `presets.json`, then rebuild once to
+include it. No application-specific theme name or plugin mapping is needed.
 
 `modules/features/themes/theme-switching.nix` declares the catalog and includes. It is
 imported only by the `nerv` home profile. Home Manager owns those includes;

@@ -818,6 +818,15 @@ end`. Moving a value into the contract must leave every theme snapshot
 pixel-identical. The greeter, lock and polkit scenes are outside this version;
 they take only the palette.
 
+The existing presets are documents of that contract. `seele-theme` builds each
+from its Base16 palette, and `projects/config-tools/src/theme_contract.rs`
+embeds the contract JSON (the native build adds that one file to config-tools'
+source) and checks every listed document and every published `theme.json`
+against the same rules as the JavaScript check, with the same messages. Keep
+the two validators in step when a document rule changes.
+`tests/theme-snapshots/themes.json` is the presets as `seele-theme list` prints
+them, so the baselines render the documents themselves.
+
 Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they

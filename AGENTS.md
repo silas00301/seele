@@ -53,7 +53,11 @@ changed nothing. Every styling value the shell and Notes draw is a slot of the
 theme contract: `seele-shell/projects/shared/theme-contract.json` is its schema,
 `Theme.qml` its only implementation, and the shell's `tests/theme-contract.js`
 fails on a styling literal anywhere else. Sound and wallpaper slots are
-optional and fall back to silence and to the configured wallpaper.
+optional and fall back to silence and to the configured wallpaper. Each preset
+is a document of that contract: `seele-theme` projects its eleven palette roles
+from the preset's Base16 palette, adds the configured typeface, and refuses the
+whole catalog, naming the preset and the rule, when one breaks a contract rule,
+so `checks.theme-presets` fails the build on it.
 
 ## Architecture
 
