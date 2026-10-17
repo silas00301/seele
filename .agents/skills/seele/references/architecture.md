@@ -1033,9 +1033,10 @@ the `theme.json` that `seele-theme register` wrote at build time, so the catalog
 cannot be built around an invalid folder. The Material Expressive light and dark
 folders arrive the same way; the shell writes them from a seed colour with
 `seele-theme material`, so the parent adds nothing for them either. So does
-Cyberpunk, whose typeface files and scanline texture ride in its registered
-document like a wallpaper; the shell loads the typeface itself, so the parent
-installs no font for it. `_theme-switching` takes them as
+Cyberpunk, whose typeface files, scanline texture and WAV sound cues ride in its
+registered document like a wallpaper; the shell loads the typeface and plays the
+cues itself, so the parent installs no font or sound for it, and the user's
+motion and sound choices live in `seele-theme`'s preferences rather than in Nix. `_theme-switching` takes them as
 `folders`, gives Stylix a folder's own Base16 palette as an attribute set, and
 keeps that palette, rather than Stylix's echo of it, in the entry, because the
 helper requires the entry and the registered document to agree. A folder's own

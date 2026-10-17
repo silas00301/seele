@@ -884,6 +884,30 @@ them. `registered.json` names a shipped folder's files as `themes/<id>/<name>`,
 which `theme_folders.py` checks and the harness reads. Read
 `themes/CYBERPUNK.md` before changing it.
 
+A theme's own motion and sound (SIL-240) are slots too, and whether they play
+is a user preference outside the contract. `CutFrame` sweeps the trim
+(`durationPanelTrim`) and flickers the glitch (`durationPanelGlitch`,
+`panelGlitchFlickers`, `panelGlitchShift`) only when its window becomes visible,
+when it is created inside a visible one, and when the pointer arrives; panels
+are hidden, not rebuilt, so `Component.onCompleted` alone would play once.
+Every animation ends on the still frame, which is what the snapshot harness
+captures, and nothing runs at rest -- `tests/tst_motion.qml` counts zero
+`frameSwapped` on an idle open panel; keep it that way, no idle loops. The
+`sound…` cues play through `projects/shell/ThemeSounds.qml`, which owns the
+rules (fresh toasts only, panels by `controlPanel`/`themesOpen`, level OSDs,
+focus done, nothing while `presenting`) and loads `ThemeSoundEffects.qml`, the
+only file importing QtMultimedia, solely while `soundEnabled` and the theme has
+a cue. Cues must be WAV (SoundEffect decodes nothing else); regenerate them
+with `themes/cyberpunk/art/sounds.js`, which `tests/theme-sounds.js` holds byte
+for byte. `motionEnabled`/`soundEnabled` and the derived `panelMotion` and
+`themeSounds` sit after `function alpha(` in `Theme.qml`, because every property
+before it must be a contract slot; they read the helper's `preferences.json`
+(`seele-theme motion|sound on|off`). A sandbox or build has no audio device, so
+Qt refuses a SoundEffect there: `tests/theme-sounds.sh` tests the rules
+against a recording stand-in, and real playback needs the desktop. The snapshot
+harness keeps the `themeSounds` object (`keptObjects`), since lifted root
+functions call it.
+
 Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they

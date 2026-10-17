@@ -102,7 +102,20 @@ titles and section labels in capitals (`titleCapitalization`,
 `labelCapitalization`). Registration refuses a texture that is not a PNG or
 JPEG and a typeface file that is not TrueType or OpenType. Its fonts are SIL
 OFL, its wallpaper and scanlines are drawn by `themes/cyberpunk/art/draw.js`,
-and no game asset is used; see `seele-shell/themes/CYBERPUNK.md`.
+and no game asset is used; see `seele-shell/themes/CYBERPUNK.md`. Cyberpunk
+also moves and sounds: `CutFrame` sweeps a panel's trim in and flickers its
+glitch as the panel's window shows and when the pointer arrives
+(`durationPanelTrim`, `durationPanelGlitch`, `panelGlitchFlickers`,
+`panelGlitchShift`), always ending on the still frame with nothing running at
+rest, and the shell's `ThemeSounds` plays the folder's six `sound…` cues,
+synthesised by `themes/cyberpunk/art/sounds.js`, through Qt's SoundEffect.
+Registration refuses a cue that is not a WAV file. Whether either happens is the
+user's, not the theme's: `seele-theme motion|sound on|off` (motion on, sound off
+by default) writes the helper's preferences, `Theme.qml` reads them into
+`motionEnabled` and `soundEnabled`, and the Themes panel's Effects switches
+appear only for a theme that has motion or sound. The player is loaded only
+while sound is on and the theme has a cue, presentation mode holds every cue
+back, and Qt marks the stream as an `event`, which the Audio mixer excludes.
 
 ## Architecture
 

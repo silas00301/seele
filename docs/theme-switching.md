@@ -77,13 +77,14 @@ runs `seele-theme`, and the shell reads the applied theme and the preferences
 from the files that helper publishes, so a change made in any place, or by the
 schedule, is seen in the others.
 
-`seele-theme list` returns the catalog, the current ID, both slots, the mode and
-the schedule as JSON. `current` returns the selected ID. `set catppuccin-latte`
+`seele-theme list` returns the catalog, the current ID, both slots, the mode,
+the schedule, and whether motion and sound are on as JSON. `current` returns the selected ID. `set catppuccin-latte`
 fills the slot of the mode on screen; `pick rose-pine-dawn` fills the slot of
 its own mode and switches to that mode; `slot light rose-pine-dawn` fills either
 slot; `mode dark` switches mode; `auto sun`, `auto schedule 07:00 19:00` and
-`auto off` set the schedule; `reset` returns both slots, the mode and the
-schedule to the flake's defaults. `init` refreshes generated files during Home
+`auto off` set the schedule; `motion on|off` and `sound on|off` let a theme's own
+motion and sounds through or hold them back, publishing nothing; `reset` returns
+both slots, the mode, the schedule, motion and sound to the defaults. `init` refreshes generated files during Home
 Manager activation while preserving the saved choices, and migrates an earlier
 single selection into its own mode's slot.
 
@@ -191,7 +192,20 @@ capitals. Each of those is a contract slot that every other theme leaves at its
 default. The typeface is used under the SIL Open Font License, and the wallpaper
 and scanlines are drawn by a script in the folder;
 `seele-shell/themes/CYBERPUNK.md` lists every value and the source and licence
-of every file. Motion and sound for it are SIL-240.
+of every file.
+
+Cyberpunk also moves and can sound. As a panel appears its trim sweeps out from
+the cut and its glitch flickers, and the glitch flickers again when the pointer
+comes onto the panel; nothing moves while a panel is left alone, so an open
+panel costs no frame. It carries six original interface sounds, synthesised by
+a script in the folder: a toast, a critical toast, the focus timer running out,
+a panel opening and closing, and a level OSD stepping. Both are the theme's,
+and whether they happen is yours: for a theme with either, the Themes panel
+shows **Effects**, a **Motion** switch (on by default) and a **Sounds** switch
+(off by default), and `seele-theme motion on|off` and `seele-theme sound on|off`
+do the same. Motion off draws the still frame at once. Sounds play only while
+on, never while presenting, and stay out of the Audio panel's mixer. Every
+other theme has neither, and its panel is unchanged.
 
 A folder may also carry the theme's own wallpaper: `"wallpaper": "wallpaper.jpg"`
 names a PNG or JPEG of at most 16 MiB inside it, and any other format fails the
