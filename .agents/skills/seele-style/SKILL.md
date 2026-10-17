@@ -71,8 +71,11 @@ surface or translucent card.
 
 This section describes the material every Base16 preset draws with. The Material
 Expressive themes reach the same slots with Material 3's opaque tonal surfaces,
-state layers, ripples and springs instead (`seele-shell/themes/MATERIAL.md`); a surface
-still names only slots, so it serves both without knowing which is on screen.
+state layers, ripples and springs instead (`seele-shell/themes/MATERIAL.md`), and
+Cyberpunk with flat near-black glass in neon frames, cut panel corners,
+scanlines and its own typeface (`seele-shell/themes/CYBERPUNK.md`); a surface
+still names only slots, so it serves all of them without knowing which is on
+screen.
 
 Depth is built out of translucency and one ink, never out of a stack of greys. `crust` is
 that ink: chrome is cut out of the wallpaper with it and wells are cut back to it.

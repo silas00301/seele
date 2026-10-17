@@ -91,7 +91,18 @@ closes its corners, the focus ring flares outside the edge, the switch's handle
 grows as it is set and held, and handles, corners and state colours move on
 Material's fast spatial and effects springs, sampled into a duration and a
 Bézier curve. Each is a contract slot whose default is the presets' unchanged
-behaviour. See `seele-shell/themes/MATERIAL.md`.
+behaviour. See `seele-shell/themes/MATERIAL.md`. A third shipped folder,
+**Cyberpunk**, draws the shell as in-game software: near-black glass framed in
+red neon, cyan for state, panels whose top left and bottom right corners are
+cut (`panelCut`, drawn by the shared `CutFrame`) with a trim and an
+out-of-register glitch along the top edge, square corners elsewhere, scanlines
+in place of the grain film (`surfaceTexture`), and Chakra Petch, carried in the
+folder as one file per weight (`fontFile…`) and loaded by the shell, with
+titles and section labels in capitals (`titleCapitalization`,
+`labelCapitalization`). Registration refuses a texture that is not a PNG or
+JPEG and a typeface file that is not TrueType or OpenType. Its fonts are SIL
+OFL, its wallpaper and scanlines are drawn by `themes/cyberpunk/art/draw.js`,
+and no game asset is used; see `seele-shell/themes/CYBERPUNK.md`.
 
 ## Architecture
 

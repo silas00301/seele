@@ -868,6 +868,22 @@ material`, whose native token set lives in `projects/config-tools/src/material/`
 its recorded seed grows, so regenerate rather than edit them, and read
 `themes/MATERIAL.md` before changing a mapping.
 
+`themes/cyberpunk` is hand-written and carries files: four Chakra Petch faces
+(`fontFileLight/Regular/Medium/Strong`, the optional `assets` group), a scanline
+tile (`surfaceTexture`, which `grain` follows) and its wallpaper. Registration
+holds a texture to PNG/JPEG and a typeface file to TrueType/OpenType by its
+first bytes, at build time and when the catalog is read. `Theme.qml` loads the
+faces through an `Instantiator` over only the given files, because a
+`FontLoader` whose source is cleared warns and any warning fails the snapshot
+harness. `panelCut` makes `PanelSurface` load `CutFrame` (cut outline, trim,
+glitch) and drop its wash and lit edge; `titleCapitalization` and
+`labelCapitalization` reach `PanelHeader` and `SectionLabel`. Its art is drawn
+by `themes/cyberpunk/art/draw.js` -- change the script and redraw, never the
+PNGs -- and ship only fonts whose licence allows it, with the licence beside
+them. `registered.json` names a shipped folder's files as `themes/<id>/<name>`,
+which `theme_folders.py` checks and the harness reads. Read
+`themes/CYBERPUNK.md` before changing it.
+
 Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
@@ -925,7 +941,9 @@ the click target that fold it), `SegmentWell` with `Segment`, `IconButton`,
 `RefreshGlyph`, `CenteredGlyph`, `FocusRing`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
 `ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
 all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
-the wash under the content, the edge and the film over it.
+the wash under the content, the edge and the film over it. A panel is a
+`PanelSurface` rather than its own rounded rectangle, so a theme's cut corners
+(`CutFrame`) reach it.
 
 A `HoverTip` on a control inside a panel needs `inOverlay: true`; without it the
 menu bar's guard hides the tip whenever the panel is open.
@@ -1218,8 +1236,8 @@ selection.
 unthemed `Palette.js` fallback on ten production surfaces: the bar, Control
 Center, toasts, the notification panel, Now Playing, Audio, Power, the volume
 OSD, the theme switcher and the Themes panel, plus the example theme folder on
-those last two and the shipped Material Expressive folders (`registered.json`)
-on all ten, each theme applied through `Theme.qml`'s `applyTheme`.
+those last two and the shipped Material Expressive and Cyberpunk folders
+(`registered.json`) on all ten, each theme applied through `Theme.qml`'s `applyTheme`.
 `nix develop -c theme-snapshots` fails on any changed pixel; `--keep <dir>` writes actual, baseline and diff
 images. Run it for any change to theming, `Theme.qml`, `Palette.js` or a drawn
 surface that is meant to look the same, and re-record with `--update` only for

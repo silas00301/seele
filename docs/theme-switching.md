@@ -16,8 +16,10 @@ The catalog includes 13 presets:
 
 After them come the shell's own drop-in themes, **Material Expressive Light**
 and **Material Expressive Dark**, which draw the shell with Material 3
-Expressive's colour scheme, type, shapes, tonal elevation and motion, and give
-every other application their Base16 palette like any preset.
+Expressive's colour scheme, type, shapes, tonal elevation and motion, and
+**Cyberpunk**, which draws it as in-game software: neon on near-black, panels
+cut at two corners with a trim and a glitch, scanlines and its own typeface.
+Each gives every other application its Base16 palette like any preset.
 
 The configured Catppuccin flavor is the initial dark theme, and its family's
 light variant, Catppuccin Latte, the initial light theme. Selecting a theme or a
@@ -105,8 +107,9 @@ single selection into its own mode's slot.
 
 This is a user-session feature. The boot screen, greeter, cursor, browser page
 content and independently themed tools retain their configured appearance.
-The font choice stays unchanged, and so does the wallpaper unless the selected
-theme carries its own or `seele.wallpaper` maps one to it. `asuka` and portable applications keep their declarative
+The font choice stays unchanged unless the selected theme carries its own
+typeface, which reaches Seele Shell and Notes only, and so does the wallpaper
+unless the selected theme carries its own or `seele.wallpaper` maps one to it. `asuka` and portable applications keep their declarative
 themes.
 
 `modules/features/themes/_theme-switching/presets.json` selects schemes from
@@ -177,6 +180,18 @@ it reaches. Under them the shell's controls also behave as Material's: a press
 ripples from where it landed, pressed buttons close their corners, the keyboard
 focus ring flares, the switch's handle grows, and they move on Material's
 springs; every preset keeps the behaviour it had.
+
+Cyberpunk is a hand-written folder that also brings files of its own: the four
+weights of Chakra Petch, which the shell loads while the theme is selected so
+nothing has to be installed, a scanline tile laid over every surface in place
+of the grain film, and an original 3840×2160 wallpaper. It cuts every panel's
+top left and bottom right corners, lights the cut with a red trim and a cyan
+glitch, squares every other corner and sets panel titles and section labels in
+capitals. Each of those is a contract slot that every other theme leaves at its
+default. The typeface is used under the SIL Open Font License, and the wallpaper
+and scanlines are drawn by a script in the folder;
+`seele-shell/themes/CYBERPUNK.md` lists every value and the source and licence
+of every file. Motion and sound for it are SIL-240.
 
 A folder may also carry the theme's own wallpaper: `"wallpaper": "wallpaper.jpg"`
 names a PNG or JPEG of at most 16 MiB inside it, and any other format fails the
