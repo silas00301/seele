@@ -849,7 +849,20 @@ mapping. Each output's background binds `wallpaperFor(modelData.name)`, the lock
 uses `Palette.imageFor`, and a folder cannot supply `wallpaperOutputs`. Keep
 `projects/config-tools/tests/wallpapers.py` passing. Keep `tests/theme-folders/`,
 `projects/config-tools/tests/theme_folders.py`, `checks.theme-folders` and the
-example's two baselines (`folders.json`) passing.
+example's two baselines (`folders.json`) and the shipped folders' document
+(`registered.json`) passing.
+
+A derived colour of the contract's `material` group is suppliable: `Theme.qml`
+reads it as `supplied.<name> ?? <derivation>`, so a theme may give it outright
+and one that gives none draws the derivation. Each easing slot has a `curve`
+slot beside it, empty by default; an easing is `BezierSpline` exactly when its
+curve is given. Both exist so `themes/material-expressive-{light,dark}` can set
+Material 3 Expressive's values. Those folders are written by `seele-theme
+material`, whose native token set lives in `projects/config-tools/src/material/`
+(an HCT and `SchemeExpressive` port checked role for role against
+`tests/material-oracle.json`); registration refuses one that differs from what
+its recorded seed grows, so regenerate rather than edit them, and read
+`themes/MATERIAL.md` before changing a mapping.
 
 Every surface reads from that block rather than deciding for itself:
 
@@ -879,7 +892,10 @@ Every surface reads from that block rather than deciding for itself:
   interpolates a colour channel by channel and `transparent` is black, so a
   tint animated against it is dragged through grey at both ends of the fade.
 - **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
-  control that travels, and `easingStandard` for every eased transition.
+  control that travels, and `easingStandard` for every eased transition. An
+  animation that takes an easing slot also binds its curve
+  (`easing.bezierCurve: <theme>.easingStandardCurve`), so a theme's Bézier
+  spline reaches it; `theme-contract.js` fails one that does not.
 
 Assemble a surface from the shared components rather than repeating their
 parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
@@ -1184,7 +1200,8 @@ selection.
 unthemed `Palette.js` fallback on ten production surfaces: the bar, Control
 Center, toasts, the notification panel, Now Playing, Audio, Power, the volume
 OSD, the theme switcher and the Themes panel, plus the example theme folder on
-those last two, each theme applied through `Theme.qml`'s `applyTheme`.
+those last two and the shipped Material Expressive folders (`registered.json`)
+on all ten, each theme applied through `Theme.qml`'s `applyTheme`.
 `nix develop -c theme-snapshots` fails on any changed pixel; `--keep <dir>` writes actual, baseline and diff
 images. Run it for any change to theming, `Theme.qml`, `Palette.js` or a drawn
 surface that is meant to look the same, and re-record with `--update` only for

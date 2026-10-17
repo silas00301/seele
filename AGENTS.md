@@ -75,7 +75,17 @@ accepts it, and the helper publishes the image for every output plus
 `wallpaperOutputs` for the outputs that differ, so a rebuild's activation
 republishes the mapping without touching the chosen themes. Light and dark are
 the theme's own mode. `nerv` declares no images yet, and the greeter keeps the
-configured image.
+configured image. The shell ships two such folders, **Material Expressive Light**
+and **Material Expressive Dark**, after the presets: `seele-theme material`
+grows each from one seed colour (Material's baseline `#6750a4`) with a native
+port of Material Color Utilities' 2025 `SchemeExpressive` scheme, and sets every
+contract slot Material 3 Expressive has a token for -- colour roles, tonal
+elevation, state layers, the type and corner scales, spacing on the 4dp grid,
+component heights, durations and Bézier easing curves. Registration refuses
+such a folder unless it is exactly what its recorded seed grows. To reach those
+values the contract lets a theme supply a derived material colour outright and
+pairs every easing slot with a `curve` slot; both default to what every preset
+drew before. See `seele-shell/themes/MATERIAL.md`.
 
 ## Architecture
 

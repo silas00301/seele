@@ -14,6 +14,11 @@ The catalog includes 13 presets:
 - Gruvbox: Dark and Light, both medium contrast.
 - Nord and Everforest (dark).
 
+After them come the shell's own drop-in themes, **Material Expressive Light**
+and **Material Expressive Dark**, which draw the shell with Material 3
+Expressive's colour scheme, type, shapes, tonal elevation and motion, and give
+every other application their Base16 palette like any preset.
+
 The configured Catppuccin flavor is the initial dark theme, and its family's
 light variant, Catppuccin Latte, the initial light theme. Selecting a theme or a
 mode needs no rebuild, privileges or network access.
@@ -162,6 +167,13 @@ as for a preset, and the folder joins the catalog after the presets. Each
 folder is checked by `seele-theme register` when the catalog that names it is
 built, so an invalid or incomplete folder fails the rebuild with a message
 naming the folder and every rule it broke, and never reaches the desktop.
+
+The two Material Expressive themes are such folders, written by `seele-theme
+material <seed> <light|dark> <id> <name>` from one seed colour rather than by
+hand. Each records its seed, and registration refuses it unless it is exactly
+what that seed grows, so another seed is another folder and the same command.
+`seele-shell/themes/MATERIAL.md` lists every Material token and the shell slot
+it reaches.
 
 A folder may also carry the theme's own wallpaper: `"wallpaper": "wallpaper.jpg"`
 names a PNG or JPEG of at most 16 MiB inside it, and any other format fails the
