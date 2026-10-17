@@ -840,7 +840,14 @@ its first bytes at registration and when the catalog is read); the publication
 names it, or the configured wallpaper for a theme without one, and the
 background draws it through `projects/shared/Wallpaper.qml`, which keeps the
 picture on screen until the next has decoded. Keep `tests/tst_wallpaper.qml`
-(`tests/wallpaper.sh`) and the `pictured` fixture passing. Keep `tests/theme-folders/`,
+(`tests/wallpaper.sh`) and the `pictured` fixture passing. The parent's
+`seele.wallpaper` mapping reaches the catalog as `wallpapers`;
+`projects/config-tools/src/wallpapers.rs` owns its rules and precedence and
+publishes `wallpaperOutputs` (contract type `outputPaths`) only for outputs
+whose image differs, so presets publish exactly what they did without a
+mapping. Each output's background binds `wallpaperFor(modelData.name)`, the lock
+uses `Palette.imageFor`, and a folder cannot supply `wallpaperOutputs`. Keep
+`projects/config-tools/tests/wallpapers.py` passing. Keep `tests/theme-folders/`,
 `projects/config-tools/tests/theme_folders.py`, `checks.theme-folders` and the
 example's two baselines (`folders.json`) passing.
 
@@ -1166,7 +1173,8 @@ shell.qml.
 Run `node tests/palette.js ...` and the offscreen `tests/palette.sh` fixture.
 Palette data/property assignment is a necessary Qt API boundary, with no service
 or background logic. Preserve the auth clients' assignment semantics; the lock
-draws the published `wallpaper` and the greeter keeps the system image. Before
+draws the published `wallpaper`, or its output's entry in `wallpaperOutputs`,
+and the greeter keeps the system image. Before
 any publication the shell's wallpaper is its `SEELE_SHELL_WALLPAPER`
 selection.
 

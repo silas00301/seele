@@ -67,8 +67,15 @@ defaults for the rest. A folder may name its own `wallpaper`, a PNG or JPEG
 that registration refuses in any other format; while that theme is selected the
 shell's background and the lock screen draw it, swapping only once it has
 decoded, and switching to a theme without one publishes the configured
-wallpaper again, so the image on screen stays. The greeter and the presets keep
-the configured image.
+wallpaper again, so the image on screen stays. The flake-level `seele.wallpaper`
+option (`modules/features/themes/wallpaper.nix`) maps images per light or dark
+theme, per output by Hyprland's name, and per theme ID; theme-switching writes
+it into the catalog, which Home Manager installs only after `seele-theme check`
+accepts it, and the helper publishes the image for every output plus
+`wallpaperOutputs` for the outputs that differ, so a rebuild's activation
+republishes the mapping without touching the chosen themes. Light and dark are
+the theme's own mode. `nerv` declares no images yet, and the greeter keeps the
+configured image.
 
 ## Architecture
 

@@ -1036,8 +1036,17 @@ keeps that palette, rather than Stylix's echo of it, in the entry, because the
 helper requires the entry and the registered document to agree. A folder's own
 `wallpaper` rides in that registered document, so the parent adds nothing for
 it: the publication names that image while the theme is selected and the
-catalog's configured `/etc/wallpaper/wallpaper.jpg` otherwise, which is also
-the shell service's `SEELE_SHELL_WALLPAPER`; keep the two equal. See
+catalog's configured wallpaper otherwise. That is `seele.wallpaper.image`,
+`/etc/wallpaper/wallpaper.jpg` by default, which `seele-shell.nix` also gives
+the shell service as `SEELE_SHELL_WALLPAPER` and `seele-greeter.nix` gives the
+greeter, so read it from there rather than repeating the path. The rest of
+`seele.wallpaper` (`modules/features/themes/wallpaper.nix`, flake-level so
+`checks.theme-presets` sees the declared mapping too) is the host's per-mode,
+per-output and per-theme mapping; theme-switching filters unset images out into
+the catalog's `wallpapers`, and Home Manager links a catalog derivation that
+runs `seele-theme check` first, so the native helper alone holds the mapping's
+rules. Never put the mapping in `seele-theme` state: it has to change with each
+generation. See
 [the theme switching guide](../../../../docs/theme-switching.md) before changing
 palette ownership or adding another runtime theme consumer.
 

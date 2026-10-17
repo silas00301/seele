@@ -83,7 +83,7 @@ single selection into its own mode's slot.
 | Surface | When colors change |
 | --- | --- |
 | Seele Shell, notifications, Notes, lock and polkit | Live through the shared theme file |
-| Desktop background and lock screen wallpaper | Live through the shared theme file: a theme folder's own image while it is selected, the configured wallpaper for every other theme |
+| Desktop background and lock screen wallpaper | Live through the shared theme file, output by output: the image `seele.wallpaper` maps to the theme, its output and its light or dark mode, else a theme folder's own image, else the configured wallpaper |
 | Hyprland borders, shadows, groups and background | Live; also loaded with compositor configuration |
 | Vicinae | Live through its theme command |
 | Ghostty | Live through SIGUSR2 for same-user Nix Ghostty processes, including scratchpads |
@@ -101,7 +101,7 @@ single selection into its own mode's slot.
 This is a user-session feature. The boot screen, greeter, cursor, browser page
 content and independently themed tools retain their configured appearance.
 The font choice stays unchanged, and so does the wallpaper unless the selected
-theme carries its own. `asuka` and portable applications keep their declarative
+theme carries its own or `seele.wallpaper` maps one to it. `asuka` and portable applications keep their declarative
 themes.
 
 `modules/features/themes/_theme-switching/presets.json` selects schemes from
@@ -171,11 +171,58 @@ theme in the switcher, the Themes panel, Vicinae or by schedule changes the
 desktop background on every output and the lock screen with the rest of the
 look. The background keeps the current picture until the new one has decoded,
 so there is no flash of the bare background colour. A preset, or a folder
-without an image, publishes the configured `/etc/wallpaper/wallpaper.jpg`, so
-switching to it brings back, or keeps, the usual wallpaper. The greeter runs
-before any user theme exists and always shows the configured image. One image
-serves every output and both modes; choosing images per monitor or per light
-and dark variant is a separate step (SIL-236).
+without an image, publishes the configured wallpaper, `seele.wallpaper.image`
+(`/etc/wallpaper/wallpaper.jpg` unless set), so switching to it brings back, or
+keeps, the usual wallpaper unless the mapping below gives it another. The
+greeter runs before any user theme exists and always shows the configured
+image.
+
+Which image each output shows is declared in Nix as `seele.wallpaper`
+(`modules/features/themes/wallpaper.nix`), a flake-level option like
+`seele.notes`:
+
+```nix
+seele.wallpaper = {
+  image = "/etc/wallpaper/wallpaper.jpg"; # the configured wallpaper, the default
+  light = ./wallpapers/day.jpg;
+  dark = ./wallpapers/night.jpg;
+  outputs."HDMI-A-1".image = ./wallpapers/side.jpg;
+  outputs."DP-1" = {
+    light = ./wallpapers/wide-day.jpg;
+    dark = ./wallpapers/wide-night.jpg;
+  };
+  themes.catppuccin-latte.image = ./wallpapers/latte.jpg;
+  themes.cyberpunk.outputs."HDMI-A-1" = ./wallpapers/cyberpunk-side.png;
+};
+```
+
+Outputs are named as Hyprland names them (`hyprctl monitors`; `nerv` has
+`HDMI-A-1` and `DP-1`), and themes by their switcher ID. For a theme on an
+output the first image set wins: the one mapped to that theme on that output,
+the one mapped to that theme, the theme's own image, the one mapped to that
+output for the theme's light or dark mode, the one mapped to that output, the
+one mapped to that mode, and `image`. What is declared for a theme beats what
+the theme brings, which beats what is declared for every theme; an output comes
+before a mode because its image is chosen for its shape. Light and dark are the
+theme's own mode, not the slot it fills, so a dark preset given to light mode
+keeps a dark wallpaper. A mode switch therefore changes the wallpaper with the
+theme, on every output at once, and the lock screen follows the same mapping
+output by output. `nerv` declares no images yet, so its outputs keep the
+configured wallpaper or a theme folder's own image.
+
+The mapping is part of the theme catalog, never of `seele-theme`'s saved state:
+a rebuild installs the new catalog and activation's `seele-theme init`
+republishes the chosen theme with it, keeping the chosen themes and mode, and a
+mapping that disappears from Nix disappears from the desktop. A Nix path is
+copied to the store and stays referenced by the catalog of every generation that
+names it. Home Manager installs the catalog only after `seele-theme check` has
+read it exactly as every command will, so a mapping that names a theme the
+catalog lacks, an impossible output name, more than 16 outputs, a relative path
+or a file that is not a PNG or JPEG fails the rebuild, naming each problem. A
+string path outside the store that does not exist yet is allowed and draws the
+background colour until it does, as a missing configured wallpaper does.
+`checks.theme-presets` publishes every generated preset with the declared
+mapping and checks the images each one names.
 
 `modules/features/themes/theme-switching.nix` declares the catalog and includes. It is
 imported only by the `nerv` home profile. Home Manager owns those includes;
