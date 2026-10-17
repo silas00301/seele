@@ -852,11 +852,15 @@ uses `Palette.imageFor`, and a folder cannot supply `wallpaperOutputs`. Keep
 example's two baselines (`folders.json`) and the shipped folders' document
 (`registered.json`) passing.
 
-A derived colour of the contract's `material` group is suppliable: `Theme.qml`
-reads it as `supplied.<name> ?? <derivation>`, so a theme may give it outright
-and one that gives none draws the derivation. Each easing slot has a `curve`
-slot beside it, empty by default; an easing is `BezierSpline` exactly when its
-curve is given. Both exist so `themes/material-expressive-{light,dark}` can set
+A derived slot can be suppliable: `Theme.qml` reads it as
+`supplied.<name> ?? <derivation>`, so a theme may give it outright and one that
+gives none draws the derivation. Only colours, `int`s, `real`s, easings and
+curves of the shape, metrics, material and motion groups may be suppliable, and
+`theme_contract.rs` and `tests/theme-contract.js` check the value by the slot's
+type. Each easing slot has a `curve` slot beside it, empty by default; an easing
+is `BezierSpline` exactly when its curve is given, and a suppliable pair such as
+`easingSpatial`/`easingSpatialCurve` (derived from the standard pair) is given
+whole or not at all. Both exist so `themes/material-expressive-{light,dark}` can set
 Material 3 Expressive's values. Those folders are written by `seele-theme
 material`, whose native token set lives in `projects/config-tools/src/material/`
 (an HCT and `SchemeExpressive` port checked role for role against
@@ -895,7 +899,21 @@ Every surface reads from that block rather than deciding for itself:
   control that travels, and `easingStandard` for every eased transition. An
   animation that takes an easing slot also binds its curve
   (`easing.bezierCurve: <theme>.easingStandardCurve`), so a theme's Bézier
-  spline reaches it; `theme-contract.js` fails one that does not.
+  spline reaches it; `theme-contract.js` fails one that does not. Inside a
+  shared control, a part moving or changing shape takes `durationSpatial` on
+  `easingSpatial`, and the control's own colour changing with its state takes
+  `durationEffects` on `easingEffects`; both default to the fast duration and
+  the standard and linear curves, and Material samples its fast springs into
+  them.
+- **Component behaviour** — a control reports hover and press through
+  `HoverWash` (pass it `pressed`, `pressX`, `pressY`); for a theme that gives
+  `durationRipple` it grows a `Ripple` in place of the flat `pressColor`, so
+  the control lays the flat press only while `durationRipple === 0`. Pressed
+  buttons close to `radiusPressed`; `FocusRing` lies `focusRingGap` outside the
+  edge (negative: inside, the default hairline edge) and takes `cornerRadius`,
+  not `radius`, from a caller. Keep `tests/tst_behaviour.qml` passing
+  (`tests/palette.sh projects/shared tests/tst_behaviour.qml <qml>`), and read
+  `projects/shared/THEME-CONTRACT.md` ("Component behaviour") first.
 
 Assemble a surface from the shared components rather than repeating their
 parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional

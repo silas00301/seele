@@ -71,7 +71,7 @@ surface or translucent card.
 
 This section describes the material every Base16 preset draws with. The Material
 Expressive themes reach the same slots with Material 3's opaque tonal surfaces,
-state layers and curves instead (`seele-shell/themes/MATERIAL.md`); a surface
+state layers, ripples and springs instead (`seele-shell/themes/MATERIAL.md`); a surface
 still names only slots, so it serves both without knowing which is on screen.
 
 Depth is built out of translucency and one ink, never out of a stack of greys. `crust` is

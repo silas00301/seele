@@ -83,9 +83,15 @@ contract slot Material 3 Expressive has a token for -- colour roles, tonal
 elevation, state layers, the type and corner scales, spacing on the 4dp grid,
 component heights, durations and Bézier easing curves. Registration refuses
 such a folder unless it is exactly what its recorded seed grows. To reach those
-values the contract lets a theme supply a derived material colour outright and
-pairs every easing slot with a `curve` slot; both default to what every preset
-drew before. See `seele-shell/themes/MATERIAL.md`.
+values the contract lets a theme supply a derived slot outright and pairs every
+easing slot with a `curve` slot; both default to what every preset drew before.
+The shared controls also behave as Material's do under those themes: hover is a
+state layer, a press grows a ripple from where it landed, a pressed button
+closes its corners, the focus ring flares outside the edge, the switch's handle
+grows as it is set and held, and handles, corners and state colours move on
+Material's fast spatial and effects springs, sampled into a duration and a
+Bézier curve. Each is a contract slot whose default is the presets' unchanged
+behaviour. See `seele-shell/themes/MATERIAL.md`.
 
 ## Architecture
 

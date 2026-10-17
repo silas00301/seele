@@ -173,7 +173,10 @@ material <seed> <light|dark> <id> <name>` from one seed colour rather than by
 hand. Each records its seed, and registration refuses it unless it is exactly
 what that seed grows, so another seed is another folder and the same command.
 `seele-shell/themes/MATERIAL.md` lists every Material token and the shell slot
-it reaches.
+it reaches. Under them the shell's controls also behave as Material's: a press
+ripples from where it landed, pressed buttons close their corners, the keyboard
+focus ring flares, the switch's handle grows, and they move on Material's
+springs; every preset keeps the behaviour it had.
 
 A folder may also carry the theme's own wallpaper: `"wallpaper": "wallpaper.jpg"`
 names a PNG or JPEG of at most 16 MiB inside it, and any other format fails the
