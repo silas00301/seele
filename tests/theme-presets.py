@@ -3,7 +3,9 @@
 Usage: python3 tests/theme-presets.py /path/to/seele-theme /path/to/catalog.json
 The flake check supplies its actual generated catalog and theme files. A
 registered theme folder's entry names its document; the shell and the terminal
-then take that document's own roles, not a projection of its Base16 palette.
+then take that document's own roles, not a projection of its Base16 palette,
+and its own wallpaper when it names one. Every other theme publishes the
+configured wallpaper.
 """
 import json
 import configparser
@@ -49,6 +51,7 @@ with tempfile.TemporaryDirectory(prefix="seele-stylix-") as directory:
         else:
             for key, value in document.items():
                 assert selected[key] == value, (theme["id"], key)
+        assert selected["wallpaper"] == ((document or {}).get("wallpaper") or catalog["wallpaper"]), (theme["id"], selected["wallpaper"])
         assert (state / "current/vicinae.toml").read_bytes() == Path(theme["vicinaeTheme"]).read_bytes()
         ghostty = (state / "current/ghostty").read_text()
         assert "background = " + (document or {}).get("base", theme["palette"]["base00"]) in ghostty

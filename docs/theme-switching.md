@@ -83,6 +83,7 @@ single selection into its own mode's slot.
 | Surface | When colors change |
 | --- | --- |
 | Seele Shell, notifications, Notes, lock and polkit | Live through the shared theme file |
+| Desktop background and lock screen wallpaper | Live through the shared theme file: a theme folder's own image while it is selected, the configured wallpaper for every other theme |
 | Hyprland borders, shadows, groups and background | Live; also loaded with compositor configuration |
 | Vicinae | Live through its theme command |
 | Ghostty | Live through SIGUSR2 for same-user Nix Ghostty processes, including scratchpads |
@@ -99,8 +100,9 @@ single selection into its own mode's slot.
 
 This is a user-session feature. The boot screen, greeter, cursor, browser page
 content and independently themed tools retain their configured appearance.
-Wallpaper and font choices stay unchanged. `asuka` and portable applications
-keep their declarative themes.
+The font choice stays unchanged, and so does the wallpaper unless the selected
+theme carries its own. `asuka` and portable applications keep their declarative
+themes.
 
 `modules/features/themes/_theme-switching/presets.json` selects schemes from
 the pinned `base16-schemes` package. Its adjacent Nix helper evaluates the
@@ -160,6 +162,20 @@ as for a preset, and the folder joins the catalog after the presets. Each
 folder is checked by `seele-theme register` when the catalog that names it is
 built, so an invalid or incomplete folder fails the rebuild with a message
 naming the folder and every rule it broke, and never reaches the desktop.
+
+A folder may also carry the theme's own wallpaper: `"wallpaper": "wallpaper.jpg"`
+names a PNG or JPEG of at most 16 MiB inside it, and any other format fails the
+rebuild the same way. Registration copies the image into the store beside the
+registered `theme.json`, and the published theme names it, so choosing the
+theme in the switcher, the Themes panel, Vicinae or by schedule changes the
+desktop background on every output and the lock screen with the rest of the
+look. The background keeps the current picture until the new one has decoded,
+so there is no flash of the bare background colour. A preset, or a folder
+without an image, publishes the configured `/etc/wallpaper/wallpaper.jpg`, so
+switching to it brings back, or keeps, the usual wallpaper. The greeter runs
+before any user theme exists and always shows the configured image. One image
+serves every output and both modes; choosing images per monitor or per light
+and dark variant is a separate step (SIL-236).
 
 `modules/features/themes/theme-switching.nix` declares the catalog and includes. It is
 imported only by the `nerv` home profile. Home Manager owns those includes;

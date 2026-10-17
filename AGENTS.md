@@ -63,7 +63,12 @@ presets is a drop-in folder in `seele-shell/themes/` plus one line in
 contract when the catalog is built and fails the rebuild naming every rule it
 broke, the parent renders its applications from the folder's own Base16
 palette, and `Theme.qml` applies every slot a theme supplies, restoring
-defaults for the rest.
+defaults for the rest. A folder may name its own `wallpaper`, a PNG or JPEG
+that registration refuses in any other format; while that theme is selected the
+shell's background and the lock screen draw it, swapping only once it has
+decoded, and switching to a theme without one publishes the configured
+wallpaper again, so the image on screen stays. The greeter and the presets keep
+the configured image.
 
 ## Architecture
 

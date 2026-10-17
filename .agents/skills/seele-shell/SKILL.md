@@ -833,9 +833,14 @@ A theme that is not a Base16 preset is a folder under `themes/` plus one line in
 register` (`projects/config-tools/src/theme_folder.rs`) holds the folder to the
 contract and the folder rules at build time and writes the registered copy;
 `packages/core/themes.nix` (`lib.mkThemes`) wraps it for the parent's catalog.
-`Theme.qml` applies every slot a theme may supply except the wallpaper, so a
-folder restyles the shell without a code change and a preset after it looks as
-it always did. Keep `tests/theme-folders/`,
+`Theme.qml` applies every slot a theme may supply, its own wallpaper included,
+so a folder restyles the shell without a code change and a preset after it
+looks as it always did. A folder's `wallpaper` must be a PNG or JPEG (checked by
+its first bytes at registration and when the catalog is read); the publication
+names it, or the configured wallpaper for a theme without one, and the
+background draws it through `projects/shared/Wallpaper.qml`, which keeps the
+picture on screen until the next has decoded. Keep `tests/tst_wallpaper.qml`
+(`tests/wallpaper.sh`) and the `pictured` fixture passing. Keep `tests/theme-folders/`,
 `projects/config-tools/tests/theme_folders.py`, `checks.theme-folders` and the
 example's two baselines (`folders.json`) passing.
 
@@ -1160,8 +1165,10 @@ which `Theme.qml` reads to apply every slot a published theme supplies through
 shell.qml.
 Run `node tests/palette.js ...` and the offscreen `tests/palette.sh` fixture.
 Palette data/property assignment is a necessary Qt API boundary, with no service
-or background logic. Preserve the auth clients' assignment semantics and the
-shell's wallpaper selection, which `applyTheme` leaves to its consumers.
+or background logic. Preserve the auth clients' assignment semantics; the lock
+draws the published `wallpaper` and the greeter keeps the system image. Before
+any publication the shell's wallpaper is its `SEELE_SHELL_WALLPAPER`
+selection.
 
 ## Keep every theme pixel-identical
 

@@ -1033,7 +1033,11 @@ the `theme.json` that `seele-theme register` wrote at build time, so the catalog
 cannot be built around an invalid folder. `_theme-switching` takes them as
 `folders`, gives Stylix a folder's own Base16 palette as an attribute set, and
 keeps that palette, rather than Stylix's echo of it, in the entry, because the
-helper requires the entry and the registered document to agree. See
+helper requires the entry and the registered document to agree. A folder's own
+`wallpaper` rides in that registered document, so the parent adds nothing for
+it: the publication names that image while the theme is selected and the
+catalog's configured `/etc/wallpaper/wallpaper.jpg` otherwise, which is also
+the shell service's `SEELE_SHELL_WALLPAPER`; keep the two equal. See
 [the theme switching guide](../../../../docs/theme-switching.md) before changing
 palette ownership or adding another runtime theme consumer.
 
