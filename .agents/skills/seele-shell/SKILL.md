@@ -758,6 +758,25 @@ Keep ISO week arithmetic in UTC and local clock display in the system timezone.
 
 ## Draw from the shell's design tokens
 
+Shared keyboard access is owned by `projects/shared/KeyboardNavigation.qml`,
+`ActionArea.qml` and the small `Seele.Navigation` Qt module in
+`projects/navigation/`. See its README for the key contract, text boundaries,
+virtual-list focus, and the alternatives to pointer gestures. Keep Qt event
+routing there rather than in Rust's domain policy. Shell/Notes receive it
+through `Theme.qml`; lock, greeter and polkit instantiate it explicitly and
+package the module without the Rust bridge. A new custom clickable uses
+`ActionArea.onTriggered`, and a continuous gesture needs an explicit key path.
+Keep existing field-level Escape handlers and Ctrl editing shortcuts intact.
+Run the navigation package's real Qt tests and the affected production panel
+fixtures; build all five UI outputs for shared changes. `seele-shellctl bar`
+is the shell's opt-in keyboard entry point for its bar; passive layers must
+never acquire keyboard focus as a side effect of this support.
+Pending Bluetooth pairing takes exclusive focus only after the user opens
+Bluetooth, with intent tied to that request and Reject focused first. Mark a
+primary text editor with `keyboardEdit` so `i` stays distinct from search.
+Keep the isolated palette fixture's native QML import explicit and run
+`tests/auth-navigation.js` after changing password-field Escape handling.
+
 `projects/shared/Theme.qml` owns the shell and Notes visual vocabulary. Both
 entrypoints inherit it, and shared components receive it as `theme`. The shell
 keeps thin inline aliases for its existing instances — `component X:
