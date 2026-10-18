@@ -171,6 +171,12 @@ as for a preset, and the folder joins the catalog after the presets. Each
 folder is checked by `seele-theme register` when the catalog that names it is
 built, so an invalid or incomplete folder fails the rebuild with a message
 naming the folder and every rule it broke, and never reaches the desktop.
+`seele-shell/themes/AUTHORING.md` takes a new folder from
+`seele-shell/themes/template/`, a complete dark theme that is never shipped, to
+the switcher in under an hour; in the shell's development shell `theme-check`
+registers a folder and measures its colours, and `theme-preview <id>` draws it
+on the shell's ten main surfaces. Once that shell change lands, moving this
+repository's `seele-shell` gitlink to it and rebuilding adds the theme here.
 
 The two Material Expressive themes are such folders, written by `seele-theme
 material <seed> <light|dark> <id> <name>` from one seed colour rather than by

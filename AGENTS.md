@@ -116,6 +116,10 @@ by default) writes the helper's preferences, `Theme.qml` reads them into
 appear only for a theme that has motion or sound. The player is loaded only
 while sound is on and the theme has a cue, presentation mode holds every cue
 back, and Qt marks the stream as an `event`, which the Audio mixer excludes.
+A new theme starts from `seele-shell/themes/template/`, which no line ships,
+following `seele-shell/themes/AUTHORING.md`; the shell's checks register the
+template, a renamed copy and every recipe in that guide, and its development
+shell's `theme-check` and `theme-preview` measure a folder's colours and draw it.
 
 ## Architecture
 

@@ -884,6 +884,21 @@ them. `registered.json` names a shipped folder's files as `themes/<id>/<name>`,
 which `theme_folders.py` checks and the harness reads. Read
 `themes/CYBERPUNK.md` before changing it.
 
+`themes/AUTHORING.md` is how a new theme is written, from `themes/template/`.
+The template supplies only identity, the eleven roles and the Base16 palette,
+each role on the slot the presets project it from, and no line of
+`themes/default.nix` ships it; `tests/theme-template.js` holds it there, keeps
+it and every shipped folder over `tests/theme-check.js`'s legibility floors,
+and checks the guide's floor table and sample line against that script.
+`theme_folders.py` and `checks.theme-folders` register the template, and
+`theme_folders.py` also a renamed copy and the template with each JSON
+recipe of the guide added, so a recipe the contract stops accepting fails the
+build. When a folder rule, a slot name, a refusal message or the snapshot
+workflow changes, update the guide with it. The development shell's
+`theme-check <folder>...` registers folders and measures their roles, and
+`theme-preview <id>` refreshes `registered.json` and draws that folder through
+`theme-snapshots --only <id> --update --baseline /tmp/seele-theme-preview`.
+
 A theme's own motion and sound (SIL-240) are slots too, and whether they play
 is a user preference outside the contract. `CutFrame` sweeps the trim
 (`durationPanelTrim`) and flickers the glitch (`durationPanelGlitch`,
@@ -1263,7 +1278,9 @@ OSD, the theme switcher and the Themes panel, plus the example theme folder on
 those last two and the shipped Material Expressive and Cyberpunk folders
 (`registered.json`) on all ten, each theme applied through `Theme.qml`'s `applyTheme`.
 `nix develop -c theme-snapshots` fails on any changed pixel; `--keep <dir>` writes actual, baseline and diff
-images. Run it for any change to theming, `Theme.qml`, `Palette.js` or a drawn
+images, and `--only <id>,...` draws and compares just those themes, beside the
+same catalog and so pixel-identical to a full run, recording only into a
+`--baseline` directory of their own. Run it for any change to theming, `Theme.qml`, `Palette.js` or a drawn
 surface that is meant to look the same, and re-record with `--update` only for
 an intended new look, reviewing every changed image. The harness lifts root
 members and whole layer windows from `shell.qml`, so a new store or Quickshell
