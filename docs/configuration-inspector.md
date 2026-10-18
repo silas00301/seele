@@ -30,7 +30,7 @@ recorded absolute path are left unavailable. Inspection does not fetch inputs,
 snapshot Jujutsu, build or activate a configuration. Opening a source is explicit;
 the editor retains responsibility for any later write.
 
-The native package runs `projects/config-tools/tests/inspect.py` against synthetic
+The native package runs `projects/config-tools/tests/inspector.py` against synthetic
 catalogs and a fake editor. Native search, source-root and traversal tests live in
 `inspect.rs`. Nix evaluation and the generated catalog must also be checked on each
 native host before activation, especially the provenance data from deferred modules.

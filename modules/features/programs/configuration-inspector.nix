@@ -2,7 +2,9 @@
 let
   sourceFiles = file: builtins.filter (path: libPath path) [ (toString file) ];
   libPath = path: builtins.match "/.*" path != null;
-  sources = option: builtins.concatMap (definition: sourceFiles definition.file) option.definitionsWithLocations;
+  sources =
+    option:
+    builtins.concatMap (definition: sourceFiles definition.file) option.definitionsWithLocations;
   settings =
     lib: scope: options:
     let
@@ -18,9 +20,7 @@ let
             sources = sources tree;
           }
         else
-          lib.concatMap (name: walk (path ++ [ name ]) (depth + 1) tree.${name}) (
-            builtins.attrNames tree
-          );
+          lib.concatMap (name: walk (path ++ [ name ]) (depth + 1) tree.${name}) (builtins.attrNames tree);
     in
     lib.concatMap (name: walk [ name ] 0 (options.${name} or { })) [
       "programs"
@@ -47,8 +47,7 @@ let
     }:
     {
       home-manager.users.${username}.seele.configurationInspector.systemRows =
-        settings lib "system" options
-        ++ packages lib "system" options.environment.systemPackages;
+        settings lib "system" options ++ packages lib "system" options.environment.systemPackages;
     };
 in
 {
@@ -84,11 +83,22 @@ in
               }
             ) (lib.splitString "\n" definition.value)
           ) shortcutOption.definitionsWithLocations;
+      # A package several modules include is one row carrying every source,
+      # so a catalog key names exactly one row.
       rows =
-        settings lib "home" options
-        ++ packages lib "home" options.home.packages
-        ++ shortcuts
-        ++ config.seele.configurationInspector.systemRows;
+        lib.mapAttrsToList
+          (
+            key: group:
+            builtins.head group // { sources = lib.unique (lib.concatMap (row: row.sources) group); }
+          )
+          (
+            lib.groupBy (row: row.key) (
+              settings lib "home" options
+              ++ packages lib "home" options.home.packages
+              ++ shortcuts
+              ++ config.seele.configurationInspector.systemRows
+            )
+          );
     in
     {
       options.seele.configurationInspector.systemRows = lib.mkOption {

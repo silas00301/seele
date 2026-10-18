@@ -16,7 +16,20 @@ let
     options = {
       programs.fish.enable = option true "/fixture-source/modules/fish.nix";
       services.example.enable = option false "/upstream/service.nix";
-      home.packages = option [ { name = "fish-1.0"; } ] "/fixture-source/modules/packages.nix";
+      home.packages = {
+        _type = "option";
+        isDefined = true;
+        definitionsWithLocations = [
+          {
+            value = [ { name = "fish-1.0"; } ];
+            file = "/fixture-source/modules/packages.nix";
+          }
+          {
+            value = [ { name = "fish-1.0"; } ];
+            file = "/fixture-source/modules/editor.nix";
+          }
+        ];
+      };
       wayland.windowManager.hyprland.extraConfig = option ''
         hl.bind("SUPER + N", hl.dsp.exec_cmd("secret-command-arguments"), { description = "Notifications" })
       '' "/fixture-source/modules/hypr.nix";
@@ -33,7 +46,12 @@ in
 assert catalog.version == 1;
 assert (row "home.programs.fish.enable").value == "enabled";
 assert (row "home.services.example.enable").value == "disabled";
-assert (row "home.package.fish").sources == [ "/fixture-source/modules/packages.nix" ];
+assert
+  (row "home.package.fish").sources == [
+    "/fixture-source/modules/packages.nix"
+    "/fixture-source/modules/editor.nix"
+  ];
+assert lib.length (lib.filter (item: item.key == "home.package.fish") catalog.rows) == 1;
 assert (row "shortcut.SUPER + N").value == "Notifications";
 assert !(lib.hasInfix "secret-command-arguments" (builtins.toJSON catalog));
 assert catalog.sourceRoot == "/fixture-source";
