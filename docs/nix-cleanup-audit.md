@@ -25,8 +25,11 @@ On macOS, the existing launchd agent records stdout/stderr in
 and cleanup summaries inspectable without creating a second scheduled job.
 Native Darwin evaluation and launchd execution must be checked on asuka.
 
-The repository currently declares neither sops-nix secrets nor agenix secrets,
-and no restic password/repository files. Desktop integration credentials belong
+The repository currently declares neither sops-nix secrets nor agenix secrets.
+The gated `seele.backup` feature (SIL-28) and the backup browser take restic
+repository, password and backend file references as options that must point
+outside the store, and nothing assigns them yet; they are references, not
+declared secrets. Desktop integration credentials belong
 to Secret Service through the existing native provider setup flows, while CLI
 logins remain in their tools' private mutable state. A secret-name inventory in
 Nix would invent an authority these services do not use. No secret contents were
