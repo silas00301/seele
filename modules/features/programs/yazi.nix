@@ -39,11 +39,15 @@ let
           "Yazi extraction relies on the symbolic link checks 7-Zip added in 25.01";
         pkgs._7zz-rar;
       # Yazi replaces `%s` with the selected (or hovered) paths, each quoted.
-      fingerprint = pkgs.runCommand "seele-fingerprint" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
-        mkdir -p "$out/bin"
-        makeWrapper ${selfPackages.repo-tools}/bin/seele-fingerprint "$out/bin/seele-fingerprint" \
-          ${lib.optionalString pkgs.stdenv.isLinux "--prefix PATH : ${lib.makeBinPath [ pkgs.wl-clipboard ]}"}
-      '';
+      fingerprint =
+        pkgs.runCommand "seele-fingerprint" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; }
+          ''
+            mkdir -p "$out/bin"
+            makeWrapper ${selfPackages.repo-tools}/bin/seele-fingerprint "$out/bin/seele-fingerprint" \
+              ${lib.optionalString pkgs.stdenv.isLinux "--prefix PATH : ${
+                lib.makeBinPath [ pkgs.wl-clipboard ]
+              }"}
+          '';
       extract = lib.escapeShellArg "${config.programs.yazi.package}/bin/ya pub extract --list %s";
     in
     {
@@ -116,7 +120,10 @@ let
         };
         keymap.mgr.prepend_keymap = [
           {
-            on = [ "c" "h" ];
+            on = [
+              "c"
+              "h"
+            ];
             run = "shell --block " + lib.escapeShellArg "${fingerprint}/bin/seele-fingerprint --copy -- %h";
             desc = "Copy hovered file SHA-256 (8 GiB / 2 min limit)";
           }
