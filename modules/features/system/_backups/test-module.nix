@@ -1,7 +1,10 @@
 { lib }:
 let
   feature = (import ../backups.nix { }).flake.modules.nixos.backups;
-  package = name: { outPath = "/nix/store/fixture-${name}"; meta.mainProgram = name; };
+  package = name: {
+    outPath = "/nix/store/fixture-${name}";
+    meta.mainProgram = name;
+  };
   pkgs = {
     restic = package "restic";
     dbus = package "dbus";
@@ -10,26 +13,43 @@ let
     writeText = name: _: "/nix/store/fixture-${name}";
     writeShellScript = name: _: "/nix/store/fixture-${name}";
   };
-  evaluate = settings: (lib.evalModules {
-    specialArgs = {
-      inherit pkgs;
-      username = "fixture";
-      selfPackages.maintenance = package "maintenance";
-    };
-    modules = [
-      feature
-      {
-        options = {
-          assertions = lib.mkOption { type = lib.types.listOf lib.types.attrs; default = [ ]; };
-          services = lib.mkOption { type = lib.types.attrs; default = { }; };
-          systemd = lib.mkOption { type = lib.types.attrs; default = { }; };
-          home-manager = lib.mkOption { type = lib.types.attrs; default = { }; };
-          networking.hostName = lib.mkOption { type = lib.types.str; default = "fixture"; };
-        };
-        config.seele.backup = settings;
-      }
-    ];
-  }).config;
+  evaluate =
+    settings:
+    (lib.evalModules {
+      specialArgs = {
+        inherit pkgs;
+        username = "fixture";
+        selfPackages.maintenance = package "maintenance";
+      };
+      modules = [
+        feature
+        {
+          options = {
+            assertions = lib.mkOption {
+              type = lib.types.listOf lib.types.attrs;
+              default = [ ];
+            };
+            services = lib.mkOption {
+              type = lib.types.attrs;
+              default = { };
+            };
+            systemd = lib.mkOption {
+              type = lib.types.attrs;
+              default = { };
+            };
+            home-manager = lib.mkOption {
+              type = lib.types.attrs;
+              default = { };
+            };
+            networking.hostName = lib.mkOption {
+              type = lib.types.str;
+              default = "fixture";
+            };
+          };
+          config.seele.backup = settings;
+        }
+      ];
+    }).config;
   disabled = evaluate { };
   active = evaluate {
     enable = true;
@@ -39,11 +59,26 @@ let
     restoreSamples = [ "/home/fixture/Documents/example.txt" ];
   };
   sampleSettings = {
-    enable = true; repositoryFile = "/var/lib/fixture/repository"; passwordFile = "/var/lib/fixture/password";
-    paths = [ "/home/fixture" ]; restoreSamples = [ "/home/fixture/Documents/example.txt" ];
+    enable = true;
+    repositoryFile = "/var/lib/fixture/repository";
+    passwordFile = "/var/lib/fixture/password";
+    paths = [ "/home/fixture" ];
+    restoreSamples = [ "/home/fixture/Documents/example.txt" ];
   };
   excluded = evaluate (sampleSettings // { exclude = [ "/home/fixture/Documents/" ]; });
-  glob = evaluate (sampleSettings // { exclude = [ "/home/*/.cache" ]; });
+  glob = evaluate (sampleSettings // { exclude = [ "/home/*/Documents" ]; });
+  deep = evaluate (sampleSettings // { exclude = [ "/home/fixture/**/example.txt" ]; });
+  unrelatedGlobs = evaluate (
+    sampleSettings
+    // {
+      exclude = [
+        "/home/*/.cache"
+        "/home/fixture/Developer/**/target"
+        "/home/fixture/Documents/*.tmp"
+      ];
+    }
+  );
+  bracket = evaluate (sampleSettings // { exclude = [ "/home/fixture/[a]" ]; });
   separate = evaluate (sampleSettings // { exclude = [ "/home/fixture/.cache" ]; });
   invalid = evaluate {
     enable = true;
@@ -55,6 +90,9 @@ let
 in
 assert !(builtins.all (entry: entry.assertion) excluded.assertions);
 assert !(builtins.all (entry: entry.assertion) glob.assertions);
+assert !(builtins.all (entry: entry.assertion) deep.assertions);
+assert builtins.all (entry: entry.assertion) unrelatedGlobs.assertions;
+assert !(builtins.all (entry: entry.assertion) bracket.assertions);
 assert builtins.all (entry: entry.assertion) separate.assertions;
 assert disabled.systemd == { };
 assert disabled.services == { };
@@ -67,4 +105,9 @@ assert active.systemd.timers.seele-backup-restore.timerConfig.Persistent;
 assert active.systemd.services.restic-backups-seele.serviceConfig.ExecStartPost != "";
 assert active.systemd.services.seele-backup-restore.serviceConfig.ProtectSystem == "strict";
 assert builtins.length active.home-manager.users.fixture.seele.maintenance.backups.items == 2;
-{ disabledByDefault = true; monthlyRestore = true; durableAgeMarkers = true; runtimeReferences = true; }
+{
+  disabledByDefault = true;
+  monthlyRestore = true;
+  durableAgeMarkers = true;
+  runtimeReferences = true;
+}

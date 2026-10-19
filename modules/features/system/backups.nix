@@ -15,20 +15,71 @@
       credential = lib.types.nullOr absolute;
       state = "/var/lib/seele-backup";
       helper = "${selfPackages.maintenance}/bin/seele-restic-test";
-      restoreConfig = pkgs.writeText "seele-restic-test.json" (builtins.toJSON {
-        restic = lib.getExe pkgs.restic;
-        host = config.networking.hostName;
-        samples = cfg.restoreSamples;
-        runtime = "/run/seele-backup-restore";
-        receipt = "${state}/restore-receipt.json";
-      });
-      literal = path: !(builtins.any (token: lib.hasInfix token path) [ "*" "?" "[" "]" "\\" "\n" "\r" ]) && !(builtins.any (part: builtins.elem part [ "." ".." ]) (lib.splitString "/" path)) && !(lib.hasInfix "//" path);
+      restoreConfig = pkgs.writeText "seele-restic-test.json" (
+        builtins.toJSON {
+          restic = lib.getExe pkgs.restic;
+          host = config.networking.hostName;
+          samples = cfg.restoreSamples;
+          runtime = "/run/seele-backup-restore";
+          receipt = "${state}/restore-receipt.json";
+        }
+      );
+      # Exclusions are restic patterns: `*` and `?` stay within one path
+      # component and `**` spans any number of them. Brackets, escapes and
+      # negation are refused, so evaluation can match every pattern exactly.
+      pattern =
+        path:
+        !(builtins.any (token: lib.hasInfix token path) [
+          "["
+          "]"
+          "\\"
+          "!"
+          "\n"
+          "\r"
+        ])
+        && !(builtins.any (
+          part:
+          builtins.elem part [
+            "."
+            ".."
+          ]
+        ) (lib.splitString "/" path))
+        && !(lib.hasInfix "//" path);
+      patternRegex =
+        excluded:
+        let
+          component =
+            part:
+            lib.concatStringsSep "[^/]*" (
+              map (piece: lib.concatStringsSep "[^/]" (map lib.escapeRegex (lib.splitString "?" piece))) (
+                lib.splitString "*" part
+              )
+            );
+          deep = part: lib.concatStringsSep ".*" (map component (lib.splitString "**" part));
+        in
+        lib.concatStringsSep "/(.*/)?" (map deep (lib.splitString "/**/" (lib.removeSuffix "/" excluded)));
+      # Restic skips a path when a pattern matches it or any directory above it.
+      ancestors =
+        path:
+        let
+          parts = lib.drop 1 (lib.splitString "/" path);
+        in
+        map (count: "/" + lib.concatStringsSep "/" (lib.take count parts)) (
+          lib.range 1 (builtins.length parts)
+        );
+      excludedSample =
+        sample:
+        builtins.any (
+          excluded:
+          builtins.any (path: builtins.match (patternRegex excluded) path != null) (ancestors sample)
+        ) cfg.exclude;
       reference = path: path != null && !(lib.hasPrefix "/nix/store/" path);
       environment = {
         RESTIC_REPOSITORY_FILE = cfg.repositoryFile;
         RESTIC_PASSWORD_FILE = cfg.passwordFile;
         RESTIC_CACHE_DIR = "/var/cache/restic-backups-seele";
-      } // lib.optionalAttrs (cfg.environmentFile != null) {
+      }
+      // lib.optionalAttrs (cfg.environmentFile != null) {
         SEELE_BACKUP_ENVIRONMENT_FILE = cfg.environmentFile;
       };
       notify = pkgs.writeShellScript "seele-backup-failed" ''
@@ -64,7 +115,7 @@
         exclude = lib.mkOption {
           type = lib.types.listOf absolute;
           default = [ ];
-          description = "Absolute literal files or directory trees to exclude; glob and negation patterns are refused so restore samples can be validated before activation.";
+          description = "Absolute restic patterns for files or directory trees to exclude. `*`, `?` and `**` are matched against every restore sample during evaluation; brackets, escapes and negation are refused.";
         };
         restoreSamples = lib.mkOption {
           type = lib.types.listOf absolute;
@@ -83,22 +134,30 @@
             message = "Seele backup backend credentials must stay outside the Nix store.";
           }
           {
-            assertion = cfg.paths != [ ] && cfg.restoreSamples != [ ] && builtins.length cfg.restoreSamples <= 16;
+            assertion =
+              cfg.paths != [ ] && cfg.restoreSamples != [ ] && builtins.length cfg.restoreSamples <= 16;
             message = "Seele backups require explicit paths and one to sixteen real restore sample files.";
           }
           {
-            assertion = builtins.all (sample: builtins.any (path: sample == path || lib.hasPrefix "${path}/" sample) cfg.paths) cfg.restoreSamples;
+            assertion = builtins.all (
+              sample: builtins.any (path: sample == path || lib.hasPrefix "${path}/" sample) cfg.paths
+            ) cfg.restoreSamples;
             message = "Every Seele restore sample must be included in the backup path list.";
           }
           {
-            assertion = builtins.all literal cfg.exclude
-              && builtins.all (sample: builtins.all (excluded: !(sample == lib.removeSuffix "/" excluded || lib.hasPrefix "${lib.removeSuffix "/" excluded}/" sample)) cfg.exclude) cfg.restoreSamples;
-            message = "Seele exclusions must be absolute literal paths and must not contain any restore sample or its parent directory.";
+            assertion = builtins.all pattern cfg.exclude && !(builtins.any excludedSample cfg.restoreSamples);
+            message = "Seele exclusions must be absolute restic patterns without brackets, escapes or negation, and must not match any restore sample or its parent directory.";
           }
         ];
         services.systembus-notify.enable = true;
         services.restic.backups.seele = {
-          inherit (cfg) repositoryFile passwordFile environmentFile paths exclude;
+          inherit (cfg)
+            repositoryFile
+            passwordFile
+            environmentFile
+            paths
+            exclude
+            ;
           initialize = false;
           createWrapper = false;
           extraBackupArgs = [ "--tag seele" ];
@@ -129,7 +188,10 @@
         systemd.services.seele-backup-restore = {
           description = "Restore and compare selected real backup files";
           wants = [ "network-online.target" ];
-          after = [ "network-online.target" "restic-backups-seele.service" ];
+          after = [
+            "network-online.target"
+            "restic-backups-seele.service"
+          ];
           unitConfig.OnFailure = [ "seele-backup-failed.service" ];
           inherit environment;
           path = [ pkgs.openssh ];
@@ -150,7 +212,8 @@
             NoNewPrivileges = true;
             LimitCORE = 0;
             TimeoutStartSec = "6h";
-          } // lib.optionalAttrs (cfg.environmentFile != null) {
+          }
+          // lib.optionalAttrs (cfg.environmentFile != null) {
             EnvironmentFile = cfg.environmentFile;
           };
         };

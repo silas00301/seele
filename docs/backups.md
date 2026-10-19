@@ -80,4 +80,4 @@ These checks do not establish remote credentials, live scheduling, real personal
 data restores, full host evaluation or a recovery boot. Full host evaluation is
 blocked locally by the existing temporary Nix version; no Nix was installed.
 
-Exclusions are absolute literal file or directory paths. Patterns and negation are refused so evaluation can prove that every selected restore sample lies outside excluded trees; an excluded sample or ancestor fails before activation. Choose an unrelated sample or narrow the excluded tree.
+Exclusions are absolute restic patterns. `*` and `?` match within one path component and `**` across any number of them, so `Developer/**/target` covers every build tree. Brackets, escapes and negation are refused, so evaluation can match each pattern against every restore sample and its parent directories; a sample an exclusion would drop fails before activation. Choose an unrelated sample or narrow the pattern.

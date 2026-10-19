@@ -7,7 +7,10 @@
       seele.backup = {
         # Whole home includes wallet, app state and development data. Explicit
         # disposable exclusions do not decide the later root persistence list.
-        paths = [ "/home/${username}" "/etc/machine-id" ];
+        paths = [
+          "/home/${username}"
+          "/etc/machine-id"
+        ];
         exclude = [
           "/home/${username}/.cache"
           "/home/${username}/.local/share/Trash"
