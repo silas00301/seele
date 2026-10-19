@@ -222,6 +222,15 @@ the space the shell's bar reserves. Ghostty's native quick terminal stays the
 macOS implementation of the same gesture: its `+toggle-quick-terminal` IPC
 action needs Ghostty 1.4.0 and this flake pins 1.3.1.
 
+The Fish `scratch` function opens a disposable private Fish session through the
+native `seele-scratch` helper in the shell's `repo-tools`: a fresh 0700
+temporary workspace, `--private --no-config`, umask 077 and XDG state inside
+that tree, a 24-hour bound, and removal on exit or cancellation. On Linux the
+helper is a child subreaper and ends every job the session started before
+removing the workspace. It is a history and directory policy, not a sandbox.
+See `docs/scratch-workspaces.md`; `projects/repo-tools/tests/scratch.py` runs
+it against real Fish.
+
 Fish reports a command that ran for more than ten seconds and finished while
 its terminal window was not focused. The `command-notifications` Home Manager
 feature in the `common` profile loads the `done` plugin, which times commands,
