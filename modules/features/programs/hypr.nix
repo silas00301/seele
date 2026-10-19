@@ -30,10 +30,19 @@ let
                 ]
               }
           '';
+      # The desktop-tools package already wraps seele-record with its runtime
+      # tools; link only that command so the other helpers stay off PATH.
+      recording = pkgs.runCommand "seele-record" { } ''
+        mkdir -p "$out/bin"
+        ln -s ${selfPackages.desktop-tools}/bin/seele-record "$out/bin/seele-record"
+      '';
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
-      home.packages = [ screenshot ];
+      home.packages = [
+        screenshot
+        recording
+      ];
 
       wayland.windowManager.hyprland = {
         enable = true;
@@ -215,6 +224,7 @@ let
           hl.bind(mod .. " + L", hl.dsp.exec_cmd("${seeleLock}/bin/seele-lock"), { description = "Lock the session" })
           hl.bind(mod .. " + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot capture"), { description = "Capture a screenshot" })
           hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot annotate"), { description = "Capture and annotate a screenshot" })
+          hl.bind(mod .. " + CTRL + ALT + S", hl.dsp.exec_cmd("${recording}/bin/seele-record"), { description = "Record and trim a region or window" })
           hl.bind(mod .. " + ALT + S", hl.dsp.exec_cmd("${screenshot}/bin/seele-screenshot upload"), { description = "Capture and upload a screenshot" })
           hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating for the focused window" })
 
