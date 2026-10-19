@@ -30,15 +30,19 @@ let
                 ]
               }
           '';
-      recording = pkgs.runCommand "seele-record" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+      # The desktop-tools package already wraps seele-record with its runtime
+      # tools; link only that command so the other helpers stay off PATH.
+      recording = pkgs.runCommand "seele-record" { } ''
         mkdir -p "$out/bin"
-        makeWrapper ${selfPackages.desktop-tools}/bin/seele-record "$out/bin/seele-record" \
-          --prefix PATH : ${lib.makeBinPath [ pkgs.curl pkgs.ffmpeg pkgs.hyprland pkgs.pulseaudio pkgs.slurp pkgs.wf-recorder pkgs.wl-clipboard pkgs.zenity ]}
+        ln -s ${selfPackages.desktop-tools}/bin/seele-record "$out/bin/seele-record"
       '';
       wallpaper = "/etc/wallpaper/wallpaper.jpg";
     in
     {
-      home.packages = [ screenshot recording ];
+      home.packages = [
+        screenshot
+        recording
+      ];
 
       wayland.windowManager.hyprland = {
         enable = true;
