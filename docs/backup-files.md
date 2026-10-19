@@ -35,11 +35,12 @@ unsupported keys or shell/systemd quoting fail closed. Local, S3, B2, Azure,
 Google Cloud, REST and configured SFTP backends are supported by the wrapper;
 rclone and additional provider-specific options need further integration.
 
-To configure separately before SIL-28 is merged, explicitly set
-`seele.backup.browser.enable`, `repositoryFile` and `passwordFile`. After merging
-SIL-28, its configuration becomes the default. This independent PR does not
-invent or initialize a destination, read existing credentials during development,
-or activate a host.
+The browser inherits `seele.backup`'s repository, password and backend
+references and its `enable`, so it switches on with scheduled backups. To browse
+a repository without scheduling backups, set `seele.backup.browser.enable`,
+`repositoryFile` and `passwordFile` explicitly. Nothing here invents or
+initializes a destination, reads existing credentials during evaluation, or
+activates a host.
 
 An encrypted disposable-repository fixture verifies old bytes, exact paths,
 filtering and original preservation. Fake UI fixtures verify preview retention,
