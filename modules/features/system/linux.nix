@@ -8,6 +8,7 @@ let
       config.flake.modules.nixos.firmware-updates
       config.flake.modules.nixos.stylix
       config.flake.modules.nixos.foreign-binaries
+      config.flake.modules.nixos.backup-browser
       config.flake.modules.nixos.disk-health
     ];
   };

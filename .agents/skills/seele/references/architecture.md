@@ -1076,3 +1076,10 @@ draft wizard from the shell integrations package. It can also accept a chosen
 PNG/MP4 path. The helper owns a dedicated Secret Service API key, explicit
 metadata selection, final review and private Linear upload/issue/comment APIs.
 See `docs/linear-capture.md` and the child `projects/integrations/LINEAR.md`.
+
+The optional `backup-browser` NixOS/Home Manager feature inherits configured
+scheduled-backup references when available, otherwise stays disabled. Its
+`seele-restore-file` native dialogs and Yazi `<A-r>` offer exact file versions,
+Quick Look, comparison and a separate restored copy. A fixed read-only root
+helper authenticates through run0, bounds paths to the user's home and snapshots
+to the configured host/tag, and never writes originals. See `docs/backup-files.md`.
