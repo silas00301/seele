@@ -1069,3 +1069,10 @@ PulseAudio CLI, Slurp, clipboard and dialog dependencies. It offers
 explicit silent/microphone/single-application audio, a bounded recording control,
 separate non-destructive trims and a public-upload consent dialog. See
 `docs/screen-recording.md` for retention and live acceptance boundaries.
+
+The Hyprland feature's `Super + Ctrl + Shift + S` invokes screenshot `linear`
+mode: annotation and local publication precede the native `seele-linear-capture`
+draft wizard from the shell integrations package. It can also accept a chosen
+PNG/MP4 path. The helper owns a dedicated Secret Service API key, explicit
+metadata selection, final review and private Linear upload/issue/comment APIs.
+See `docs/linear-capture.md` and the child `projects/integrations/LINEAR.md`.
