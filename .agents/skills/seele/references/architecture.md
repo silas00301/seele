@@ -1045,3 +1045,12 @@ synthetic catalog check and native executable fixture cover its boundaries. See
 `docs/configuration-inspector.md` for scope and native-host validation.
 
 Broker integration inference checks CodexBar's known rate-window capacity before each attempt. Confirmed exhaustion selects isolated Claude Code Haiku, then Sonnet and Opus on model failure. Positive or unknown quota retains Codex. Claude bare mode uses a deliberately provisioned Secret Service API key (`application=seele-codex`, `account=claude`), with API billing; it never delegates subscription credentials. Activity exposes choice metadata and setup errors. See `seele-shell/projects/broker/README.md` for credential provisioning, tool isolation and outstanding real-CLI acceptance.
+
+The NixOS `backups` feature defines gated `seele.backup` options, daily restic
+backups, static failure notifications, durable age markers and a monthly native
+restore verifier. `nerv` imports it with explicit whole-home/identity paths and
+rebuildable exclusions, disabled until a real destination and private runtime
+credential references are supplied. The shell maintenance package owns
+`seele-restic-test`; existing Maintenance owns missed-run findings. This is
+SIL-28 infrastructure, not a claim of successful live backups. SIL-29 still
+requires real destination restores before any root migration. See `docs/backups.md`.
