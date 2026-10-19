@@ -1054,3 +1054,11 @@ credential references are supplied. The shell maintenance package owns
 `seele-restic-test`; existing Maintenance owns missed-run findings. This is
 SIL-28 infrastructure, not a claim of successful live backups. SIL-29 still
 requires real destination restores before any root migration. See `docs/backups.md`.
+
+The `file-shelf` Home Manager feature is active on `nerv` only. It binds
+Super+Ctrl+Shift+E and Yazi manager-layer Alt+S to the shell's temporary shelf.
+The shell owns one native `seele-shelf` worker, private runtime snippets and
+regular-file references; originals are never removed. Explicit drag uses copy
+URIs, Transfers still asks for a destination, and Notes capture creates a new
+vault note with independent attachments. There is no clipboard watcher or
+persistent collection. See `docs/file-shelf.md` for limits and reload lifetime.
