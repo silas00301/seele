@@ -73,8 +73,10 @@ with tempfile.TemporaryDirectory(prefix="seele-stylix-") as directory:
             assert selected["base"] == launcher["colors"]["core"]["background"]
             assert selected["accent"] == launcher["colors"]["core"]["accent"]
         else:
+            # The wallpaper is the mapping's to choose, checked below.
             for key, value in document.items():
-                assert selected[key] == value, (theme["id"], key)
+                if key != "wallpaper":
+                    assert selected[key] == value, (theme["id"], key)
         own = (document or {}).get("wallpaper")
         assert selected["wallpaper"] == wallpaper(theme, own), (theme["id"], selected["wallpaper"])
         assert selected.get("wallpaperOutputs", {}) == outputs(theme, own), (theme["id"], selected.get("wallpaperOutputs"))

@@ -27,8 +27,10 @@ moving switches the desktop at once, so the shell repainting around it is the
 preview, a preset chosen there becomes the theme for its own mode and brings
 that mode with it, and Escape puts the mode and both themes back. The Themes
 tile's knob shows Light, Dark or Auto and steps to the next; the tile opens the
-panel, which holds that choice, the schedule's source and times, and a Use
-current button that gives the preset on screen to either mode. Auto follows a
+panel, which holds that choice, the schedule's source and times, and a gallery
+with one tile per theme drawn on its linked wallpaper: clicking a tile wears that
+theme now, as the switcher does, and its sun and moon buttons give it to light or
+dark mode whatever its own mode. Auto follows a
 schedule at fixed times or at sunrise and sunset; the `seele-theme-auto` user
 service runs the native helper's edge-triggered loop, so a mode chosen by hand
 holds until the next boundary. While a `nix build` or `nix-build` process is

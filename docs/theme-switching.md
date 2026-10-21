@@ -43,9 +43,15 @@ opened. Clicking a neighbour chooses it, and clicking the centre keeps it.
 The Control Center's **Themes** tile names the theme on screen, and its round
 knob shows **Light**, **Dark** or **Auto** and steps to the next. The rest of the
 tile opens the Themes panel, which holds the same three choices; with Auto, when
-it switches; and the theme each mode wears. **Use current** gives the preset on
-screen to either mode, which is how light mode wears a dark preset, and
-**Browse themes** opens the switcher over the panel.
+it switches; and a gallery of every theme, three tiles to a row. Each tile is the
+theme's linked wallpaper -- the image mapped to that theme, else its own, else
+the one mapped to its light or dark mode -- or its background colour without
+one, with its name in its own colours. Clicking a tile wears the theme now,
+exactly as choosing it in the switcher does. Its sun and moon buttons make it
+the theme light or dark mode wears, whatever its own mode, which is how light
+mode wears a dark preset; a button is filled while that mode already wears the
+theme. The theme on screen is outlined and marked **On screen**, and **Open
+switcher** opens the switcher over the panel.
 
 **Auto** changes the mode by itself. **Set times** switches at two times of day,
 editable in the panel (light from 07:00 and dark from 19:00 by default, the hours

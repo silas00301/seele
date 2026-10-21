@@ -244,9 +244,13 @@ themes as the switcher opened.
 
 The Themes panel (`controlPanel === "themes"`, namespace
 `seele-shell-theme-settings`, which the Hyprland blur rule lists) holds Light,
-Dark and Auto, Auto's source and times, and each mode's preset with Use current,
-which is the only way a mode wears a preset of the other kind; Browse themes
-opens the switcher over it. The tile's glyph is a knob, drawn and hit-tested
+Dark and Auto, Auto's source and times, and a gallery of theme tiles
+(`ThemeSettingsPanel.qml`, pictures through `shared/ThemePicture.qml`). A tile
+shows the theme's linked wallpaper from the `wallpapers` map `seele-theme list`
+returns and wears it through `ThemeStore.wear(id)`, which picks as the switcher
+does but leaves no switcher highlight; its sun and moon buttons call
+`ThemeStore.assign(slot, id)`, the only way a mode wears a preset of the other
+kind. Open switcher opens the switcher over it. The tile's glyph is a knob, drawn and hit-tested
 above the tile's drag area, that shows Light, Dark or Auto and steps to the
 next. A hand-chosen Light or Dark sends `auto off` before `mode`. The store
 watches `selection.json` and `preferences.json` and reads the helper at start

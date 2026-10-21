@@ -835,8 +835,10 @@ contract and the folder rules at build time and writes the registered copy;
 `packages/core/themes.nix` (`lib.mkThemes`) wraps it for the parent's catalog.
 `Theme.qml` applies every slot a theme may supply, its own wallpaper included,
 so a folder restyles the shell without a code change and a preset after it
-looks as it always did. A folder's `wallpaper` must be a PNG or JPEG (checked by
-its first bytes at registration and when the catalog is read); the publication
+looks as it always did. A folder's `wallpaper` must be a PNG or JPEG:
+registration decodes it whole through `projects/config-tools/src/picture.rs`
+(complete, with pixels, within the 256 MiB Qt decodes one image into), and the
+catalog's ordinary reads check its signature again; the publication
 names it, or the configured wallpaper for a theme without one, and the
 background draws it through `projects/shared/Wallpaper.qml`, which keeps the
 picture on screen until the next has decoded. Keep `tests/tst_wallpaper.qml`
@@ -871,8 +873,9 @@ its recorded seed grows, so regenerate rather than edit them, and read
 `themes/cyberpunk` is hand-written and carries files: four Chakra Petch faces
 (`fontFileLight/Regular/Medium/Strong`, the optional `assets` group), a scanline
 tile (`surfaceTexture`, which `grain` follows) and its wallpaper. Registration
-holds a texture to PNG/JPEG and a typeface file to TrueType/OpenType by its
-first bytes, at build time and when the catalog is read. `Theme.qml` loads the
+decodes a texture whole as a PNG or JPEG, as it does a wallpaper, and holds a
+typeface file to TrueType/OpenType by its first bytes; the catalog's reads
+check both by signature again. `Theme.qml` loads the
 faces through an `Instantiator` over only the given files, because a
 `FontLoader` whose source is cleared warns and any warning fails the snapshot
 harness. `panelCut` makes `PanelSurface` load `CutFrame` (cut outline, trim,
@@ -967,7 +970,7 @@ Every surface reads from that block rather than deciding for itself:
   buttons close to `radiusPressed`; `FocusRing` lies `focusRingGap` outside the
   edge (negative: inside, the default hairline edge) and takes `cornerRadius`,
   not `radius`, from a caller. Keep `tests/tst_behaviour.qml` passing
-  (`tests/palette.sh projects/shared tests/tst_behaviour.qml <qml>`), and read
+  (`tests/palette.sh projects/shared tests/tst_behaviour.qml <qml> <Seele imports>`), and read
   `projects/shared/THEME-CONTRACT.md` ("Component behaviour") first.
 
 Assemble a surface from the shared components rather than repeating their
@@ -1285,7 +1288,11 @@ surface that is meant to look the same, and re-record with `--update` only for
 an intended new look, reviewing every changed image. The harness lifts root
 members and whole layer windows from `shell.qml`, so a new store or Quickshell
 service a covered surface reads needs a stand-in in `tests/theme-snapshots/`
-(`scene.qml` or `fixture/`); any Qt warning fails the run. Pixels depend on
-the Qt build and FreeType: under a renderer other than the recorded one, record
-the base revision with `--update --baseline <dir outside the tree>` and compare
-the change against that directory. See the README there.
+(`scene.qml` or `fixture/`); any Qt warning fails the run. `nix flake check`
+builds the same comparison as `checks.theme-snapshots`, and `test-shell` runs
+it; no package build waits on it. The scene needs both `Seele/Core` and
+`Seele/Navigation`. Text is rasterized unhinted through the harness's own
+fontconfig, which is what lets different FreeType releases reproduce the
+baselines exactly; under a Qt build other than the recorded one, record the base
+revision with `--update --baseline <dir outside the tree>` and compare the
+change against that directory. See the README there.
