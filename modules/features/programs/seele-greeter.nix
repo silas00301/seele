@@ -1,5 +1,8 @@
-{ ... }:
+{ config, ... }:
 let
+  # The configured wallpaper (themes/wallpaper.nix). The greeter runs before any
+  # user theme exists, so no theme or mapping changes it.
+  configuredWallpaper = config.seele.wallpaper.image;
   module =
     {
       config,
@@ -13,7 +16,7 @@ let
       inherit (config.catppuccin) accent flavor;
       palette = builtins.fromJSON (builtins.readFile "${config.catppuccin.sources.palette}/palette.json");
       colors = palette.${flavor}.colors;
-      wallpaper = "/etc/wallpaper/wallpaper.jpg";
+      wallpaper = configuredWallpaper;
       greeter = selfPackages.seele-greeter;
       theme = pkgs.writeText "seele-greeter-theme.json" (
         builtins.toJSON {

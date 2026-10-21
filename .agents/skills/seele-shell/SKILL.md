@@ -799,6 +799,133 @@ resolved there without the shell's own wrapper. Keep both lists current:
 shipped unlinted long
 enough for that surface to grow its own formatting and rebuild parts the
 vocabulary already had. Add a new shell QML file to both lists.
+
+That vocabulary is the theme contract. `projects/shared/theme-contract.json`
+lists all of its slots in eleven groups -- palette, signal, typography, shape,
+spacing, metrics, layout, material, motion, sound and wallpaper -- with their
+types, defaults and derivations, the rules a theme document follows, and the
+fallbacks of the optional sound and wallpaper slots; `THEME-CONTRACT.md` beside
+it explains them. `Theme.qml` is its only implementation, one `// <Section> ----`
+header per group and one property per line in the JSON's order. No surface in
+`projects/shell`, `projects/shared` or `projects/notes` writes a colour, colour
+arithmetic on a literal, an easing or weight enum, or a styling number of its
+own: add a slot named for its role, with a comment saying what it is for, run
+`node tests/theme-contract.js projects --update`, review the JSON diff, and run
+the check without `--update`. It allows only structural numbers -- zero, a
+count, a half, full opacity or a clamp -- and drawing coordinates inside a
+region marked `// theme-contract: artwork -- <reason>` ... `// theme-contract:
+end`. Moving a value into the contract must leave every theme snapshot
+pixel-identical. The greeter, lock and polkit scenes are outside this version;
+they take only the palette.
+
+The existing presets are documents of that contract. `seele-theme` builds each
+from its Base16 palette, and `projects/config-tools/src/theme_contract.rs`
+embeds the contract JSON (the native build adds it, the theme-folder fixtures
+and `folders.json` to config-tools' source) and checks every listed document
+and every published `theme.json` against the same rules as the JavaScript
+check, with the same messages. Keep
+the two validators in step when a document rule changes.
+`tests/theme-snapshots/themes.json` is the presets as `seele-theme list` prints
+them, so the baselines render the documents themselves.
+
+A theme that is not a Base16 preset is a folder under `themes/` plus one line in
+`themes/default.nix` (`themes/README.md`), never shell code. `seele-theme
+register` (`projects/config-tools/src/theme_folder.rs`) holds the folder to the
+contract and the folder rules at build time and writes the registered copy;
+`packages/core/themes.nix` (`lib.mkThemes`) wraps it for the parent's catalog.
+`Theme.qml` applies every slot a theme may supply, its own wallpaper included,
+so a folder restyles the shell without a code change and a preset after it
+looks as it always did. A folder's `wallpaper` must be a PNG or JPEG:
+registration decodes it whole through `projects/config-tools/src/picture.rs`
+(complete, with pixels, within the 256 MiB Qt decodes one image into), and the
+catalog's ordinary reads check its signature again; the publication
+names it, or the configured wallpaper for a theme without one, and the
+background draws it through `projects/shared/Wallpaper.qml`, which keeps the
+picture on screen until the next has decoded. Keep `tests/tst_wallpaper.qml`
+(`tests/wallpaper.sh`) and the `pictured` fixture passing. The parent's
+`seele.wallpaper` mapping reaches the catalog as `wallpapers`;
+`projects/config-tools/src/wallpapers.rs` owns its rules and precedence and
+publishes `wallpaperOutputs` (contract type `outputPaths`) only for outputs
+whose image differs, so presets publish exactly what they did without a
+mapping. Each output's background binds `wallpaperFor(modelData.name)`, the lock
+uses `Palette.imageFor`, and a folder cannot supply `wallpaperOutputs`. Keep
+`projects/config-tools/tests/wallpapers.py` passing. Keep `tests/theme-folders/`,
+`projects/config-tools/tests/theme_folders.py`, `checks.theme-folders` and the
+example's two baselines (`folders.json`) and the shipped folders' document
+(`registered.json`) passing.
+
+A derived slot can be suppliable: `Theme.qml` reads it as
+`supplied.<name> ?? <derivation>`, so a theme may give it outright and one that
+gives none draws the derivation. Only colours, `int`s, `real`s, easings and
+curves of the shape, metrics, material and motion groups may be suppliable, and
+`theme_contract.rs` and `tests/theme-contract.js` check the value by the slot's
+type. Each easing slot has a `curve` slot beside it, empty by default; an easing
+is `BezierSpline` exactly when its curve is given, and a suppliable pair such as
+`easingSpatial`/`easingSpatialCurve` (derived from the standard pair) is given
+whole or not at all. Both exist so `themes/material-expressive-{light,dark}` can set
+Material 3 Expressive's values. Those folders are written by `seele-theme
+material`, whose native token set lives in `projects/config-tools/src/material/`
+(an HCT and `SchemeExpressive` port checked role for role against
+`tests/material-oracle.json`); registration refuses one that differs from what
+its recorded seed grows, so regenerate rather than edit them, and read
+`themes/MATERIAL.md` before changing a mapping.
+
+`themes/cyberpunk` is hand-written and carries files: four Chakra Petch faces
+(`fontFileLight/Regular/Medium/Strong`, the optional `assets` group), a scanline
+tile (`surfaceTexture`, which `grain` follows) and its wallpaper. Registration
+decodes a texture whole as a PNG or JPEG, as it does a wallpaper, and holds a
+typeface file to TrueType/OpenType by its first bytes; the catalog's reads
+check both by signature again. `Theme.qml` loads the
+faces through an `Instantiator` over only the given files, because a
+`FontLoader` whose source is cleared warns and any warning fails the snapshot
+harness. `panelCut` makes `PanelSurface` load `CutFrame` (cut outline, trim,
+glitch) and drop its wash and lit edge; `titleCapitalization` and
+`labelCapitalization` reach `PanelHeader` and `SectionLabel`. Its art is drawn
+by `themes/cyberpunk/art/draw.js` -- change the script and redraw, never the
+PNGs -- and ship only fonts whose licence allows it, with the licence beside
+them. `registered.json` names a shipped folder's files as `themes/<id>/<name>`,
+which `theme_folders.py` checks and the harness reads. Read
+`themes/CYBERPUNK.md` before changing it.
+
+`themes/AUTHORING.md` is how a new theme is written, from `themes/template/`.
+The template supplies only identity, the eleven roles and the Base16 palette,
+each role on the slot the presets project it from, and no line of
+`themes/default.nix` ships it; `tests/theme-template.js` holds it there, keeps
+it and every shipped folder over `tests/theme-check.js`'s legibility floors,
+and checks the guide's floor table and sample line against that script.
+`theme_folders.py` and `checks.theme-folders` register the template, and
+`theme_folders.py` also a renamed copy and the template with each JSON
+recipe of the guide added, so a recipe the contract stops accepting fails the
+build. When a folder rule, a slot name, a refusal message or the snapshot
+workflow changes, update the guide with it. The development shell's
+`theme-check <folder>...` registers folders and measures their roles, and
+`theme-preview <id>` refreshes `registered.json` and draws that folder through
+`theme-snapshots --only <id> --update --baseline /tmp/seele-theme-preview`.
+
+A theme's own motion and sound (SIL-240) are slots too, and whether they play
+is a user preference outside the contract. `CutFrame` sweeps the trim
+(`durationPanelTrim`) and flickers the glitch (`durationPanelGlitch`,
+`panelGlitchFlickers`, `panelGlitchShift`) only when its window becomes visible,
+when it is created inside a visible one, and when the pointer arrives; panels
+are hidden, not rebuilt, so `Component.onCompleted` alone would play once.
+Every animation ends on the still frame, which is what the snapshot harness
+captures, and nothing runs at rest -- `tests/tst_motion.qml` counts zero
+`frameSwapped` on an idle open panel; keep it that way, no idle loops. The
+`sound…` cues play through `projects/shell/ThemeSounds.qml`, which owns the
+rules (fresh toasts only, panels by `controlPanel`/`themesOpen`, level OSDs,
+focus done, nothing while `presenting`) and loads `ThemeSoundEffects.qml`, the
+only file importing QtMultimedia, solely while `soundEnabled` and the theme has
+a cue. Cues must be WAV (SoundEffect decodes nothing else); regenerate them
+with `themes/cyberpunk/art/sounds.js`, which `tests/theme-sounds.js` holds byte
+for byte. `motionEnabled`/`soundEnabled` and the derived `panelMotion` and
+`themeSounds` sit after `function alpha(` in `Theme.qml`, because every property
+before it must be a contract slot; they read the helper's `preferences.json`
+(`seele-theme motion|sound on|off`). A sandbox or build has no audio device, so
+Qt refuses a SoundEffect there: `tests/theme-sounds.sh` tests the rules
+against a recording stand-in, and real playback needs the desktop. The snapshot
+harness keeps the `themeSounds` object (`keptObjects`), since lifted root
+functions call it.
+
 Every surface reads from that block rather than deciding for itself:
 
 - **Type** — `textMicro` through `textHero`. Steps are named for the role they
@@ -827,7 +954,24 @@ Every surface reads from that block rather than deciding for itself:
   interpolates a colour channel by channel and `transparent` is black, so a
   tint animated against it is dragged through grey at both ends of the fade.
 - **Motion** — `durationFast` for an in-surface tint, `durationNormal` for a
-  control that travels.
+  control that travels, and `easingStandard` for every eased transition. An
+  animation that takes an easing slot also binds its curve
+  (`easing.bezierCurve: <theme>.easingStandardCurve`), so a theme's Bézier
+  spline reaches it; `theme-contract.js` fails one that does not. Inside a
+  shared control, a part moving or changing shape takes `durationSpatial` on
+  `easingSpatial`, and the control's own colour changing with its state takes
+  `durationEffects` on `easingEffects`; both default to the fast duration and
+  the standard and linear curves, and Material samples its fast springs into
+  them.
+- **Component behaviour** — a control reports hover and press through
+  `HoverWash` (pass it `pressed`, `pressX`, `pressY`); for a theme that gives
+  `durationRipple` it grows a `Ripple` in place of the flat `pressColor`, so
+  the control lays the flat press only while `durationRipple === 0`. Pressed
+  buttons close to `radiusPressed`; `FocusRing` lies `focusRingGap` outside the
+  edge (negative: inside, the default hairline edge) and takes `cornerRadius`,
+  not `radius`, from a caller. Keep `tests/tst_behaviour.qml` passing
+  (`tests/palette.sh projects/shared tests/tst_behaviour.qml <qml> <Seele imports>`), and read
+  `projects/shared/THEME-CONTRACT.md` ("Component behaviour") first.
 
 Assemble a surface from the shared components rather than repeating their
 parts: `PanelHeader` (glyph or `mark` in its accent well, title, optional
@@ -839,7 +983,9 @@ the click target that fold it), `SegmentWell` with `Segment`, `IconButton`,
 `RefreshGlyph`, `CenteredGlyph`, `FocusRing`, `HoverTip`, `BarItem`, `BarLabel`, `ControlTile`,
 `ConnectivityRow`, `ControlLevel`, `MediaButton`, and `MediaBody`. A framed surface takes
 all three of `SurfaceWash`, `SurfaceEdge` and `SurfaceGrain`, in that order:
-the wash under the content, the edge and the film over it.
+the wash under the content, the edge and the film over it. A panel is a
+`PanelSurface` rather than its own rounded rectangle, so a theme's cut corners
+(`CutFrame`) reach it.
 
 A `HoverTip` on a control inside a panel needs `inOverlay: true`; without it the
 menu bar's guard hides the tip whenever the panel is open.
@@ -1114,7 +1260,39 @@ Activation is separate. Run `nh os switch`, `nh darwin switch`, or an equivalent
 
 Shared palette changes must keep `projects/shared/Palette.js` beside every
 consumer. Shell/Notes packages and isolated Qt fixtures copy shared `.qml` and
-`.js` assets together; auth-client packages copy Palette.js beside shell.qml.
+`.js` assets together, and the packages also install `theme-contract.json`,
+which `Theme.qml` reads to apply every slot a published theme supplies through
+`applyTheme` and `Contract.js`; auth-client packages copy Palette.js beside
+shell.qml.
 Run `node tests/palette.js ...` and the offscreen `tests/palette.sh` fixture.
 Palette data/property assignment is a necessary Qt API boundary, with no service
-or background logic. Preserve existing theme and wallpaper assignment semantics.
+or background logic. Preserve the auth clients' assignment semantics; the lock
+draws the published `wallpaper`, or its output's entry in `wallpaperOutputs`,
+and the greeter keeps the system image. Before
+any publication the shell's wallpaper is its `SEELE_SHELL_WALLPAPER`
+selection.
+
+## Keep every theme pixel-identical
+
+`tests/theme-snapshots/` holds pixel baselines of all 13 theme presets and the
+unthemed `Palette.js` fallback on ten production surfaces: the bar, Control
+Center, toasts, the notification panel, Now Playing, Audio, Power, the volume
+OSD, the theme switcher and the Themes panel, plus the example theme folder on
+those last two and the shipped Material Expressive and Cyberpunk folders
+(`registered.json`) on all ten, each theme applied through `Theme.qml`'s `applyTheme`.
+`nix develop -c theme-snapshots` fails on any changed pixel; `--keep <dir>` writes actual, baseline and diff
+images, and `--only <id>,...` draws and compares just those themes, beside the
+same catalog and so pixel-identical to a full run, recording only into a
+`--baseline` directory of their own. Run it for any change to theming, `Theme.qml`, `Palette.js` or a drawn
+surface that is meant to look the same, and re-record with `--update` only for
+an intended new look, reviewing every changed image. The harness lifts root
+members and whole layer windows from `shell.qml`, so a new store or Quickshell
+service a covered surface reads needs a stand-in in `tests/theme-snapshots/`
+(`scene.qml` or `fixture/`); any Qt warning fails the run. `nix flake check`
+builds the same comparison as `checks.theme-snapshots`, and `test-shell` runs
+it; no package build waits on it. The scene needs both `Seele/Core` and
+`Seele/Navigation`. Text is rasterized unhinted through the harness's own
+fontconfig, which is what lets different FreeType releases reproduce the
+baselines exactly; under a Qt build other than the recorded one, record the base
+revision with `--update --baseline <dir outside the tree>` and compare the
+change against that directory. See the README there.

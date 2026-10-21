@@ -27,8 +27,10 @@ moving switches the desktop at once, so the shell repainting around it is the
 preview, a preset chosen there becomes the theme for its own mode and brings
 that mode with it, and Escape puts the mode and both themes back. The Themes
 tile's knob shows Light, Dark or Auto and steps to the next; the tile opens the
-panel, which holds that choice, the schedule's source and times, and a Use
-current button that gives the preset on screen to either mode. Auto follows a
+panel, which holds that choice, the schedule's source and times, and a gallery
+with one tile per theme drawn on its linked wallpaper: clicking a tile wears that
+theme now, as the switcher does, and its sun and moon buttons give it to light or
+dark mode whatever its own mode. Auto follows a
 schedule at fixed times or at sunrise and sunset; the `seele-theme-auto` user
 service runs the native helper's edge-triggered loop, so a mode chosen by hand
 holds until the next boundary. While a `nix build` or `nix-build` process is
@@ -45,7 +47,81 @@ rather than reading Base16's dim slots verbatim, because Catppuccin's Base16
 file puts surface colours there. Vesktop reloads the helper's in-place QuickCSS
 update; Neovim selects the official colorscheme for Catppuccin presets and
 Stylix's Base16 palette for the others. See [the theme switching guide](docs/theme-switching.md)
-for scope, ownership and application reload boundaries.
+for scope, ownership and application reload boundaries. Every preset and the
+unthemed fallback have pixel baselines on ten shell surfaces in
+`seele-shell/tests/theme-snapshots/`; `theme-snapshots` in the shell's
+development shell fails on any changed pixel, so a theme refactor proves it
+changed nothing. Every styling value the shell and Notes draw is a slot of the
+theme contract: `seele-shell/projects/shared/theme-contract.json` is its schema,
+`Theme.qml` its only implementation, and the shell's `tests/theme-contract.js`
+fails on a styling literal anywhere else. Sound and wallpaper slots are
+optional and fall back to silence and to the configured wallpaper. Each preset
+is a document of that contract: `seele-theme` projects its eleven palette roles
+from the preset's Base16 palette, adds the configured typeface, and refuses the
+whole catalog, naming the preset and the rule, when one breaks a contract rule,
+so `checks.theme-presets` fails the build on it. A theme beyond the Base16
+presets is a drop-in folder in `seele-shell/themes/` plus one line in
+`seele-shell/themes/default.nix`: `seele-theme register` checks it against the
+contract when the catalog is built and fails the rebuild naming every rule it
+broke, the parent renders its applications from the folder's own Base16
+palette, and `Theme.qml` applies every slot a theme supplies, restoring
+defaults for the rest. A folder may name its own `wallpaper`, a PNG or JPEG
+that registration refuses in any other format; while that theme is selected the
+shell's background and the lock screen draw it, swapping only once it has
+decoded, and switching to a theme without one publishes the configured
+wallpaper again, so the image on screen stays. The flake-level `seele.wallpaper`
+option (`modules/features/themes/wallpaper.nix`) maps images per light or dark
+theme, per output by Hyprland's name, and per theme ID; theme-switching writes
+it into the catalog, which Home Manager installs only after `seele-theme check`
+accepts it, and the helper publishes the image for every output plus
+`wallpaperOutputs` for the outputs that differ, so a rebuild's activation
+republishes the mapping without touching the chosen themes. Light and dark are
+the theme's own mode. `nerv` declares no images yet, and the greeter keeps the
+configured image. The shell ships two such folders, **Material Expressive Light**
+and **Material Expressive Dark**, after the presets: `seele-theme material`
+grows each from one seed colour (Material's baseline `#6750a4`) with a native
+port of Material Color Utilities' 2025 `SchemeExpressive` scheme, and sets every
+contract slot Material 3 Expressive has a token for -- colour roles, tonal
+elevation, state layers, the type and corner scales, spacing on the 4dp grid,
+component heights, durations and Bézier easing curves. Registration refuses
+such a folder unless it is exactly what its recorded seed grows. To reach those
+values the contract lets a theme supply a derived slot outright and pairs every
+easing slot with a `curve` slot; both default to what every preset drew before.
+The shared controls also behave as Material's do under those themes: hover is a
+state layer, a press grows a ripple from where it landed, a pressed button
+closes its corners, the focus ring flares outside the edge, the switch's handle
+grows as it is set and held, and handles, corners and state colours move on
+Material's fast spatial and effects springs, sampled into a duration and a
+Bézier curve. Each is a contract slot whose default is the presets' unchanged
+behaviour. See `seele-shell/themes/MATERIAL.md`. A third shipped folder,
+**Cyberpunk**, draws the shell as in-game software: near-black glass framed in
+red neon, cyan for state, panels whose top left and bottom right corners are
+cut (`panelCut`, drawn by the shared `CutFrame`) with a trim and an
+out-of-register glitch along the top edge, square corners elsewhere, scanlines
+in place of the grain film (`surfaceTexture`), and Chakra Petch, carried in the
+folder as one file per weight (`fontFile…`) and loaded by the shell, with
+titles and section labels in capitals (`titleCapitalization`,
+`labelCapitalization`). Registration refuses a texture that is not a PNG or
+JPEG and a typeface file that is not TrueType or OpenType. Its fonts are SIL
+OFL, its wallpaper and scanlines are drawn by `themes/cyberpunk/art/draw.js`,
+and no game asset is used; see `seele-shell/themes/CYBERPUNK.md`. Cyberpunk
+also moves and sounds: `CutFrame` sweeps a panel's trim in and flickers its
+glitch as the panel's window shows and when the pointer arrives
+(`durationPanelTrim`, `durationPanelGlitch`, `panelGlitchFlickers`,
+`panelGlitchShift`), always ending on the still frame with nothing running at
+rest, and the shell's `ThemeSounds` plays the folder's six `sound…` cues,
+synthesised by `themes/cyberpunk/art/sounds.js`, through Qt's SoundEffect.
+Registration refuses a cue that is not a WAV file. Whether either happens is the
+user's, not the theme's: `seele-theme motion|sound on|off` (motion on, sound off
+by default) writes the helper's preferences, `Theme.qml` reads them into
+`motionEnabled` and `soundEnabled`, and the Themes panel's Effects switches
+appear only for a theme that has motion or sound. The player is loaded only
+while sound is on and the theme has a cue, presentation mode holds every cue
+back, and Qt marks the stream as an `event`, which the Audio mixer excludes.
+A new theme starts from `seele-shell/themes/template/`, which no line ships,
+following `seele-shell/themes/AUTHORING.md`; the shell's checks register the
+template, a renamed copy and every recipe in that guide, and its development
+shell's `theme-check` and `theme-preview` measure a folder's colours and draw it.
 
 ## Architecture
 

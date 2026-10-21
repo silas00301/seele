@@ -6,6 +6,25 @@
 }:
 let
   themeSettings = config.seele.catppuccin;
+  # The shell's drop-in theme folders (seele-shell/themes/default.nix), each
+  # checked by `seele-theme register` when the catalog that names it is built.
+  themeFolders =
+    pkgs: configTools:
+    (inputs.seele-shell.lib.mkThemes { inherit pkgs configTools; }).entries
+      inputs.seele-shell.lib.themeFolders;
+  # The configured wallpaper and the host's wallpaper mapping (wallpaper.nix),
+  # as the catalog carries them, with every image left unset left out.
+  wallpaper = config.seele.wallpaper;
+  given = lib.filterAttrs (_: image: image != null);
+  wallpapers = {
+    wallpaper = wallpaper.image;
+    wallpapers = given { inherit (wallpaper) light dark; } // {
+      outputs = lib.mapAttrs (_: images: given { inherit (images) image light dark; }) wallpaper.outputs;
+      themes = lib.mapAttrs (
+        _: theme: given { inherit (theme) image; } // { inherit (theme) outputs; }
+      ) wallpaper.themes;
+    };
+  };
 in
 {
   perSystem =
@@ -15,18 +34,21 @@ in
         theme-presets =
           let
             catalog = pkgs.writeText "seele-theme-catalog-check.json" (
-              builtins.toJSON {
-                version = 2;
-                default = "catppuccin-${themeSettings.flavor}";
-                fontFamily = "Seele";
-                wallpaper = "/etc/wallpaper/wallpaper.jpg";
-                commands = { };
-                themes = import ./_theme-switching {
-                  inherit inputs pkgs;
-                  catppuccin = themeSettings;
-                  catppuccinPalette = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.palette;
-                };
-              }
+              builtins.toJSON (
+                {
+                  version = 2;
+                  default = "catppuccin-${themeSettings.flavor}";
+                  fontFamily = "Seele";
+                  commands = { };
+                  themes = import ./_theme-switching {
+                    inherit inputs pkgs;
+                    catppuccin = themeSettings;
+                    catppuccinPalette = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.palette;
+                    folders = themeFolders pkgs config.packages.config-tools;
+                  };
+                }
+                // wallpapers
+              )
             );
           in
           pkgs.runCommand "seele-theme-presets-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
@@ -50,31 +72,49 @@ in
       themes = import ./_theme-switching {
         inherit inputs pkgs catppuccin;
         catppuccinPalette = config.catppuccin.sources.palette;
+        folders = themeFolders pkgs selfPackages.config-tools;
       };
       package = selfPackages.config-tools;
       tmuxTheme = "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin/catppuccin_tmux.conf";
+      catalog = pkgs.writeText "seele-theme-catalog.json" (
+        builtins.toJSON (
+          {
+            version = 2;
+            default = "catppuccin-${catppuccin.flavor}";
+            fontFamily = config.stylix.fonts.monospace.name;
+            vesktopDir = "${config.xdg.configHome}/vesktop";
+            inherit tmuxTheme;
+            inherit themes;
+            commands = {
+              hyprctl = "${pkgs.hyprland}/bin/hyprctl";
+              tmux = "${pkgs.tmux}/bin/tmux";
+              pgrep = "${pkgs.procps}/bin/pgrep";
+              pkill = "${pkgs.procps}/bin/pkill";
+              xrdb = "${pkgs.xrdb}/bin/xrdb";
+              kdecolors = "${pkgs.kdePackages.plasma-workspace}/bin/plasma-apply-colorscheme";
+              vicinae = "${pkgs.vicinae}/bin/vicinae";
+              gsettings = "${pkgs.glib}/bin/gsettings";
+            };
+          }
+          // wallpapers
+        )
+      );
     in
     {
       home.sessionVariables.SEELE_THEME_STATE = state;
-      xdg.configFile."seele-theme/catalog.json".text = builtins.toJSON {
-        version = 2;
-        default = "catppuccin-${catppuccin.flavor}";
-        fontFamily = config.stylix.fonts.monospace.name;
-        wallpaper = "/etc/wallpaper/wallpaper.jpg";
-        vesktopDir = "${config.xdg.configHome}/vesktop";
-        inherit tmuxTheme;
-        inherit themes;
-        commands = {
-          hyprctl = "${pkgs.hyprland}/bin/hyprctl";
-          tmux = "${pkgs.tmux}/bin/tmux";
-          pgrep = "${pkgs.procps}/bin/pgrep";
-          pkill = "${pkgs.procps}/bin/pkill";
-          xrdb = "${pkgs.xrdb}/bin/xrdb";
-          kdecolors = "${pkgs.kdePackages.plasma-workspace}/bin/plasma-apply-colorscheme";
-          vicinae = "${pkgs.vicinae}/bin/vicinae";
-          gsettings = "${pkgs.glib}/bin/gsettings";
-        };
-      };
+      # Read here exactly as every `seele-theme` command reads it, so a theme or
+      # a wallpaper mapping the helper would refuse fails this build rather than
+      # activation or the switcher.
+      xdg.configFile."seele-theme/catalog.json".source =
+        pkgs.runCommand "seele-theme-catalog.json"
+          {
+            preferLocalBuild = true;
+            allowSubstitutes = false;
+          }
+          ''
+            ${package}/bin/seele-theme check ${catalog} > /dev/null
+            cp ${catalog} "$out"
+          '';
       # The native helper owns only its state directory. Home Manager still
       # owns every application config and this stable theme entry point.
       xdg.configFile."seele-shell/theme.json" = {

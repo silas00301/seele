@@ -14,6 +14,13 @@ The catalog includes 13 presets:
 - Gruvbox: Dark and Light, both medium contrast.
 - Nord and Everforest (dark).
 
+After them come the shell's own drop-in themes, **Material Expressive Light**
+and **Material Expressive Dark**, which draw the shell with Material 3
+Expressive's colour scheme, type, shapes, tonal elevation and motion, and
+**Cyberpunk**, which draws it as in-game software: neon on near-black, panels
+cut at two corners with a trim and a glitch, scanlines and its own typeface.
+Each gives every other application its Base16 palette like any preset.
+
 The configured Catppuccin flavor is the initial dark theme, and its family's
 light variant, Catppuccin Latte, the initial light theme. Selecting a theme or a
 mode needs no rebuild, privileges or network access.
@@ -36,9 +43,15 @@ opened. Clicking a neighbour chooses it, and clicking the centre keeps it.
 The Control Center's **Themes** tile names the theme on screen, and its round
 knob shows **Light**, **Dark** or **Auto** and steps to the next. The rest of the
 tile opens the Themes panel, which holds the same three choices; with Auto, when
-it switches; and the theme each mode wears. **Use current** gives the preset on
-screen to either mode, which is how light mode wears a dark preset, and
-**Browse themes** opens the switcher over the panel.
+it switches; and a gallery of every theme, three tiles to a row. Each tile is the
+theme's linked wallpaper -- the image mapped to that theme, else its own, else
+the one mapped to its light or dark mode -- or its background colour without
+one, with its name in its own colours. Clicking a tile wears the theme now,
+exactly as choosing it in the switcher does. Its sun and moon buttons make it
+the theme light or dark mode wears, whatever its own mode, which is how light
+mode wears a dark preset; a button is filled while that mode already wears the
+theme. The theme on screen is outlined and marked **On screen**, and **Open
+switcher** opens the switcher over the panel.
 
 **Auto** changes the mode by itself. **Set times** switches at two times of day,
 editable in the panel (light from 07:00 and dark from 19:00 by default, the hours
@@ -70,19 +83,21 @@ runs `seele-theme`, and the shell reads the applied theme and the preferences
 from the files that helper publishes, so a change made in any place, or by the
 schedule, is seen in the others.
 
-`seele-theme list` returns the catalog, the current ID, both slots, the mode and
-the schedule as JSON. `current` returns the selected ID. `set catppuccin-latte`
+`seele-theme list` returns the catalog, the current ID, both slots, the mode,
+the schedule, and whether motion and sound are on as JSON. `current` returns the selected ID. `set catppuccin-latte`
 fills the slot of the mode on screen; `pick rose-pine-dawn` fills the slot of
 its own mode and switches to that mode; `slot light rose-pine-dawn` fills either
 slot; `mode dark` switches mode; `auto sun`, `auto schedule 07:00 19:00` and
-`auto off` set the schedule; `reset` returns both slots, the mode and the
-schedule to the flake's defaults. `init` refreshes generated files during Home
+`auto off` set the schedule; `motion on|off` and `sound on|off` let a theme's own
+motion and sounds through or hold them back, publishing nothing; `reset` returns
+both slots, the mode, the schedule, motion and sound to the defaults. `init` refreshes generated files during Home
 Manager activation while preserving the saved choices, and migrates an earlier
 single selection into its own mode's slot.
 
 | Surface | When colors change |
 | --- | --- |
 | Seele Shell, notifications, Notes, lock and polkit | Live through the shared theme file |
+| Desktop background and lock screen wallpaper | Live through the shared theme file, output by output: the image `seele.wallpaper` maps to the theme, its output and its light or dark mode, else a theme folder's own image, else the configured wallpaper |
 | Hyprland borders, shadows, groups and background | Live; also loaded with compositor configuration |
 | Vicinae | Live through its theme command |
 | Ghostty | Live through SIGUSR2 for same-user Nix Ghostty processes, including scratchpads |
@@ -99,8 +114,10 @@ single selection into its own mode's slot.
 
 This is a user-session feature. The boot screen, greeter, cursor, browser page
 content and independently themed tools retain their configured appearance.
-Wallpaper and font choices stay unchanged. `asuka` and portable applications
-keep their declarative themes.
+The font choice stays unchanged unless the selected theme carries its own
+typeface, which reaches Seele Shell and Notes only, and so does the wallpaper
+unless the selected theme carries its own or `seele.wallpaper` maps one to it. `asuka` and portable applications keep their declarative
+themes.
 
 `modules/features/themes/_theme-switching/presets.json` selects schemes from
 the pinned `base16-schemes` package. Its adjacent Nix helper evaluates the
@@ -137,9 +154,131 @@ every preset's quiet roles clear the floor.
 These assets are generated during the build; switching only selects local files.
 The configured Catppuccin accent is retained for the Catppuccin presets.
 
-To add another scheme, add its ID, display name and light/dark mode to
-`presets.json`, then rebuild once to include it. No application-specific theme
-name or plugin mapping is needed.
+Every preset reaches the shell as a document of the shell's theme contract
+(`seele-shell/projects/shared/THEME-CONTRACT.md`): its identity, the eleven
+palette roles projected above, the configured monospace font, and its Base16
+palette and terminal colours as extensions. It supplies no other slot, so the
+shell keeps the look the contract's defaults describe. The helper checks every
+preset against the contract whenever it reads the catalog and refuses the whole
+catalog, naming the preset and the broken rule, so `checks.theme-presets` fails
+the build on a preset the shell could not take.
+
+To add another scheme, add its ID, display name (at most 64 characters, as the
+contract allows) and light/dark mode to `presets.json`, then rebuild once to
+include it. No application-specific theme name or plugin mapping is needed.
+
+A theme that is not a Base16 scheme is a drop-in folder in the shell's
+`themes/` directory plus one line in `seele-shell/themes/default.nix`; see
+`seele-shell/themes/README.md`. Its `theme.json` chooses the shell's palette
+roles and any other slot of the theme contract (radii, type, motion) and
+carries the Base16 palette the other applications are rendered from. The
+helper `_theme-switching` renders those applications from that palette exactly
+as for a preset, and the folder joins the catalog after the presets. Each
+folder is checked by `seele-theme register` when the catalog that names it is
+built, so an invalid or incomplete folder fails the rebuild with a message
+naming the folder and every rule it broke, and never reaches the desktop.
+`seele-shell/themes/AUTHORING.md` takes a new folder from
+`seele-shell/themes/template/`, a complete dark theme that is never shipped, to
+the switcher in under an hour; in the shell's development shell `theme-check`
+registers a folder and measures its colours, and `theme-preview <id>` draws it
+on the shell's ten main surfaces. Once that shell change lands, moving this
+repository's `seele-shell` gitlink to it and rebuilding adds the theme here.
+
+The two Material Expressive themes are such folders, written by `seele-theme
+material <seed> <light|dark> <id> <name>` from one seed colour rather than by
+hand. Each records its seed, and registration refuses it unless it is exactly
+what that seed grows, so another seed is another folder and the same command.
+`seele-shell/themes/MATERIAL.md` lists every Material token and the shell slot
+it reaches. Under them the shell's controls also behave as Material's: a press
+ripples from where it landed, pressed buttons close their corners, the keyboard
+focus ring flares, the switch's handle grows, and they move on Material's
+springs; every preset keeps the behaviour it had.
+
+Cyberpunk is a hand-written folder that also brings files of its own: the four
+weights of Chakra Petch, which the shell loads while the theme is selected so
+nothing has to be installed, a scanline tile laid over every surface in place
+of the grain film, and an original 3840×2160 wallpaper. It cuts every panel's
+top left and bottom right corners, lights the cut with a red trim and a cyan
+glitch, squares every other corner and sets panel titles and section labels in
+capitals. Each of those is a contract slot that every other theme leaves at its
+default. The typeface is used under the SIL Open Font License, and the wallpaper
+and scanlines are drawn by a script in the folder;
+`seele-shell/themes/CYBERPUNK.md` lists every value and the source and licence
+of every file.
+
+Cyberpunk also moves and can sound. As a panel appears its trim sweeps out from
+the cut and its glitch flickers, and the glitch flickers again when the pointer
+comes onto the panel; nothing moves while a panel is left alone, so an open
+panel costs no frame. It carries six original interface sounds, synthesised by
+a script in the folder: a toast, a critical toast, the focus timer running out,
+a panel opening and closing, and a level OSD stepping. Both are the theme's,
+and whether they happen is yours: for a theme with either, the Themes panel
+shows **Effects**, a **Motion** switch (on by default) and a **Sounds** switch
+(off by default), and `seele-theme motion on|off` and `seele-theme sound on|off`
+do the same. Motion off draws the still frame at once. Sounds play only while
+on, never while presenting, and stay out of the Audio panel's mixer. Every
+other theme has neither, and its panel is unchanged.
+
+A folder may also carry the theme's own wallpaper: `"wallpaper": "wallpaper.jpg"`
+names a PNG or JPEG of at most 16 MiB inside it, and any other format fails the
+rebuild the same way. Registration copies the image into the store beside the
+registered `theme.json`, and the published theme names it, so choosing the
+theme in the switcher, the Themes panel, Vicinae or by schedule changes the
+desktop background on every output and the lock screen with the rest of the
+look. The background keeps the current picture until the new one has decoded,
+so there is no flash of the bare background colour. A preset, or a folder
+without an image, publishes the configured wallpaper, `seele.wallpaper.image`
+(`/etc/wallpaper/wallpaper.jpg` unless set), so switching to it brings back, or
+keeps, the usual wallpaper unless the mapping below gives it another. The
+greeter runs before any user theme exists and always shows the configured
+image.
+
+Which image each output shows is declared in Nix as `seele.wallpaper`
+(`modules/features/themes/wallpaper.nix`), a flake-level option like
+`seele.notes`:
+
+```nix
+seele.wallpaper = {
+  image = "/etc/wallpaper/wallpaper.jpg"; # the configured wallpaper, the default
+  light = ./wallpapers/day.jpg;
+  dark = ./wallpapers/night.jpg;
+  outputs."HDMI-A-1".image = ./wallpapers/side.jpg;
+  outputs."DP-1" = {
+    light = ./wallpapers/wide-day.jpg;
+    dark = ./wallpapers/wide-night.jpg;
+  };
+  themes.catppuccin-latte.image = ./wallpapers/latte.jpg;
+  themes.cyberpunk.outputs."HDMI-A-1" = ./wallpapers/cyberpunk-side.png;
+};
+```
+
+Outputs are named as Hyprland names them (`hyprctl monitors`; `nerv` has
+`HDMI-A-1` and `DP-1`), and themes by their switcher ID. For a theme on an
+output the first image set wins: the one mapped to that theme on that output,
+the one mapped to that theme, the theme's own image, the one mapped to that
+output for the theme's light or dark mode, the one mapped to that output, the
+one mapped to that mode, and `image`. What is declared for a theme beats what
+the theme brings, which beats what is declared for every theme; an output comes
+before a mode because its image is chosen for its shape. Light and dark are the
+theme's own mode, not the slot it fills, so a dark preset given to light mode
+keeps a dark wallpaper. A mode switch therefore changes the wallpaper with the
+theme, on every output at once, and the lock screen follows the same mapping
+output by output. `nerv` declares no images yet, so its outputs keep the
+configured wallpaper or a theme folder's own image.
+
+The mapping is part of the theme catalog, never of `seele-theme`'s saved state:
+a rebuild installs the new catalog and activation's `seele-theme init`
+republishes the chosen theme with it, keeping the chosen themes and mode, and a
+mapping that disappears from Nix disappears from the desktop. A Nix path is
+copied to the store and stays referenced by the catalog of every generation that
+names it. Home Manager installs the catalog only after `seele-theme check` has
+read it exactly as every command will, so a mapping that names a theme the
+catalog lacks, an impossible output name, more than 16 outputs, a relative path
+or a file that is not a PNG or JPEG fails the rebuild, naming each problem. A
+string path outside the store that does not exist yet is allowed and draws the
+background colour until it does, as a missing configured wallpaper does.
+`checks.theme-presets` publishes every generated preset with the declared
+mapping and checks the images each one names.
 
 `modules/features/themes/theme-switching.nix` declares the catalog and includes. It is
 imported only by the `nerv` home profile. Home Manager owns those includes;

@@ -1,5 +1,8 @@
-{ ... }:
+{ config, ... }:
 let
+  # The configured wallpaper (themes/wallpaper.nix): what the shell draws
+  # before the theme helper has published a theme.
+  configuredWallpaper = config.seele.wallpaper.image;
   homeModule =
     {
       catppuccin,
@@ -22,7 +25,7 @@ let
       microphone = "14ed:1019";
       palette = builtins.fromJSON (builtins.readFile "${config.catppuccin.sources.palette}/palette.json");
       colors = palette.${catppuccin.flavor}.colors;
-      wallpaper = "/etc/wallpaper/wallpaper.jpg";
+      wallpaper = configuredWallpaper;
     in
     {
       options.seele.health.providers = lib.mkOption {
